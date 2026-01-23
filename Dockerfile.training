@@ -1,0 +1,43 @@
+# MTG RL Training Container
+# Runs PPO training against Forge daemon
+
+FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime
+
+LABEL maintainer="MTG RL Training"
+LABEL description="Reinforcement learning training for MTG"
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    netcat-openbsd \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.training.txt /app/
+RUN pip install --no-cache-dir -r requirements.training.txt
+
+# Copy training code
+COPY daemon_environment.py /app/
+COPY rl_environment.py /app/
+COPY replay_recorder.py /app/
+COPY train.py /app/
+COPY checkpoint_manager.py /app/
+
+# Copy deck files (for environment initialization)
+COPY decks/ /app/decks/
+
+# Environment variables
+ENV DAEMON_HOST=localhost
+ENV DAEMON_PORT=17171
+ENV S3_BUCKET=""
+ENV CHECKPOINT_DIR=/app/checkpoints
+ENV PYTHONUNBUFFERED=1
+
+# Create checkpoint directory
+RUN mkdir -p /app/checkpoints
+
+# Default command
+CMD ["python", "/app/train.py"]

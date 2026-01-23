@@ -1,0 +1,35 @@
+# Forge Daemon Container
+# Runs the MTG game engine in daemon mode for RL training
+
+FROM eclipse-temurin:17-jre-alpine
+
+LABEL maintainer="MTG RL Training"
+LABEL description="Forge MTG daemon for reinforcement learning"
+
+# Set working directory
+WORKDIR /app
+
+# Install required packages
+RUN apk add --no-cache bash
+
+# Copy the Forge JAR (built with Maven)
+COPY forge-repo/forge-gui-desktop/target/forge-gui-desktop-2.0.09-SNAPSHOT-jar-with-dependencies.jar /app/forge.jar
+
+# Copy deck files
+COPY decks/ /app/decks/
+
+# Copy card data resources (required for Forge)
+COPY forge-repo/forge-gui/res/ /app/res/
+
+# Expose daemon port
+EXPOSE 17171
+
+# Set Java options
+ENV JAVA_OPTS="-Xmx2g -Djava.awt.headless=true"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD echo "STATUS" | nc -w 5 localhost 17171 | grep -q "FORGE DAEMON" || exit 1
+
+# Run the daemon
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/forge.jar daemon -p 17171"]

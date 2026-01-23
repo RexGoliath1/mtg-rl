@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # Original simulation service (for one-off runs)
+  forge-sim:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: forge-mtg-sim
+    volumes:
+      - ./decks:/forge/userdata/decks/constructed:ro
+      - forge-cache:/forge/cache
+    profiles:
+      - sim
+    # Examples:
+    #   Run 1 game: docker-compose --profile sim run forge-sim -d red_aggro.dck white_weenie.dck -n 1
+    #   JSON state output: docker-compose --profile sim run forge-sim -d red_aggro.dck white_weenie.dck -n 1 -j -q
+
+  # Forge daemon - runs MTG game engine for training
+  daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile.daemon
+    container_name: mtg-daemon
+    ports:
+      - "17171:17171"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'STATUS' | nc -w 5 localhost 17171 | grep -q 'FORGE DAEMON' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+        reservations:
+          memory: 2G
+
+  # Training container - runs RL training
+  training:
+    build:
+      context: .
+      dockerfile: Dockerfile.training
+    container_name: mtg-training
+    depends_on:
+      daemon:
+        condition: service_healthy
+    environment:
+      - DAEMON_HOST=daemon
+      - DAEMON_PORT=17171
+      - S3_BUCKET=${S3_BUCKET:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - WANDB_API_KEY=${WANDB_API_KEY:-}
+      - WANDB_PROJECT=${WANDB_PROJECT:-mtg-rl}
+    volumes:
+      - ./checkpoints:/app/checkpoints
+      - ./logs:/app/logs
+    restart: "no"
+    # GPU support (uncomment for GPU training)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # TensorBoard for monitoring
+  tensorboard:
+    image: tensorflow/tensorflow:latest
+    container_name: mtg-tensorboard
+    command: tensorboard --logdir=/logs --bind_all
+    ports:
+      - "6006:6006"
+    volumes:
+      - ./logs:/logs
+    profiles:
+      - monitoring
+
+volumes:
+  forge-cache:
+  checkpoints:
+  logs:
