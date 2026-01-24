@@ -1,56 +1,57 @@
 #!/usr/bin/env python3
 """
-DEPRECATED: Use scripts/benchmark.py instead.
+Forge Daemon Benchmark
 
-Migration:
-    # Old
-    python benchmark_1000.py
+Benchmark the Forge daemon with configurable parallel game execution.
 
-    # New
-    python scripts/benchmark.py --games 1000 --parallel 10
+Usage:
+    # Quick benchmark (100 games)
+    python scripts/benchmark.py
+
+    # Full benchmark (1000 games)
+    python scripts/benchmark.py --games 1000
+
+    # Custom settings
+    python scripts/benchmark.py --games 500 --parallel 20 --host daemon.local --port 17171
+
+    # With specific decks
+    python scripts/benchmark.py --deck1 decks/mono_red.dck --deck2 decks/control.dck
 """
 
-import warnings
-warnings.warn(
-    "benchmark_1000.py is deprecated. Use scripts/benchmark.py --games 1000 instead.",
-    DeprecationWarning,
-    stacklevel=2
-)
-
-# Original docstring for reference:
-# Benchmark 1000 games on the Forge daemon with 10 parallel connections.
-
-import socket
-import time
-import statistics
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from collections import defaultdict
+import argparse
 import json
+import socket
+import statistics
+import time
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
-# Configuration
-DAEMON_HOST = "localhost"
-DAEMON_PORT = 17171
-NUM_GAMES = 1000
-MAX_PARALLEL = 10
-GAME_TIMEOUT = 120
 
-def run_single_game(game_id: int) -> dict:
+def run_single_game(
+    game_id: int,
+    daemon_host: str,
+    daemon_port: int,
+    deck1: str,
+    deck2: str,
+    timeout: int,
+) -> dict:
     """Run a single game and return timing info."""
     result = {
         "game_id": game_id,
         "success": False,
         "duration_ms": 0,
         "winner": None,
-        "error": None
+        "error": None,
     }
 
     start_time = time.time()
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(GAME_TIMEOUT)
-            s.connect((DAEMON_HOST, DAEMON_PORT))
+            s.settimeout(timeout)
+            s.connect((daemon_host, daemon_port))
 
-            cmd = "NEWGAME test_red.dck test_blue.dck -q -c 60\n"
+            cmd = f"NEWGAME {deck1} {deck2} -q -c {timeout}\n"
             s.sendall(cmd.encode())
 
             response = ""
@@ -88,13 +89,25 @@ def run_single_game(game_id: int) -> dict:
     return result
 
 
-def run_benchmark():
+def run_benchmark(
+    num_games: int,
+    max_parallel: int,
+    daemon_host: str,
+    daemon_port: int,
+    deck1: str,
+    deck2: str,
+    timeout: int,
+    output_file: str = None,
+    quiet: bool = False,
+):
     """Run the full benchmark."""
     print("=" * 60)
-    print("FORGE DAEMON BENCHMARK - 1000 GAMES")
+    print("FORGE DAEMON BENCHMARK")
     print("=" * 60)
-    print(f"Total games: {NUM_GAMES}")
-    print(f"Max parallel: {MAX_PARALLEL}")
+    print(f"Total games: {num_games}")
+    print(f"Max parallel: {max_parallel}")
+    print(f"Host: {daemon_host}:{daemon_port}")
+    print(f"Decks: {deck1} vs {deck2}")
     print("=" * 60)
     print()
 
@@ -104,12 +117,24 @@ def run_benchmark():
 
     overall_start = time.time()
 
-    with ThreadPoolExecutor(max_workers=MAX_PARALLEL) as executor:
-        futures = {executor.submit(run_single_game, i): i for i in range(NUM_GAMES)}
+    with ThreadPoolExecutor(max_workers=max_parallel) as executor:
+        futures = {
+            executor.submit(
+                run_single_game,
+                i,
+                daemon_host,
+                daemon_port,
+                deck1,
+                deck2,
+                timeout,
+            ): i
+            for i in range(num_games)
+        }
 
         completed = 0
+        progress_interval = max(1, num_games // 20)  # ~20 progress updates
+
         for future in as_completed(futures):
-            game_id = futures[future]
             result = future.result()
             results.append(result)
             completed += 1
@@ -119,11 +144,14 @@ def run_benchmark():
             else:
                 errors.append(result)
 
-            if completed % 100 == 0:
+            if not quiet and completed % progress_interval == 0:
                 elapsed = time.time() - overall_start
                 rate = completed / elapsed
-                eta = (NUM_GAMES - completed) / rate if rate > 0 else 0
-                print(f"Progress: {completed}/{NUM_GAMES} ({rate:.1f} games/sec, ETA: {eta:.0f}s)")
+                eta = (num_games - completed) / rate if rate > 0 else 0
+                print(
+                    f"Progress: {completed}/{num_games} "
+                    f"({rate:.1f} games/sec, ETA: {eta:.0f}s)"
+                )
 
     overall_duration = time.time() - overall_start
 
@@ -137,7 +165,7 @@ def run_benchmark():
         print("BENCHMARK RESULTS")
         print("=" * 60)
         print(f"Total time: {overall_duration:.1f}s")
-        print(f"Successful games: {len(successful_results)}/{NUM_GAMES}")
+        print(f"Successful games: {len(successful_results)}/{num_games}")
         print(f"Failed games: {len(errors)}")
         print()
         print("Game Duration Statistics (ms):")
@@ -157,7 +185,8 @@ def run_benchmark():
         print()
         print("Win Distribution:")
         for winner, count in sorted(wins.items()):
-            print(f"  {winner}: {count} ({count/len(successful_results)*100:.1f}%)")
+            pct = count / len(successful_results) * 100
+            print(f"  {winner}: {count} ({pct:.1f}%)")
 
         if errors:
             print()
@@ -165,13 +194,20 @@ def run_benchmark():
             for err in errors[:5]:
                 print(f"  Game {err['game_id']}: {err['error']}")
 
-        # Save results to JSON for later analysis
+        # Save results
+        if output_file:
+            output_path = Path(output_file)
+        else:
+            output_path = Path("/tmp/benchmark_results.json")
+
         output = {
             "config": {
-                "num_games": NUM_GAMES,
-                "max_parallel": MAX_PARALLEL,
-                "daemon_host": DAEMON_HOST,
-                "daemon_port": DAEMON_PORT
+                "num_games": num_games,
+                "max_parallel": max_parallel,
+                "daemon_host": daemon_host,
+                "daemon_port": daemon_port,
+                "deck1": deck1,
+                "deck2": deck2,
             },
             "summary": {
                 "total_time_s": overall_duration,
@@ -183,20 +219,60 @@ def run_benchmark():
                 "duration_max_ms": max(durations),
                 "duration_mean_ms": statistics.mean(durations),
                 "duration_median_ms": statistics.median(durations),
-                "duration_stdev_ms": statistics.stdev(durations) if len(durations) > 1 else 0,
+                "duration_stdev_ms": (
+                    statistics.stdev(durations) if len(durations) > 1 else 0
+                ),
             },
             "wins": dict(wins),
-            "all_durations_ms": durations
+            "all_durations_ms": durations,
         }
 
-        with open("/tmp/benchmark_1000_results.json", "w") as f:
+        with open(output_path, "w") as f:
             json.dump(output, f, indent=2)
         print()
-        print("Full results saved to /tmp/benchmark_1000_results.json")
+        print(f"Full results saved to {output_path}")
+
+        return output
 
     else:
         print("No successful games!")
+        if errors:
+            print("Errors:")
+            for err in errors[:10]:
+                print(f"  Game {err['game_id']}: {err['error']}")
+        return None
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Benchmark the Forge daemon")
+    parser.add_argument(
+        "--games", "-n", type=int, default=100, help="Number of games to run"
+    )
+    parser.add_argument(
+        "--parallel", "-p", type=int, default=10, help="Max parallel connections"
+    )
+    parser.add_argument("--host", default="localhost", help="Daemon host")
+    parser.add_argument("--port", type=int, default=17171, help="Daemon port")
+    parser.add_argument("--deck1", default="test_red.dck", help="Deck 1 path")
+    parser.add_argument("--deck2", default="test_blue.dck", help="Deck 2 path")
+    parser.add_argument("--timeout", type=int, default=120, help="Game timeout (sec)")
+    parser.add_argument("--output", "-o", help="Output JSON file path")
+    parser.add_argument("--quiet", "-q", action="store_true", help="Less verbose output")
+
+    args = parser.parse_args()
+
+    run_benchmark(
+        num_games=args.games,
+        max_parallel=args.parallel,
+        daemon_host=args.host,
+        daemon_port=args.port,
+        deck1=args.deck1,
+        deck2=args.deck2,
+        timeout=args.timeout,
+        output_file=args.output,
+        quiet=args.quiet,
+    )
 
 
 if __name__ == "__main__":
-    run_benchmark()
+    main()

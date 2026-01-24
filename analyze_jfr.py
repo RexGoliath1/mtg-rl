@@ -4,7 +4,6 @@
 import subprocess
 import re
 from collections import defaultdict
-import json
 
 def parse_jfr():
     """Parse JFR file and extract execution samples."""

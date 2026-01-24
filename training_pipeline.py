@@ -23,17 +23,12 @@ Usage:
     python training_pipeline.py --mode eval --checkpoint checkpoints/best.pt
 """
 
-import os
-import sys
 import json
-import time
 import argparse
 import random
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field, asdict
-from collections import deque
 
 import numpy as np
 import torch
@@ -45,7 +40,7 @@ from torch.utils.tensorboard import SummaryWriter
 # Local imports
 from entity_encoder import EntityEncoder, EntityEncoderConfig, EncoderMode
 from shared_card_encoder import SharedCardEncoder, CardEncoderConfig, CardFeatureExtractor
-from text_embeddings import PretrainedTextEmbedder, TextEmbeddingConfig, CardEmbeddingDatabase
+from text_embeddings import PretrainedTextEmbedder
 
 
 # =============================================================================
@@ -946,7 +941,7 @@ def run_behavioral_cloning(config: TrainingConfig):
                 epoch,
                 val_metrics,
             )
-            print(f"  New best model saved!")
+            print("  New best model saved!")
 
     print(f"\nTraining complete. Best accuracy: {best_accuracy:.4f}")
     return model

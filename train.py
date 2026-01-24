@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 """
-MTG RL Training Script
+DEPRECATED: Use training_pipeline.py for RL training instead.
+
+This script has been superseded by training_pipeline.py which provides:
+- Unified BC + RL training
+- Better integration with the current architecture
+- More flexible configuration
+
+Migration:
+    # Old
+    python train.py --mode daemon --episodes 10000
+
+    # New
+    python training_pipeline.py --mode rl --episodes 10000
+
+---
+
+MTG RL Training Script (LEGACY)
 
 Trains a PPO agent against the Forge daemon with:
 - Curriculum learning (progressive deck difficulty)
@@ -19,17 +35,22 @@ Usage:
     python train.py --mode daemon --resume
 """
 
+import warnings
+warnings.warn(
+    "train.py is deprecated. Use training_pipeline.py instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 import os
-import sys
 import time
 import json
 import random
-import signal
 import argparse
 import numpy as np
 from datetime import datetime
 from dataclasses import dataclass, asdict, field
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Tuple, Dict
 from pathlib import Path
 
 import torch
@@ -38,7 +59,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 # Local imports
-from daemon_environment import DaemonMTGEnvironment, DaemonPool, check_daemon_status
+from daemon_environment import DaemonMTGEnvironment, check_daemon_status
 from checkpoint_manager import CheckpointManager, TrainingState
 
 
@@ -769,7 +790,7 @@ def train_daemon(config: TrainingConfig, resume: bool = False):
             import wandb
             wandb.finish()
 
-        print(f"\nTraining complete!")
+        print("\nTraining complete!")
         print(f"  Total episodes: {episode:,}")
         print(f"  Total games: {total_games:,}")
         print(f"  Final win rate: {current_win_rate*100:.1f}%")

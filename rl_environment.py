@@ -28,11 +28,8 @@ import json
 import subprocess
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from enum import Enum
-import threading
-import queue
-from abc import ABC, abstractmethod
 
 
 class ActionType(Enum):
@@ -770,7 +767,7 @@ def main():
     print("\nRunning test episode...")
     result = train_episode(env, agent)
 
-    print(f"\nEpisode Results:")
+    print("\nEpisode Results:")
     print(f"  Total Reward: {result['total_reward']:.4f}")
     print(f"  Steps: {result['steps']}")
     print(f"  Won: {result['won']}")

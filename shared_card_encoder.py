@@ -17,15 +17,11 @@ Architecture inspired by:
 - AlphaStar's entity encoder
 """
 
-import math
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from dataclasses import dataclass
-import json
-import os
 
 
 @dataclass

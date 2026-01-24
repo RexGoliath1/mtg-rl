@@ -7,7 +7,6 @@ Replay data is lightweight - just seed + action sequence.
 """
 
 import json
-import os
 import time
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any, Optional

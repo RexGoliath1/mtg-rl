@@ -19,21 +19,18 @@ References:
 """
 
 import os
-import copy
 import json
 import time
 import random
 import logging
 from dataclasses import dataclass, field, asdict
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple
 from collections import deque
 from pathlib import Path
 from datetime import datetime
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import math
 
-import numpy as np
 import torch
 
 from policy_network import MTGPolicyNetwork, TransformerConfig, StatePreprocessor
@@ -597,7 +594,7 @@ class SelfPlayTrainer:
         # Current model ID
         self.current_model_id = "initial"
 
-        logger.info(f"SelfPlayTrainer initialized")
+        logger.info("SelfPlayTrainer initialized")
         logger.info(f"  Device: {self.device}")
         logger.info(f"  Run dir: {self.run_dir}")
         logger.info(f"  Pool size: {len(self.model_pool)}")

@@ -6,7 +6,6 @@ This agent plays lands and cheap creatures, then attacks.
 
 import subprocess
 import json
-import sys
 
 
 def parse_decision(line):

@@ -1,10 +1,27 @@
 #!/usr/bin/env python3
-"""Benchmark the Forge daemon with parallel game execution."""
+"""
+DEPRECATED: Use scripts/benchmark.py instead.
+
+Migration:
+    # Old
+    python benchmark_daemon.py
+
+    # New
+    python scripts/benchmark.py --games 100 --parallel 10
+"""
+
+import warnings
+warnings.warn(
+    "benchmark_daemon.py is deprecated. Use scripts/benchmark.py instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
+# Original docstring for reference:
+# Benchmark the Forge daemon with parallel game execution.
 
 import socket
 import time
-import threading
-import queue
 import statistics
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict
@@ -77,11 +94,11 @@ def run_single_game(game_id: int) -> dict:
 
 def run_benchmark():
     """Run the full benchmark."""
-    print(f"Forge Daemon Benchmark")
-    print(f"=" * 50)
+    print("Forge Daemon Benchmark")
+    print("=" * 50)
     print(f"Total games: {NUM_GAMES}")
     print(f"Max parallel: {MAX_PARALLEL}")
-    print(f"=" * 50)
+    print("=" * 50)
     print()
 
     results = []
@@ -120,14 +137,14 @@ def run_benchmark():
         durations = [r["duration_ms"] for r in successful_results]
 
         print()
-        print(f"=" * 50)
-        print(f"BENCHMARK RESULTS")
-        print(f"=" * 50)
+        print("=" * 50)
+        print("BENCHMARK RESULTS")
+        print("=" * 50)
         print(f"Total time: {overall_duration:.1f}s")
         print(f"Successful games: {len(successful_results)}/{NUM_GAMES}")
         print(f"Failed games: {len(errors)}")
         print()
-        print(f"Game Duration Statistics (ms):")
+        print("Game Duration Statistics (ms):")
         print(f"  Min:    {min(durations):.0f}")
         print(f"  Max:    {max(durations):.0f}")
         print(f"  Mean:   {statistics.mean(durations):.0f}")
@@ -137,7 +154,7 @@ def run_benchmark():
         print(f"Throughput: {len(successful_results) / overall_duration:.1f} games/second")
         print(f"            {len(successful_results) / overall_duration * 3600:.0f} games/hour")
         print()
-        print(f"Win Distribution:")
+        print("Win Distribution:")
         for winner, count in sorted(wins.items()):
             print(f"  {winner}: {count} ({count/len(successful_results)*100:.1f}%)")
 
@@ -149,9 +166,9 @@ def run_benchmark():
 
         # Generate histogram data
         print()
-        print(f"=" * 50)
-        print(f"DURATION HISTOGRAM (ms)")
-        print(f"=" * 50)
+        print("=" * 50)
+        print("DURATION HISTOGRAM (ms)")
+        print("=" * 50)
 
         # Create histogram bins
         min_d, max_d = min(durations), max(durations)
@@ -175,7 +192,7 @@ def run_benchmark():
             for r in results:
                 f.write(f"{r['game_id']},{r['duration_ms']:.0f},{r['success']},{r['winner'] or ''},{r['error'] or ''}\n")
         print()
-        print(f"Raw data saved to /tmp/benchmark_results.txt")
+        print("Raw data saved to /tmp/benchmark_results.txt")
 
     else:
         print("No successful games!")

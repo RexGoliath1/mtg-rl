@@ -15,8 +15,6 @@ from torch.utils.data import Dataset, IterableDataset
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Iterator
 from dataclasses import dataclass
-import json
-import re
 
 
 @dataclass
@@ -335,6 +333,109 @@ def build_card_vocabulary(data_dir: str, sets: List[str]) -> Tuple[Dict[str, int
                         idx_to_card[idx] = card_name
 
     return card_to_idx, idx_to_card
+
+
+def create_data_splits(
+    dataset: SeventeenLandsDataset,
+    train_ratio: float = 0.9,
+    val_ratio: float = 0.05,
+) -> tuple:
+    """
+    Split dataset into train/val/test by draft ID.
+
+    Splits by draft_id to avoid data leakage (all picks from a draft
+    go into the same split).
+
+    Returns:
+        train_dataset, val_dataset, test_dataset
+    """
+    from torch.utils.data import Subset
+    from collections import defaultdict
+
+    # Group indices by draft ID
+    drafts = defaultdict(list)
+    for idx, sample in enumerate(dataset.samples):
+        drafts[sample.draft_id].append(idx)
+
+    draft_ids = list(drafts.keys())
+    np.random.shuffle(draft_ids)
+
+    # Calculate split indices
+    n_drafts = len(draft_ids)
+    train_end = int(n_drafts * train_ratio)
+    val_end = int(n_drafts * (train_ratio + val_ratio))
+
+    train_ids = set(draft_ids[:train_end])
+    val_ids = set(draft_ids[train_end:val_end])
+    test_ids = set(draft_ids[val_end:])
+
+    # Collect indices for each split
+    train_indices = [i for draft_id in train_ids for i in drafts[draft_id]]
+    val_indices = [i for draft_id in val_ids for i in drafts[draft_id]]
+    test_indices = [i for draft_id in test_ids for i in drafts[draft_id]]
+
+    return (
+        Subset(dataset, train_indices),
+        Subset(dataset, val_indices),
+        Subset(dataset, test_indices),
+    )
+
+
+def create_synthetic_picks(n_picks: int = 1000) -> List[DraftPick]:
+    """
+    Create synthetic draft picks for testing.
+
+    Useful when 17lands data is not available.
+    """
+    # Fake card names
+    card_pool = [
+        "Lightning Bolt", "Counterspell", "Giant Growth", "Dark Ritual",
+        "Swords to Plowshares", "Llanowar Elves", "Birds of Paradise",
+        "Sol Ring", "Path to Exile", "Brainstorm", "Force of Will",
+        "Mana Drain", "Ancestral Recall", "Black Lotus", "Time Walk",
+        "Goblin Guide", "Monastery Swiftspear", "Delver of Secrets",
+        "Tarmogoyf", "Thoughtseize", "Fatal Push", "Aether Vial",
+        "Stoneforge Mystic", "Snapcaster Mage", "Dark Confidant",
+        "Mountain", "Island", "Forest", "Swamp", "Plains",
+    ]
+
+    picks = []
+    for i in range(n_picks):
+        pack_num = (i % 45) // 15 + 1
+        pick_num = (i % 15) + 1
+        pool_size = i % 45
+
+        # Generate pack
+        pack_size = 16 - pick_num
+        pack_cards = np.random.choice(
+            card_pool, min(pack_size, len(card_pool)), replace=False
+        ).tolist()
+
+        # Pick a card
+        pick = np.random.choice(pack_cards)
+
+        # Generate pool
+        pool_cards = {}
+        if pool_size > 0:
+            pool_list = np.random.choice(
+                card_pool, min(pool_size, len(card_pool)), replace=False
+            )
+            for card in pool_list:
+                pool_cards[card] = pool_cards.get(card, 0) + 1
+
+        picks.append(DraftPick(
+            draft_id=f"synthetic_{i // 45}",
+            pack_number=pack_num,
+            pick_number=pick_num,
+            picked_card=pick,
+            pack_cards=pack_cards,
+            pool_cards=pool_cards,
+            rank='gold',
+            event_wins=3,
+            event_losses=2,
+        ))
+
+    return picks
 
 
 def test_data_loader():

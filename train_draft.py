@@ -15,17 +15,14 @@ import time
 from pathlib import Path
 from typing import Dict, Optional
 
-import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 
 from data_loader_17lands import (
     SeventeenLandsDataset,
     collate_picks,
-    build_card_vocabulary,
 )
 
 
@@ -422,7 +419,7 @@ def main():
 
     print("\n" + "=" * 60)
     print(f"Training complete. Best accuracy: {best_accuracy:.4f}")
-    print(f"Model saved to: checkpoints/draft_best.pt")
+    print("Model saved to: checkpoints/draft_best.pt")
     print("=" * 60)
 
 

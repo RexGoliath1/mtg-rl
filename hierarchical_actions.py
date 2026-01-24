@@ -29,9 +29,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
-from enum import Enum, auto
+from enum import Enum
 
 from policy_network import TransformerConfig, PositionalEncoding, MultiHeadAttention
 
@@ -748,7 +748,7 @@ def test_hierarchical_policy():
         action_type_mask, card_selection_mask
     )
 
-    print(f"\nOutput shapes:")
+    print("\nOutput shapes:")
     for k, v in outputs.items():
         print(f"  {k}: {v.shape}")
 

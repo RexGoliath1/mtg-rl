@@ -10,16 +10,12 @@ Usage:
     python scripts/download_17lands.py --list
 """
 
-import os
-import sys
 import argparse
-import hashlib
 import time
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import json
 import requests
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # S3 bucket base URL
 S3_BASE = "https://17lands-public.s3.amazonaws.com/analysis_data"
@@ -218,9 +214,9 @@ def download_datasets(
             if download_file(url, output_path):
                 total_downloaded += 1
                 total_size += size
-                print(f"  [OK] Downloaded successfully")
+                print("  [OK] Downloaded successfully")
             else:
-                print(f"  [FAIL] Download failed")
+                print("  [FAIL] Download failed")
 
     print("\n" + "=" * 80)
     print(f"SUMMARY: Downloaded {total_downloaded} files, Total size: {format_size(total_size)}")

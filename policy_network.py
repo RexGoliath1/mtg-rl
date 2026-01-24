@@ -37,7 +37,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical
-from typing import Dict, List, Optional, Tuple
+from typing import Optional, Tuple
 from dataclasses import dataclass
 
 
@@ -751,7 +751,7 @@ def test_policy_network():
     print("=" * 60)
 
     config = TransformerConfig()
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"  Card embedding dim: {config.card_embedding_dim}")
     print(f"  Model dim (d_model): {config.d_model}")
     print(f"  Attention heads: {config.n_heads}")
@@ -765,7 +765,7 @@ def test_policy_network():
     # Count parameters
     total_params = sum(p.numel() for p in network.parameters())
     trainable_params = sum(p.numel() for p in network.parameters() if p.requires_grad)
-    print(f"\nNetwork parameters:")
+    print("\nNetwork parameters:")
     print(f"  Total: {total_params:,}")
     print(f"  Trainable: {trainable_params:,}")
 
@@ -781,7 +781,7 @@ def test_policy_network():
     action_mask = torch.ones(batch_size, config.max_actions)
     action_mask[:, 40:] = 0  # Only first 40 actions valid
 
-    print(f"\nInput shapes:")
+    print("\nInput shapes:")
     print(f"  card_embeddings: {card_embeddings.shape}")
     print(f"  zone_ids: {zone_ids.shape}")
     print(f"  card_mask: {card_mask.shape}")
@@ -795,13 +795,13 @@ def test_policy_network():
             card_embeddings, zone_ids, card_mask, global_features, action_mask
         )
 
-    print(f"\nOutput shapes:")
+    print("\nOutput shapes:")
     print(f"  action_logits: {action_logits.shape}")
     print(f"  action_probs: {action_probs.shape}")
     print(f"  state_value: {state_value.shape}")
 
     # Verify masking
-    print(f"\nAction masking verification:")
+    print("\nAction masking verification:")
     print(f"  Prob sum for valid actions: {action_probs[:, :40].sum(dim=1)}")
     print(f"  Prob sum for invalid actions: {action_probs[:, 40:].sum(dim=1)}")
 
@@ -811,7 +811,7 @@ def test_policy_network():
         deterministic=False
     )
 
-    print(f"\nAction selection:")
+    print("\nAction selection:")
     print(f"  Selected actions: {action}")
     print(f"  Log probabilities: {log_prob}")
     print(f"  State values: {value.squeeze()}")
@@ -822,7 +822,7 @@ def test_policy_network():
         card_embeddings, zone_ids, card_mask, global_features, action_mask, actions
     )
 
-    print(f"\nAction evaluation:")
+    print("\nAction evaluation:")
     print(f"  Actions evaluated: {actions}")
     print(f"  Log probs: {log_probs}")
     print(f"  Entropy: {entropy}")

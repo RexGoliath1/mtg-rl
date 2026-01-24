@@ -6,21 +6,17 @@ Renders game states to frames using PIL/matplotlib and stitches into video.
 Works completely headless - no display required.
 """
 
-import json
-import os
 import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
-import shutil
+from typing import List, Dict, Any
 
 # Use non-interactive backend for headless operation
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from matplotlib.patches import FancyBboxPatch, Rectangle
+from matplotlib.patches import FancyBboxPatch
 import numpy as np
 
 from replay_recorder import ReplayRecorder, GameReplay

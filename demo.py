@@ -92,7 +92,7 @@ network = MTGPolicyNetwork(config)
 
 total_params = sum(p.numel() for p in network.parameters())
 print(f"Network parameters: {total_params:,}")
-print(f"Architecture:")
+print("Architecture:")
 print(f"  - Card embedding dim: {config.card_embedding_dim}")
 print(f"  - Model dimension: {config.d_model}")
 print(f"  - Attention heads: {config.n_heads}")
@@ -113,7 +113,7 @@ network.eval()
 with torch.no_grad():
     logits, probs, value = network(card_emb, zone_ids, card_mask, global_feat, action_mask)
 
-print(f"\nForward pass:")
+print("\nForward pass:")
 print(f"  Action probabilities: {probs[0, :5].numpy()}")
 print(f"  State value: {value.item():.4f}")
 
@@ -128,7 +128,7 @@ from ppo_agent import PPOAgent, PPOConfig
 ppo_config = PPOConfig(n_steps=16)
 agent = PPOAgent(ppo_config, config, torch.device('cpu'))
 
-print(f"PPO hyperparameters:")
+print("PPO hyperparameters:")
 print(f"  - Learning rate: {ppo_config.learning_rate}")
 print(f"  - Gamma: {ppo_config.gamma}")
 print(f"  - GAE lambda: {ppo_config.gae_lambda}")
@@ -156,7 +156,7 @@ action_mask = np.zeros(50, dtype=np.float32)
 action_mask[:3] = 1.0  # 3 valid actions
 
 action, info = agent.get_action(mock_state, action_mask, deterministic=True)
-print(f"\nAction selection:")
+print("\nAction selection:")
 print(f"  Selected action: {action}")
 print(f"  Value estimate: {info['value'].item():.4f}")
 print(f"  Action probs: {info['action_probs'][0, :5].numpy()}")
@@ -181,7 +181,7 @@ print("Training...")
 last_value = torch.tensor([0.0])
 metrics = agent.train_step(last_value)
 
-print(f"\nTraining metrics:")
+print("\nTraining metrics:")
 print(f"  Policy loss: {metrics['policy_loss']:.6f}")
 print(f"  Value loss: {metrics['value_loss']:.6f}")
 print(f"  Entropy: {metrics['entropy']:.6f}")
@@ -213,7 +213,7 @@ for i in range(50):
 metrics = EvalMetrics()
 metrics.update(results)
 
-print(f"Evaluation results (50 mock games):")
+print("Evaluation results (50 mock games):")
 print(f"  Win rate: {metrics.win_rate*100:.1f}% (+/- {metrics.win_rate_std*100:.1f}%)")
 print(f"  Avg game length: {metrics.avg_game_length:.1f} turns")
 print(f"  Avg decisions: {metrics.avg_decisions:.1f}")

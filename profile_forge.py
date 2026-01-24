@@ -16,8 +16,7 @@ import json
 import re
 import statistics
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
-import os
+from typing import List, Optional
 
 @dataclass
 class TurnTiming:
@@ -239,7 +238,7 @@ def run_interactive_game_profile(
 
     # Add communication overhead stats
     if decision_times:
-        print(f"\nCommunication overhead per decision:")
+        print("\nCommunication overhead per decision:")
         print(f"  Mean: {statistics.mean(decision_times):.3f} ms")
         print(f"  Median: {statistics.median(decision_times):.3f} ms")
         print(f"  Max: {max(decision_times):.3f} ms")
@@ -337,7 +336,7 @@ def profile_interactive_mode():
     profile = run_interactive_game_profile(max_decisions=200)
 
     if profile:
-        print(f"\n  Results:")
+        print("\n  Results:")
         print(f"  Total time: {profile.total_time_ms:.0f}ms")
         print(f"  Init time: {profile.init_time_ms:.0f}ms")
         print(f"  First decision at: {profile.first_decision_time_ms:.0f}ms")

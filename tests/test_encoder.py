@@ -1,5 +1,4 @@
 """Tests for card encoders."""
-import pytest
 import torch
 from shared_card_encoder import SharedCardEncoder, CardEncoderConfig, CardFeatureExtractor
 

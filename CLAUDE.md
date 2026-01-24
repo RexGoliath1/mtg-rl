@@ -188,48 +188,90 @@ git push origin main
 
 ---
 
-## Testing Requirements
+## Testing & Linting Requirements
 
 ### Before Committing
 
-1. **Run existing tests**: `python -m pytest tests/ -v`
-2. **Test modified modules**: Run self-tests for changed files
-3. **Verify imports**: `python -c "from training_pipeline import *"`
+1. **Run linter**: `python3 -m ruff check . --ignore E501 --exclude forge-repo,wandb`
+2. **Run tests**: `python3 -m pytest tests/ -v`
+3. **Test modified modules**: Run self-tests for changed files
+4. **Verify imports**: `python -c "from training_pipeline import *"`
+
+### Linting
+
+We use `ruff` for linting. Install with: `pip install ruff`
+
+```bash
+# Check for issues
+python3 -m ruff check . --ignore E501 --exclude forge-repo,wandb
+
+# Auto-fix safe issues
+python3 -m ruff check . --ignore E501 --exclude forge-repo,wandb --fix
+```
 
 ### Test Coverage Goals
 
-- [ ] Unit tests for all encoder components
-- [ ] Integration tests for training pipeline
+- [x] Unit tests for encoder components (tests/test_encoder.py)
+- [x] Integration tests for training pipeline (tests/test_pipeline.py)
 - [ ] End-to-end draft simulation tests
 - [ ] API endpoint tests (when deployed)
 
 ---
 
-## File Structure
+## File Structure (Target)
+
+The project should follow this structure. Files at root are being consolidated.
 
 ```
 mtg/
 ├── CLAUDE.md                 # This file - project context
 ├── ARCHITECTURE.md           # Detailed architecture docs
-├── AWS_DEPLOYMENT.md         # AWS deployment guide
-├── CLOUD_TRAINING.md         # Cloud GPU recommendations
+├── DEPLOYMENT.md             # Consolidated deployment guide
 ├── WHITEPAPER.md             # Technical paper
-├── shared_card_encoder.py    # Simple card encoder
-├── entity_encoder.py         # Full game state encoder
-├── draft_policy.py           # Draft policy network
-├── text_embeddings.py        # Text embeddings
-├── training_pipeline.py      # Training orchestration
-├── data_17lands.py           # 17lands data loading
-├── scripts/
+├── README.md                 # Project README
+│
+├── src/                      # Source code (future refactor target)
+│   ├── models/               # Neural network models
+│   │   ├── shared_card_encoder.py
+│   │   ├── entity_encoder.py
+│   │   ├── draft_policy.py
+│   │   └── text_embeddings.py
+│   ├── training/             # Training pipelines
+│   │   ├── train_draft.py
+│   │   ├── training_pipeline.py
+│   │   └── draft_training.py
+│   ├── data/                 # Data loading
+│   │   └── data_loader_17lands.py
+│   └── environments/         # Gym environments
+│       ├── draft_environment.py
+│       └── daemon_environment.py
+│
+├── scripts/                  # Utility scripts
 │   ├── download_17lands.py   # Data downloader
 │   └── deploy.sh             # AWS deployment
-├── infrastructure/
-│   └── main.tf               # Terraform config
+├── infrastructure/           # Terraform/IaC
+│   └── main.tf
 ├── tests/                    # Test suite
+├── decks/                    # Deck files for training
 ├── checkpoints/              # Model checkpoints (gitignored)
 ├── data/                     # Training data (gitignored)
+├── logs/                     # TensorBoard logs (gitignored)
 └── forge-repo/               # Forge MTG engine (gitignored)
 ```
+
+### Current Structure (Pre-Refactor)
+
+Currently, all Python files are at root level. This is acceptable for rapid iteration
+but should be organized into packages before production deployment.
+
+**Core Files (keep at root for now):**
+- `train_draft.py` - Primary draft training script
+- `data_loader_17lands.py` - 17lands data loader (native format)
+- `shared_card_encoder.py` - Card encoder
+
+**Deprecated/Redundant (to consolidate):**
+- `data_17lands.py` - Superseded by data_loader_17lands.py
+- Several training scripts overlap - see redundancy analysis
 
 ---
 

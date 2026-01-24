@@ -22,15 +22,12 @@ The encoder operates in three modes:
 3. DECKBUILDING: Identity + deck context features
 """
 
-import math
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple, Union, Set
+from typing import Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass, field
 from enum import Enum
-import json
 
 
 # =============================================================================
@@ -1033,7 +1030,7 @@ def test_entity_encoder():
     mask = torch.ones(batch_size, num_entities)
     mask[:, 15:] = 0  # Last 5 entities are padding
 
-    print(f"\nInput shapes:")
+    print("\nInput shapes:")
     print(f"  Identity: {identity_features.shape}")
     print(f"  State: {state_features.shape}")
     print(f"  Mask: {mask.shape}")
@@ -1044,14 +1041,14 @@ def test_entity_encoder():
         # Gameplay mode
         entity_emb, pooled = encoder(identity_features, state_features, mask,
                                       mode=EncoderMode.GAMEPLAY, return_pooled=True)
-        print(f"\nGameplay mode output:")
+        print("\nGameplay mode output:")
         print(f"  Entity embeddings: {entity_emb.shape}")
         print(f"  Pooled: {pooled.shape}")
 
         # Draft mode (no state)
         entity_emb_draft, pooled_draft = encoder(identity_features, None, mask,
                                                   mode=EncoderMode.DRAFT, return_pooled=True)
-        print(f"\nDraft mode output:")
+        print("\nDraft mode output:")
         print(f"  Entity embeddings: {entity_emb_draft.shape}")
         print(f"  Pooled: {pooled_draft.shape}")
 
@@ -1071,7 +1068,7 @@ def test_entity_encoder():
     )
 
     identity, state = extractor.extract_full(test_entity)
-    print(f"Lightning Bolt:")
+    print("Lightning Bolt:")
     print(f"  Identity features: shape={identity.shape}, non-zero={np.count_nonzero(identity)}")
     print(f"  State features: shape={state.shape}, non-zero={np.count_nonzero(state)}")
 
@@ -1094,7 +1091,7 @@ def test_entity_encoder():
     )
 
     identity, state = extractor.extract_full(test_creature)
-    print(f"\nQuesting Beast (with 2 +1/+1 counters):")
+    print("\nQuesting Beast (with 2 +1/+1 counters):")
     print(f"  Identity features: shape={identity.shape}, non-zero={np.count_nonzero(identity)}")
     print(f"  State features: shape={state.shape}, non-zero={np.count_nonzero(state)}")
 

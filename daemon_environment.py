@@ -32,13 +32,11 @@ import json
 import random
 import os
 import numpy as np
-from dataclasses import dataclass
-from typing import Tuple, Dict, List, Optional, Any
+from typing import Tuple, Dict, List, Optional
 import time
 
 from rl_environment import (
-    GameState, PlayerState, CardState, ManaPool,
-    StackEntry, CombatState, Action, ActionType, RewardShaper
+    GameState, Action, ActionType, RewardShaper
 )
 from replay_recorder import ReplayRecorder, GameReplay
 
@@ -635,15 +633,15 @@ def benchmark_daemon(
         avg_time = sum(times) / len(times)
         games_per_hour = 3600 / avg_time if avg_time > 0 else 0
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Average game time: {avg_time:.2f}s")
         print(f"  Games per hour: {games_per_hour:.0f}")
         print(f"  Win rate: {wins/len(times)*100:.1f}%")
 
         if replay_ids:
             print(f"\nReplays saved: {len(replay_ids)}")
-            print(f"  Generate video: python replay_cli.py video 0")
-            print(f"  List replays:   python replay_cli.py list")
+            print("  Generate video: python replay_cli.py video 0")
+            print("  List replays:   python replay_cli.py list")
 
         return {
             "avg_time": avg_time,

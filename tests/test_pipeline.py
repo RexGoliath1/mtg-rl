@@ -1,5 +1,4 @@
 """Tests for training pipeline."""
-import pytest
 import torch
 from training_pipeline import DraftModel, TrainingConfig
 

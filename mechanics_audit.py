@@ -10,9 +10,6 @@ Compares:
 Identifies gaps and provides recommendations.
 """
 
-import re
-from dataclasses import dataclass
-from typing import Set, Dict, List
 
 # =============================================================================
 # FORGE KEYWORDS (extracted from Keyword.java)

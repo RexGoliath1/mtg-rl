@@ -9,12 +9,11 @@ spot instance termination handling.
 import os
 import sys
 import signal
-import json
 import time
 import threading
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional
 from dataclasses import dataclass, asdict
 import requests
 

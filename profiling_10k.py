@@ -17,7 +17,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List
 import sys
 
 # Force unbuffered output
@@ -211,7 +211,7 @@ def run_benchmark():
     print("=" * 70)
     print("MTG FORGE DAEMON PROFILING - 10,000 GAMES")
     print("=" * 70)
-    print(f"Configuration:")
+    print("Configuration:")
     print(f"  Total games: {NUM_GAMES:,}")
     print(f"  Parallel workers: {MAX_PARALLEL}")
     print(f"  Game timeout: {GAME_TIMEOUT}s")
@@ -325,7 +325,7 @@ def run_benchmark():
     reduced_server = server_time * 0.5
     new_total = total_time_ms - server_time + reduced_server
     speedup = total_time_ms / new_total
-    print(f"\nIf server time reduced 50%:")
+    print("\nIf server time reduced 50%:")
     print(f"  New game time: {new_total:.0f} ms (was {total_time_ms:.0f} ms)")
     print(f"  Speedup: {speedup:.2f}x")
     print(f"  New throughput: {1000/new_total*MAX_PARALLEL:.1f} games/sec")
@@ -334,7 +334,7 @@ def run_benchmark():
     network_time = final_stats['network_mean_ms']
     theoretical_min = network_time + 100  # Assume 100ms minimum server time
     max_speedup = total_time_ms / theoretical_min
-    print(f"\nTheoretical maximum speedup (network-bound):")
+    print("\nTheoretical maximum speedup (network-bound):")
     print(f"  Min possible game time: ~{theoretical_min:.0f} ms")
     print(f"  Max speedup: {max_speedup:.2f}x")
 

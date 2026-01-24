@@ -90,11 +90,10 @@ The final embedding concatenates:
 [text_embedding | keyword_features | mana_features | type_features | context_features]
 """
 
-import json
 import re
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Set
+from typing import Dict, List, Optional, Set
 from enum import Enum
 import hashlib
 

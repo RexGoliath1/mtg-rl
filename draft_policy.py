@@ -18,7 +18,6 @@ This is fundamentally different from gameplay, which requires:
 - Complex action sequences
 """
 
-import math
 import numpy as np
 import torch
 import torch.nn as nn
@@ -601,7 +600,7 @@ def test_draft_policy():
     pool_mask = torch.ones(batch_size, pool_size)
     pool_mask[:, 15:] = 0  # Mask last 5 pool cards
 
-    print(f"\nInput shapes:")
+    print("\nInput shapes:")
     print(f"  pack_features: {pack_features.shape}")
     print(f"  pool_features: {pool_features.shape}")
 
@@ -612,7 +611,7 @@ def test_draft_policy():
             pack_num=1, pick_num=5
         )
 
-    print(f"\nOutput shapes:")
+    print("\nOutput shapes:")
     print(f"  pick_logits: {pick_logits.shape}")
     print(f"  value: {value.shape}")
 
@@ -622,7 +621,7 @@ def test_draft_policy():
         pack_num=1, pick_num=5
     )
 
-    print(f"\nAction selection:")
+    print("\nAction selection:")
     print(f"  Selected actions: {action}")
     print(f"  Log probs: {log_prob}")
     print(f"  Value: {value.squeeze()}")

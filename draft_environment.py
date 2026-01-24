@@ -17,7 +17,7 @@ Usage:
 import socket
 import json
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass, field
 import argparse
 import time
@@ -438,7 +438,7 @@ def benchmark_drafts(n_drafts: int = 10):
     env.disconnect()
 
     if times:
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Average time: {np.mean(times):.2f}s")
         print(f"  Average picks: {np.mean(picks_list):.1f}")
         print(f"  Drafts per hour: {3600 / np.mean(times):.1f}")

@@ -15,13 +15,10 @@ Run with: pytest tests/test_self_play.py -v
 
 import os
 import sys
-import json
 import time
 import tempfile
 import shutil
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from dataclasses import dataclass
 
 import pytest
 import numpy as np
@@ -32,11 +29,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from self_play import (
     EloTracker, ModelPool, ModelCheckpoint,
-    SelfPlayConfig, SelfPlayTrainer, SelfPlayGame
+    SelfPlayConfig, SelfPlayTrainer
 )
 from policy_network import MTGPolicyNetwork, TransformerConfig
-from ppo_agent import PPOAgent, PPOConfig
-from rl_environment import GameState, PlayerState, CardState, ManaPool
+from ppo_agent import PPOConfig
+from rl_environment import GameState, CardState
 
 
 # =============================================================================

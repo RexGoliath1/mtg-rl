@@ -1,6 +1,20 @@
 #!/usr/bin/env python3
 """
-Draft Training Pipeline for MTG
+DEPRECATED: Use train_draft.py for BC training, training_pipeline.py for full pipeline.
+
+This script uses the deprecated data_17lands.py module which assumes a different
+CSV format than the actual 17lands public data.
+
+Migration:
+    # For behavioral cloning on 17lands data:
+    python train_draft.py --sets FDN DSK BLB --epochs 10
+
+    # For full training pipeline:
+    python training_pipeline.py --mode full --sets FDN DSK BLB
+
+---
+
+Draft Training Pipeline for MTG (LEGACY)
 
 Implements a multi-stage training pipeline:
 
@@ -30,15 +44,20 @@ This pipeline is inspired by:
 - Decision Transformer's offline RL
 """
 
+import warnings
+warnings.warn(
+    "draft_training.py is deprecated. Use train_draft.py or training_pipeline.py instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 import os
-import sys
 import time
 import json
 import numpy as np
 from datetime import datetime
-from pathlib import Path
-from dataclasses import dataclass, field, asdict
-from typing import Dict, List, Optional, Tuple, Any
+from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Tuple
 import logging
 
 import torch
@@ -48,10 +67,10 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from shared_card_encoder import SharedCardEncoder, CardEncoderConfig, CardFeatureExtractor
+from shared_card_encoder import CardFeatureExtractor
 from draft_policy import DraftPolicyNetwork, DraftPolicyConfig
 from data_17lands import (
-    SeventeenLandsConfig, SeventeenLandsParser, DraftDataset,
+    SeventeenLandsConfig, DraftDataset,
     CardDatabase, create_data_splits, create_synthetic_picks
 )
 from draft_environment import DraftEnvironment

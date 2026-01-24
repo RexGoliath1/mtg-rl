@@ -1,6 +1,21 @@
 #!/usr/bin/env python3
 """
-17lands Data Integration for MTG Draft Training
+DEPRECATED: Use data_loader_17lands.py instead.
+
+This module assumes a different CSV format than the actual 17lands public data.
+The data_loader_17lands.py module handles the native 17lands wide-format CSVs
+with pack_card_* and pool_* columns.
+
+Migration:
+    # Old
+    from data_17lands import SeventeenLandsConfig, DraftDataset
+
+    # New
+    from data_loader_17lands import SeventeenLandsDataset, collate_picks, create_data_splits
+
+---
+
+17lands Data Integration for MTG Draft Training (LEGACY)
 
 17lands.com provides free public datasets of draft picks from MTGA.
 This module handles:
@@ -19,21 +34,23 @@ on millions of human draft picks before fine-tuning with RL in Forge.
 Download data from: https://www.17lands.com/public_datasets
 """
 
+import warnings
+warnings.warn(
+    "data_17lands.py is deprecated. Use data_loader_17lands.py instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 import os
-import re
 import csv
 import gzip
 import json
-import hashlib
-import requests
 import numpy as np
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Iterator, Any
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple, Iterator
+from dataclasses import dataclass
 from collections import defaultdict
 import torch
 from torch.utils.data import Dataset, DataLoader, IterableDataset
-from concurrent.futures import ThreadPoolExecutor
 import logging
 
 logging.basicConfig(level=logging.INFO)

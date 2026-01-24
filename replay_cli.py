@@ -13,7 +13,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from replay_recorder import ReplayRecorder, GameReplay
+from replay_recorder import ReplayRecorder
 from replay_video import VideoGenerator, RenderConfig
 
 

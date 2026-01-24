@@ -16,7 +16,6 @@ For production, we recommend pretrained embeddings because:
 - Captures semantic similarity ("destroy target creature" ≈ "exile target creature")
 """
 
-import os
 import json
 import hashlib
 import numpy as np

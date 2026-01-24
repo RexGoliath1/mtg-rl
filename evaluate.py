@@ -9,18 +9,16 @@ Generates detailed statistics and reports.
 import os
 import json
 import time
-import subprocess
 import numpy as np
 from datetime import datetime
 from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Optional, Tuple
-from collections import defaultdict
+from typing import List, Dict, Tuple
 import statistics
 
 import torch
 
 from rl_environment import MTGEnvironment, GameState
-from policy_network import TransformerConfig, StatePreprocessor
+from policy_network import TransformerConfig
 from ppo_agent import PPOAgent, PPOConfig
 
 
@@ -377,7 +375,7 @@ class Evaluator:
         print(f"Avg Life Differential: {metrics.avg_final_life_diff:+.1f}")
 
         if metrics.games_by_length:
-            print(f"\nGames by Length:")
+            print("\nGames by Length:")
             for bucket, count in sorted(metrics.games_by_length.items()):
                 pct = count / metrics.total_games * 100
                 print(f"  {bucket} turns: {count} ({pct:.1f}%)")
@@ -466,7 +464,7 @@ def test_evaluation_mock():
     metrics = EvalMetrics()
     metrics.update(results)
 
-    print(f"\nMock Evaluation Results:")
+    print("\nMock Evaluation Results:")
     print(f"  Total Games: {metrics.total_games}")
     print(f"  Win Rate: {metrics.win_rate*100:.1f}% (+/- {metrics.win_rate_std*100:.1f}%)")
     print(f"  Avg Game Length: {metrics.avg_game_length:.1f} turns")

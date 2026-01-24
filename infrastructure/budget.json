@@ -1,0 +1,23 @@
+{
+    "BudgetName": "mtg-rl-monthly-budget",
+    "BudgetType": "COST",
+    "BudgetLimit": {
+        "Amount": "50",
+        "Unit": "USD"
+    },
+    "CostFilters": {},
+    "CostTypes": {
+        "IncludeTax": true,
+        "IncludeSubscription": true,
+        "UseBlended": false,
+        "IncludeRefund": false,
+        "IncludeCredit": false,
+        "IncludeUpfront": true,
+        "IncludeRecurring": true,
+        "IncludeOtherSubscription": true,
+        "IncludeSupport": true,
+        "IncludeDiscount": true,
+        "UseAmortized": false
+    },
+    "TimeUnit": "MONTHLY"
+}
