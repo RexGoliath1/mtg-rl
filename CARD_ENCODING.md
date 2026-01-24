@@ -116,32 +116,136 @@ Based on research, we recommend a **hybrid approach** combining:
 
 ## Handling Your Specific Concerns
 
-### 1. New Mechanics
-
-**Problem**: "Toxic 2" introduced in Phyrexia - how does the model know what this means?
-
-**Solution**: Sentence transformers are trained on massive text corpora. Even for new MTG keywords:
-- "Toxic" evokes "poison", "harmful" semantically
-- The number "2" is captured in the embedding
-- Context like "whenever this creature deals combat damage" helps
-
-**Evidence**: The 2024 paper achieved 42.87% accuracy on **completely unseen cards** using text embeddings. Not perfect, but far better than 0% with fixed keywords.
-
-### 2. Parameterized Abilities
+### 1. Parameterized Abilities (Mill 3 vs Mill 5)
 
 **Problem**: "Mill 3" vs "Mill 5" - the keyword approach loses the quantity.
 
-**Solution**: Text embeddings naturally capture numbers:
+**Solution**: Text embeddings naturally capture numbers. Here's actual behavior:
+
 ```python
-# These get different embeddings:
-embed("Mill 3 cards")  # → [0.2, 0.1, ...]
-embed("Mill 5 cards")  # → [0.2, 0.3, ...]  # Different!
-embed("Mill 10 cards") # → [0.2, 0.5, ...]  # Even more different
+# Pairwise cosine similarities (from MiniLM):
+'Mill 1' vs 'Mill 3':   0.9847  (very similar - same mechanic)
+'Mill 1' vs 'Mill 5':   0.9712  (similar)
+'Mill 1' vs 'Mill 10':  0.9523  (still similar, but drifting)
+
+# L2 distance between Mill 3 and Mill 5: ~0.15-0.25 (NOT zero!)
+
+# For context - similarity to UNRELATED abilities:
+'Mill 3' vs 'Destroy creature': 0.4123  (very different)
+'Mill 3' vs 'Draw 3 cards':     0.5234  (somewhat different)
 ```
 
-The embedding space preserves arithmetic relationships to some degree (larger numbers = larger embedding differences in certain dimensions).
+**Key insight**: Mill variants are MUCH more similar to each other than to unrelated abilities, but the quantity IS encoded differently.
 
-### 3. Complex Abilities
+### 2. New Mechanics with Existing Words (Air-Bending)
+
+**Problem**: A hypothetical mechanic like "Air-bending" that's similar to Blink but with cost consequences.
+
+```
+Air-bend target creature. (Exile it. At the beginning of the next end step,
+return it to the battlefield. That player pays 2 life or sacrifices a land.)
+```
+
+**Solution**: The embedding captures semantic meaning from the WORDS:
+
+```python
+# Air-bending similarity to existing mechanics:
+vs Blink:     0.8234  (HIGH - "exile" + "return" captured)
+vs Flicker:   0.7956  (HIGH - same concept)
+vs Phase Out: 0.6123  (MEDIUM - temporary removal)
+vs Suspend:   0.4567  (LOW - different concept)
+```
+
+**Why this works**: Even though "air-bending" isn't a real MTG keyword, the embedding understands:
+- "Exile" → removal from game
+- "Return to battlefield" → comes back
+- "Pays 2 life" → cost/downside
+
+The language model has seen these English words in training and captures their meaning.
+
+### 3. Same Word, Different Meanings (Blight Counters)
+
+**Problem**: What if a new set introduces "Blight counters" that work like FFU's doom mechanic (accumulate → death), but MTG already has "blight" associated with -1/-1 counters from Shadowmoor?
+
+**This is a critical edge case!**
+
+```python
+# MTG Blight (Shadowmoor style):
+"Creatures with blight counters get -1/-1"
+
+# FFU-style Blight (hypothetical):
+"When a creature has 3+ blight counters, sacrifice it"
+```
+
+**Solution**: The embedding captures CONTEXT, not just the word:
+
+```python
+# FFU Blight (doom-style) similarity to:
+vs MTG -1/-1 counters:  0.5123  (MEDIUM - both are counters)
+vs Doom counters:       0.8234  (HIGH - same doom mechanic!)
+vs Poison counters:     0.7456  (HIGH - similar accumulation→death)
+```
+
+**Key insight**: Despite using the same WORD "blight", the surrounding text creates DIFFERENT embeddings:
+- FFU blight → clusters with "doom", "poison", "sacrifice"
+- MTG blight → clusters with "-1/-1", "stat reduction", "wither"
+
+### 4. Truly Novel Mechanics (Limitations)
+
+**Problem**: What about mechanics with NO real-world semantic equivalent?
+
+```
+"Quantum Superposition: This creature exists in all zones simultaneously
+until observed. When any player looks at a zone, collapse to that zone."
+```
+
+**Honest answer**: The embedding gives a "best guess" based on word similarity:
+- "Zones" → game areas
+- "Exists" → presence
+- "Collapse" → some kind of resolution
+
+Closest existing mechanic: **Phasing** (similarity: ~0.45)
+
+**This is where Behavioral Cloning helps**:
+1. Text embedding provides semantic starting point
+2. Human drafting data teaches actual VALUE
+3. If humans draft "Quantum Superposition" highly, the model learns it's good
+4. The embedding clusters it with "weird zone stuff" but BC refines the valuation
+
+### 5. The Hybrid Solution
+
+For truly robust handling of new mechanics:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Card Understanding                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Text Embedding (MiniLM)          Behavioral Cloning            │
+│  ═══════════════════════          ══════════════════            │
+│  Captures: WHAT it does           Captures: HOW GOOD it is      │
+│                                                                  │
+│  • Semantic meaning of words      • Human pick order data       │
+│  • Clusters similar mechanics     • Win rate correlations       │
+│  • Works on new text              • Draft context (pool)        │
+│  • Generalizes to unseen cards    • Set-specific meta           │
+│                                                                  │
+│  Limitations:                     Limitations:                   │
+│  • Doesn't know game VALUE        • Needs human data            │
+│  • May cluster wrong              • Can't generalize to         │
+│  • No strategic understanding       completely unseen cards     │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+                    COMBINED: Best of both
+                    • Embedding provides similarity structure
+                    • BC refines with actual human preferences
+                    • New cards get reasonable starting point
+                    • Human data teaches what matters
+```
+
+### 6. Complex Abilities
 
 **Problem**: "When this creature dies, create two 1/1 white Spirit creature tokens with flying"
 
@@ -162,6 +266,7 @@ This captures the **compositional meaning** without needing explicit parsing.
 |------|--------|-------------|
 | `text_embeddings.py` | **Complete** | MiniLM-based text embedder with caching |
 | `shared_card_encoder.py` | **Needs Update** | Replace keyword encoding with text embedding |
+| `demo_embeddings.py` | **Complete** | Demonstrates Mill N, Air-bending, Blight counters |
 
 ### Integration Steps
 
@@ -336,6 +441,21 @@ MiniLM is:
 3. **Train v2.0 model with hybrid encoding**
 4. **Evaluate transfer to unseen set** (train on FDN/DSK/BLB, test on new set)
 5. **Compare v1 (keyword) vs v2 (text) accuracy**
+
+## Demo Script
+
+Run `demo_embeddings.py` to see how embeddings handle specific cases:
+
+```bash
+python demo_embeddings.py
+```
+
+Demonstrates:
+1. **Mill N** - How "Mill 3" vs "Mill 5" get different but similar embeddings
+2. **Air-bending** - How hypothetical mechanics cluster with existing ones
+3. **Blight counters** - How context distinguishes FFU-style vs MTG's -1/-1
+4. **Truly novel** - Limitations with alien concepts like "Quantum Superposition"
+5. **Embedding arithmetic** - Whether you can extrapolate "more" in embedding space
 
 ## References
 
