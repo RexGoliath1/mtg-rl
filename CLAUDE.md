@@ -61,21 +61,47 @@ Phase 3: Evaluation
 
 The Forge MTG engine is in `forge-repo/` (gitignored, separate repo).
 
+**Repository**: `git@github.com:RexGoliath1/forge.git` (fork of Card-Forge/forge)
+
+**Current Branch**: `feature/rl-daemon-mode`
+
 ```bash
-# Clone Forge (if not present)
-git clone https://github.com/Card-Forge/forge.git forge-repo
+# Clone our Forge fork (if not present)
+cd /Users/stevengonciar/git/mtg
+git clone git@github.com:RexGoliath1/forge.git forge-repo
+cd forge-repo
+git checkout feature/rl-daemon-mode
+
+# Add upstream for merging new mechanics
+git remote add upstream https://github.com/Card-Forge/forge.git
 
 # Build Forge
-cd forge-repo && mvn package -DskipTests
+mvn package -DskipTests
 
 # Run draft daemon
 java -jar forge-gui-desktop/target/forge.jar --daemon --port 17220
+```
+
+**Merging New Forge Updates (for new MTG mechanics)**:
+```bash
+cd forge-repo
+
+# Fetch latest from upstream
+git fetch upstream
+
+# Merge into our branch
+git checkout feature/rl-daemon-mode
+git merge upstream/master
+
+# Resolve any conflicts, then push
+git push origin feature/rl-daemon-mode
 ```
 
 **Key Forge Files**:
 - `forge-game/src/main/java/forge/game/card/Card.java` - Card representation
 - `forge-game/src/main/java/forge/game/Game.java` - Game state
 - `forge-game/src/main/java/forge/trackable/TrackableProperty.java` - State serialization
+- `forge-gui-desktop/src/main/java/forge/view/ForgeDraftDaemon.java` - Our daemon (custom)
 
 ---
 
