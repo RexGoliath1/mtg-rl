@@ -73,6 +73,37 @@ variable "spot_max_price" {
   default     = "0.20"  # ~$0.16 typical for g4dn.xlarge spot
 }
 
+# Training configuration
+variable "training_sets" {
+  description = "MTG sets to train on"
+  type        = list(string)
+  default     = ["FDN", "DSK", "BLB", "TLA"]
+}
+
+variable "training_epochs" {
+  description = "Number of training epochs"
+  type        = number
+  default     = 50
+}
+
+variable "training_batch_size" {
+  description = "Training batch size"
+  type        = number
+  default     = 256
+}
+
+variable "training_max_samples" {
+  description = "Max samples per set (0 = all)"
+  type        = number
+  default     = 0
+}
+
+variable "ssh_key_name" {
+  description = "SSH key pair name for EC2 access"
+  type        = string
+  default     = ""
+}
+
 # =============================================================================
 # Provider Configuration
 # =============================================================================
@@ -361,38 +392,20 @@ resource "aws_spot_instance_request" "training" {
   iam_instance_profile   = aws_iam_instance_profile.training.name
   vpc_security_group_ids = [aws_security_group.training.id]
   subnet_id              = data.aws_subnets.default.ids[0]
+  key_name               = var.ssh_key_name != "" ? var.ssh_key_name : null
 
   root_block_device {
     volume_size = 100
     volume_type = "gp3"
   }
 
-  user_data = base64encode(<<-EOF
-    #!/bin/bash
-    set -e
-
-    # Update system
-    apt-get update -y
-
-    # Install Docker
-    apt-get install -y docker.io
-    systemctl start docker
-    usermod -aG docker ubuntu
-
-    # Install AWS CLI v2
-    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-    unzip awscliv2.zip
-    ./aws/install
-
-    # Clone repo
-    cd /home/ubuntu
-    git clone https://github.com/RexGoliath1/mtg-rl.git
-    chown -R ubuntu:ubuntu mtg-rl
-
-    # Log startup complete
-    echo "Training instance ready" > /home/ubuntu/startup-complete.txt
-  EOF
-  )
+  user_data = base64encode(templatefile("${path.module}/training_userdata.sh.tpl", {
+    s3_bucket    = aws_s3_bucket.checkpoints.bucket
+    sets         = join(" ", var.training_sets)
+    epochs       = var.training_epochs
+    batch_size   = var.training_batch_size
+    max_samples  = var.training_max_samples > 0 ? var.training_max_samples : ""
+  }))
 
   tags = {
     Name = "${var.project_name}-training-spot"
@@ -407,11 +420,20 @@ resource "aws_instance" "training" {
   iam_instance_profile   = aws_iam_instance_profile.training.name
   vpc_security_group_ids = [aws_security_group.training.id]
   subnet_id              = data.aws_subnets.default.ids[0]
+  key_name               = var.ssh_key_name != "" ? var.ssh_key_name : null
 
   root_block_device {
     volume_size = 100
     volume_type = "gp3"
   }
+
+  user_data = base64encode(templatefile("${path.module}/training_userdata.sh.tpl", {
+    s3_bucket    = aws_s3_bucket.checkpoints.bucket
+    sets         = join(" ", var.training_sets)
+    epochs       = var.training_epochs
+    batch_size   = var.training_batch_size
+    max_samples  = var.training_max_samples > 0 ? var.training_max_samples : ""
+  }))
 
   tags = {
     Name = "${var.project_name}-training-ondemand"
@@ -457,10 +479,42 @@ output "deployment_summary" {
     Instance Type: ${var.training_instance_type}
     Spot Instances: ${var.use_spot_instances ? "YES" : "NO"}
 
+    Training Config:
+      Sets: ${join(", ", var.training_sets)}
+      Epochs: ${var.training_epochs}
+      Batch Size: ${var.training_batch_size}
+
     To enable training instance:
       terraform apply -var="enable_training_instance=true"
 
     To scale up:
       terraform apply -var="training_instance_type=g4dn.2xlarge"
   EOT
+}
+
+output "training_instance_ip" {
+  description = "Public IP of training instance (if enabled)"
+  value = var.enable_training_instance ? (
+    var.use_spot_instances ?
+      try(aws_spot_instance_request.training[0].public_ip, "pending") :
+      try(aws_instance.training[0].public_ip, "pending")
+  ) : "not enabled"
+}
+
+output "training_monitor_commands" {
+  description = "Commands to monitor training"
+  value = var.enable_training_instance ? join("\n", [
+    "# SSH to training instance (replace INSTANCE_IP):",
+    "ssh -i ~/.ssh/your-key.pem ubuntu@INSTANCE_IP",
+    "",
+    "# Forward TensorBoard:",
+    "ssh -L 6006:localhost:6006 -i ~/.ssh/your-key.pem ubuntu@INSTANCE_IP",
+    "# Then open http://localhost:6006",
+    "",
+    "# Check training progress:",
+    "ssh ubuntu@INSTANCE_IP 'tail -20 /home/ubuntu/mtg-rl/training.log'",
+    "",
+    "# Download latest checkpoint:",
+    "aws s3 cp s3://${aws_s3_bucket.checkpoints.bucket}/checkpoints/latest.pt checkpoints/"
+  ]) : "Training not enabled"
 }
