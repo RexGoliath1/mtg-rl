@@ -40,7 +40,13 @@ from torch.utils.tensorboard import SummaryWriter
 # Local imports
 from entity_encoder import EntityEncoder, EntityEncoderConfig, EncoderMode
 from shared_card_encoder import SharedCardEncoder, CardEncoderConfig, CardFeatureExtractor
-from text_embeddings import PretrainedTextEmbedder
+from text_embeddings import PretrainedTextEmbedder, TextEmbeddingConfig
+from hybrid_card_encoder import (
+    HybridCardEncoder,
+    HybridEncoderConfig,
+    HybridCardDatabase,
+    StructuralFeatureExtractor,
+)
 
 
 # =============================================================================
@@ -55,9 +61,11 @@ class TrainingConfig:
     data_dir: str = "data/17lands"
     sets: List[str] = field(default_factory=lambda: ["FDN", "DSK", "BLB"])
 
-    # Model
-    use_entity_encoder: bool = False  # Use simpler encoder for now (True = EntityEncoder)
-    use_text_embeddings: bool = True  # Use pretrained text embeddings
+    # Model - Encoder Selection
+    # Options: 'keyword' (v1), 'hybrid' (v2), 'entity' (full game state)
+    encoder_type: str = "hybrid"  # Default to v2 hybrid encoder
+    use_entity_encoder: bool = False  # Deprecated: use encoder_type='entity' instead
+    use_text_embeddings: bool = True  # For hybrid encoder: use MiniLM text embeddings
 
     # Behavioral cloning
     bc_epochs: int = 10
@@ -201,21 +209,45 @@ class DraftPolicyHead(nn.Module):
 class DraftModel(nn.Module):
     """
     Complete draft model combining encoder and policy head.
+
+    Supports multiple encoder types:
+    - 'keyword' (v1): SharedCardEncoder with fixed keyword vocabulary
+    - 'hybrid' (v2): HybridCardEncoder with text embeddings + structural features
+    - 'entity': EntityEncoder for full game state (gameplay, not just draft)
     """
 
     def __init__(self, config: TrainingConfig):
         super().__init__()
         self.config = config
 
-        # Initialize encoder
+        # Determine encoder type (support both old and new config style)
+        encoder_type = config.encoder_type
         if config.use_entity_encoder:
+            encoder_type = 'entity'
+
+        # Initialize encoder based on type
+        if encoder_type == 'entity':
             encoder_config = EntityEncoderConfig()
             self.encoder = EntityEncoder(encoder_config)
             self.embed_dim = encoder_config.output_dim
-        else:
+            self.encoder_type = 'entity'
+
+        elif encoder_type == 'hybrid':
+            encoder_config = HybridEncoderConfig(
+                freeze_text_embeddings=True,
+                use_text_refinement=False,
+            )
+            self.encoder = HybridCardEncoder(encoder_config)
+            self.embed_dim = encoder_config.output_dim
+            self.encoder_type = 'hybrid'
+            # Store feature extractors for data loading
+            self.structural_extractor = StructuralFeatureExtractor(encoder_config)
+
+        else:  # 'keyword' (v1) - default fallback
             encoder_config = CardEncoderConfig()
             self.encoder = SharedCardEncoder(encoder_config)
             self.embed_dim = encoder_config.output_dim
+            self.encoder_type = 'keyword'
 
         # Policy head
         self.policy_head = DraftPolicyHead(self.embed_dim)
@@ -228,39 +260,48 @@ class DraftModel(nn.Module):
         pool_mask: Optional[torch.Tensor] = None,
         pack_state: Optional[torch.Tensor] = None,
         pool_state: Optional[torch.Tensor] = None,
+        pack_text_emb: Optional[torch.Tensor] = None,
+        pool_text_emb: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass for draft prediction.
 
         Args:
-            pack_features: [batch, pack_size, feature_dim] - identity features
-            pool_features: [batch, pool_size, feature_dim] - identity features
+            pack_features: [batch, pack_size, feature_dim] - structural features
+            pool_features: [batch, pool_size, feature_dim] - structural features
             pack_mask: [batch, pack_size]
             pool_mask: [batch, pool_size]
             pack_state: Optional state features (for EntityEncoder)
             pool_state: Optional state features (for EntityEncoder)
+            pack_text_emb: [batch, pack_size, text_dim] - for hybrid encoder
+            pool_text_emb: [batch, pool_size, text_dim] - for hybrid encoder
 
         Returns:
             pick_logits: [batch, pack_size]
             value: [batch, 1]
         """
-        # Encode pack
-        if isinstance(self.encoder, EntityEncoder):
+        # Encode pack based on encoder type
+        if self.encoder_type == 'entity':
             pack_emb, _ = self.encoder(
                 pack_features, pack_state, pack_mask,
                 mode=EncoderMode.DRAFT, return_pooled=True
             )
-        else:
+        elif self.encoder_type == 'hybrid':
+            # Hybrid encoder needs both text embeddings and structural features
+            pack_emb = self.encoder(pack_text_emb, pack_features, pack_mask)
+        else:  # 'keyword' (v1)
             pack_emb = self.encoder(pack_features, pack_mask)
 
         # Encode pool
         if pool_features.shape[1] > 0:
-            if isinstance(self.encoder, EntityEncoder):
+            if self.encoder_type == 'entity':
                 pool_emb, _ = self.encoder(
                     pool_features, pool_state, pool_mask,
                     mode=EncoderMode.DRAFT, return_pooled=True
                 )
-            else:
+            elif self.encoder_type == 'hybrid':
+                pool_emb = self.encoder(pool_text_emb, pool_features, pool_mask)
+            else:  # 'keyword'
                 pool_emb = self.encoder(pool_features, pool_mask)
         else:
             pool_emb = torch.zeros(pack_features.shape[0], 0, self.embed_dim,
@@ -279,6 +320,11 @@ class DraftPickDataset(Dataset):
     Dataset for behavioral cloning on 17lands draft data.
 
     Loads preprocessed draft picks and converts to model input format.
+
+    Supports multiple encoder types:
+    - 'keyword' (v1): Uses CardFeatureExtractor for keyword-based features
+    - 'hybrid' (v2): Uses text embeddings + structural features
+    - 'entity': Uses EntityFeatureExtractor for full game state features
     """
 
     def __init__(
@@ -288,12 +334,25 @@ class DraftPickDataset(Dataset):
         feature_extractor,
         text_embedder: Optional[PretrainedTextEmbedder] = None,
         max_samples: int = None,
+        encoder_type: str = 'keyword',
+        structural_extractor: Optional[StructuralFeatureExtractor] = None,
     ):
         self.data_dir = Path(data_dir)
         self.sets = sets
         self.feature_extractor = feature_extractor
         self.text_embedder = text_embedder
+        self.encoder_type = encoder_type
+        self.structural_extractor = structural_extractor
         self.samples = []
+
+        # For hybrid encoder, we need both text embedder and structural extractor
+        if encoder_type == 'hybrid':
+            if text_embedder is None:
+                text_config = TextEmbeddingConfig()
+                self.text_embedder = PretrainedTextEmbedder(text_config)
+            if structural_extractor is None:
+                hybrid_config = HybridEncoderConfig()
+                self.structural_extractor = StructuralFeatureExtractor(hybrid_config)
 
         self._load_data(max_samples)
 
@@ -323,7 +382,11 @@ class DraftPickDataset(Dataset):
     def __getitem__(self, idx):
         sample = self.samples[idx]
 
-        # Extract features for pack cards
+        # Hybrid encoder uses different feature extraction
+        if self.encoder_type == 'hybrid':
+            return self._get_hybrid_item(sample)
+
+        # Extract features for pack cards (v1 keyword or entity encoder)
         pack_features = []
         for card in sample['pack']:
             # Handle both EntityFeatureExtractor and CardFeatureExtractor
@@ -393,6 +456,73 @@ class DraftPickDataset(Dataset):
             'pick_index': pick_idx,
         }
 
+    def _get_hybrid_item(self, sample):
+        """Get item for hybrid encoder (v2) with text + structural features."""
+        # Extract text embeddings and structural features for pack
+        pack_text_emb = []
+        pack_struct = []
+        for card in sample['pack']:
+            # Text embedding
+            oracle_text = card.get('oracle_text', card.get('text', ''))
+            card_name = card.get('name', '')
+            text_emb = self.text_embedder.embed(oracle_text, card_name)
+            pack_text_emb.append(text_emb)
+
+            # Structural features
+            struct_feat = self.structural_extractor.extract(card)
+            pack_struct.append(struct_feat)
+
+        # Pad pack to 15 cards
+        pack_size = len(pack_text_emb)
+        text_dim = pack_text_emb[0].shape[0] if pack_text_emb else 384
+        struct_dim = pack_struct[0].shape[0] if pack_struct else 54
+
+        while len(pack_text_emb) < 15:
+            pack_text_emb.append(np.zeros(text_dim, dtype=np.float32))
+            pack_struct.append(np.zeros(struct_dim, dtype=np.float32))
+
+        # Extract features for pool
+        pool_text_emb = []
+        pool_struct = []
+        for card in sample.get('pool', []):
+            oracle_text = card.get('oracle_text', card.get('text', ''))
+            card_name = card.get('name', '')
+            text_emb = self.text_embedder.embed(oracle_text, card_name)
+            pool_text_emb.append(text_emb)
+
+            struct_feat = self.structural_extractor.extract(card)
+            pool_struct.append(struct_feat)
+
+        # Pad pool to 45 cards
+        pool_size = len(pool_text_emb)
+        if pool_size == 0:
+            pool_text_emb = [np.zeros(text_dim, dtype=np.float32)]
+            pool_struct = [np.zeros(struct_dim, dtype=np.float32)]
+            pool_size = 0
+
+        while len(pool_text_emb) < 45:
+            pool_text_emb.append(np.zeros(text_dim, dtype=np.float32))
+            pool_struct.append(np.zeros(struct_dim, dtype=np.float32))
+
+        # Create masks
+        pack_mask = np.zeros(15)
+        pack_mask[:pack_size] = 1
+        pool_mask = np.zeros(45)
+        pool_mask[:pool_size] = 1
+
+        # Get pick index
+        pick_idx = sample.get('pick_index', 0)
+
+        return {
+            'pack_features': np.stack(pack_struct).astype(np.float32),
+            'pool_features': np.stack(pool_struct).astype(np.float32),
+            'pack_text_emb': np.stack(pack_text_emb).astype(np.float32),
+            'pool_text_emb': np.stack(pool_text_emb).astype(np.float32),
+            'pack_mask': pack_mask.astype(np.float32),
+            'pool_mask': pool_mask.astype(np.float32),
+            'pick_index': pick_idx,
+        }
+
 
 # =============================================================================
 # BEHAVIORAL CLONING TRAINER
@@ -447,12 +577,22 @@ class BCTrainer:
             pool_mask = batch['pool_mask'].to(self.config.device)
             pick_index = batch['pick_index'].to(self.config.device)
 
+            # Text embeddings for hybrid encoder
+            pack_text_emb = None
+            pool_text_emb = None
+            if 'pack_text_emb' in batch:
+                pack_text_emb = batch['pack_text_emb'].to(self.config.device)
+                pool_text_emb = batch['pool_text_emb'].to(self.config.device)
+
             # Forward pass
             self.optimizer.zero_grad()
 
             if self.config.mixed_precision:
                 with torch.cuda.amp.autocast():
-                    logits, _ = self.model(pack_features, pool_features, pack_mask, pool_mask)
+                    logits, _ = self.model(
+                        pack_features, pool_features, pack_mask, pool_mask,
+                        pack_text_emb=pack_text_emb, pool_text_emb=pool_text_emb
+                    )
                     loss = self.criterion(logits, pick_index)
 
                 self.scaler.scale(loss).backward()
@@ -461,7 +601,10 @@ class BCTrainer:
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
             else:
-                logits, _ = self.model(pack_features, pool_features, pack_mask, pool_mask)
+                logits, _ = self.model(
+                    pack_features, pool_features, pack_mask, pool_mask,
+                    pack_text_emb=pack_text_emb, pool_text_emb=pool_text_emb
+                )
                 loss = self.criterion(logits, pick_index)
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.bc_grad_clip)
@@ -502,7 +645,17 @@ class BCTrainer:
                 pool_mask = batch['pool_mask'].to(self.config.device)
                 pick_index = batch['pick_index'].to(self.config.device)
 
-                logits, _ = self.model(pack_features, pool_features, pack_mask, pool_mask)
+                # Text embeddings for hybrid encoder
+                pack_text_emb = None
+                pool_text_emb = None
+                if 'pack_text_emb' in batch:
+                    pack_text_emb = batch['pack_text_emb'].to(self.config.device)
+                    pool_text_emb = batch['pool_text_emb'].to(self.config.device)
+
+                logits, _ = self.model(
+                    pack_features, pool_features, pack_mask, pool_mask,
+                    pack_text_emb=pack_text_emb, pool_text_emb=pool_text_emb
+                )
                 loss = self.criterion(logits, pick_index)
 
                 total_loss += loss.item()
@@ -860,12 +1013,20 @@ def run_behavioral_cloning(config: TrainingConfig):
     print("\nInitializing model...")
     model = DraftModel(config)
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
+    print(f"Encoder type: {model.encoder_type}")
 
-    # Initialize feature extractor
+    # Initialize feature extractor based on encoder type
+    encoder_type = config.encoder_type
     if config.use_entity_encoder:
+        encoder_type = 'entity'
+
+    if encoder_type == 'entity':
         from entity_encoder import EntityFeatureExtractor, EntityEncoderConfig
         feature_extractor = EntityFeatureExtractor(EntityEncoderConfig())
-    else:
+    elif encoder_type == 'hybrid':
+        # Hybrid encoder uses structural extractor from the model
+        feature_extractor = model.structural_extractor
+    else:  # 'keyword'
         feature_extractor = CardFeatureExtractor(CardEncoderConfig())
 
     # Check for processed data
@@ -887,6 +1048,8 @@ def run_behavioral_cloning(config: TrainingConfig):
             config.sets,
             feature_extractor,
             max_samples=10000,  # Limit for testing
+            encoder_type=encoder_type,
+            structural_extractor=model.structural_extractor if encoder_type == 'hybrid' else None,
         )
     except Exception as e:
         print(f"Error loading data: {e}")
