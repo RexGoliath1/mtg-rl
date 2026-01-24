@@ -110,8 +110,35 @@ forge-repo/
 checkpoints/
 logs/
 replays/
+
+# Model weights (large files)
 *.pt
 *.pth
+*.onnx
+*.safetensors
+
+# Data files (17lands, training data)
+data/
+*.csv
+*.csv.gz
+*.parquet
+*.jsonl
+*.pickle
+*.pkl
+
+# Embeddings cache
+embeddings_cache/
+
+# Training artifacts
+wandb/
+runs/
+tensorboard/
+
+# Videos and media
+videos/
+*.mp4
+*.avi
+*.gif
 
 # macOS
 .DS_Store

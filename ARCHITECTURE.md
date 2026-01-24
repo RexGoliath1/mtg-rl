@@ -254,6 +254,91 @@ reward += on_curve_play * 0.01
 
 ## Files
 
-- `rl_environment.py` - Main RL environment
-- `agent_wrapper.py` - Low-level game communication
-- `test_interactive.py` - Testing script
+### Core Modules
+| File | Purpose | Status |
+|------|---------|--------|
+| `shared_card_encoder.py` | Simple card encoder (94-dim → 256-dim) | ✅ Complete |
+| `entity_encoder.py` | Full game state encoder (600-dim → 512-dim) | ✅ Complete |
+| `draft_policy.py` | Draft-specific policy network | ✅ Complete |
+| `text_embeddings.py` | LLM-based card text embeddings | ✅ Complete |
+| `training_pipeline.py` | Unified BC + RL training | ✅ Complete |
+| `data_17lands.py` | 17lands data loading | ✅ Complete |
+
+### Scripts
+| File | Purpose |
+|------|---------|
+| `scripts/download_17lands.py` | Download 17lands data from S3 |
+| `scripts/deploy.sh` | AWS deployment automation |
+
+### Infrastructure
+| File | Purpose |
+|------|---------|
+| `infrastructure/main.tf` | Terraform AWS config |
+| `Dockerfile` | Container build (planned) |
+
+### Legacy/Forge Integration
+| File | Purpose |
+|------|---------|
+| `rl_environment.py` | Main RL environment |
+| `agent_wrapper.py` | Low-level game communication |
+| `test_interactive.py` | Testing script |
+
+---
+
+## Testing Strategy
+
+### Unit Tests (tests/)
+```bash
+# Run all tests
+python -m pytest tests/ -v
+
+# Run specific test
+python -m pytest tests/test_encoder.py -v
+
+# With coverage
+python -m pytest tests/ --cov=. --cov-report=html
+```
+
+### Self-Tests (each module has main block)
+```bash
+python shared_card_encoder.py   # Tests encoder
+python entity_encoder.py        # Tests entity encoder
+python text_embeddings.py       # Tests embeddings
+```
+
+### Integration Tests
+```bash
+python training_pipeline.py --mode bc --epochs 1  # Quick training test
+python training_pipeline.py --mode play --num-games 1  # Play test
+```
+
+---
+
+## Quick Reference
+
+### Resume Context
+When starting a new session:
+1. Read `CLAUDE.md` for project overview
+2. Check `git status` and `git log --oneline -5`
+3. Run `python -m pytest tests/ -v`
+4. Continue from last task
+
+### Common Commands
+```bash
+# Download data
+python scripts/download_17lands.py --sets FDN DSK BLB
+
+# Train
+python training_pipeline.py --mode bc --sets FDN --epochs 10
+
+# Deploy
+./scripts/deploy.sh
+```
+
+### Merge Forge Updates
+```bash
+cd forge-repo
+git fetch upstream
+git merge upstream/master
+git push origin main
+```
