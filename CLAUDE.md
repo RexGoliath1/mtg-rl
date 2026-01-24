@@ -293,12 +293,62 @@ When resuming, mention:
 
 ---
 
+## AWS Configuration
+
+### Key Settings
+
+| Setting | Value | Notes |
+|---------|-------|-------|
+| **Budget Limit** | $100/month | Hard-coded, cannot be overridden |
+| **Region** | us-west-2 | Default for compute |
+| **Billing Region** | us-east-1 | Required for billing metrics |
+| **Infrastructure** | Terraform | Chosen for scalability |
+
+### Deployment Commands
+
+```bash
+# Initialize (first time)
+cd infrastructure && terraform init
+
+# Deploy base infrastructure (S3, ECR, IAM - no compute)
+terraform apply
+
+# Enable training instance when ready
+terraform apply -var="enable_training_instance=true"
+
+# Scale up instance type
+terraform apply -var="training_instance_type=g4dn.2xlarge"
+
+# Destroy everything
+terraform destroy
+```
+
+### Cost Controls
+
+- **Budget alerts** at 50%, 80%, 100% of $100
+- **Hard limit** in scripts: $100/month max (cannot be overridden)
+- **S3 lifecycle**: Auto-delete old checkpoints after 90 days
+- **ECR lifecycle**: Keep only last 5 images
+- **Spot instances**: 70% cheaper than on-demand
+
+### Check Current Spending
+
+```bash
+aws ce get-cost-and-usage \
+    --time-period Start=$(date -v-30d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
+    --granularity MONTHLY \
+    --metrics UnblendedCost \
+    --query 'ResultsByTime[0].Total.UnblendedCost'
+```
+
+---
+
 ## Known Issues / TODOs
 
 - [ ] EntityEncoder dimension mismatch with training pipeline (use SharedCardEncoder for now)
 - [ ] NaN losses with synthetic data (normal - use real 17lands data)
 - [ ] Forge daemon not integrated yet (simulated drafts work)
-- [ ] Need to download actual 17lands data before real training
+- [x] AWS cost controls configured ($100/month limit)
 
 ---
 

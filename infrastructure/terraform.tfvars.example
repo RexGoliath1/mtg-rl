@@ -1,0 +1,21 @@
+# =============================================================================
+# Terraform Variables - Copy to terraform.tfvars and fill in your values
+# =============================================================================
+# Usage:
+#   cp terraform.tfvars.example terraform.tfvars
+#   # Edit terraform.tfvars with your values
+#   terraform apply
+
+# Required: Your email for budget alerts
+alert_email = "your@email.com"
+
+# Optional: Override defaults
+# aws_region = "us-west-2"
+# environment = "dev"
+# monthly_budget = 100  # Maximum allowed: $100 (hard limit)
+
+# Training instance configuration (disabled by default)
+# enable_training_instance = false
+# training_instance_type = "g4dn.xlarge"
+# use_spot_instances = true
+# spot_max_price = "0.20"

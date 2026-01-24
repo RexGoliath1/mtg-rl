@@ -17,10 +17,23 @@
 
 set -e
 
+# =============================================================================
+# SAFETY: Hard-coded maximum budget - DO NOT MODIFY
+# =============================================================================
+MAX_BUDGET_LIMIT=100  # $100 absolute maximum - cannot be overridden
+
 # Parse arguments
 EMAIL="${1:?Email address required as first argument}"
-MONTHLY_LIMIT="${2:-50}"  # Default $50/month
+REQUESTED_LIMIT="${2:-100}"  # Default $100/month
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+# Enforce hard limit
+if [ "$REQUESTED_LIMIT" -gt "$MAX_BUDGET_LIMIT" ]; then
+    echo "ERROR: Requested budget \$$REQUESTED_LIMIT exceeds maximum allowed (\$$MAX_BUDGET_LIMIT)"
+    echo "This limit is hard-coded for cost protection and cannot be overridden."
+    exit 1
+fi
+MONTHLY_LIMIT="$REQUESTED_LIMIT"
 
 echo "============================================================"
 echo "AWS Cost Controls Setup"

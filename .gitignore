@@ -148,5 +148,9 @@ videos/
 .vscode/
 *.swp
 
-# Claude
-.claude/
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example

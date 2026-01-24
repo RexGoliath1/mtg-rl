@@ -10,23 +10,27 @@
 # Usage:
 #   1. Set your email in terraform.tfvars or via command line
 #   2. Run: terraform init && terraform apply -var="alert_email=you@email.com"
+#
+# Note: Uses variables and providers defined in main.tf
 
 variable "alert_email" {
   description = "Email address for budget alerts"
   type        = string
+  default     = ""  # Set via -var or terraform.tfvars
 }
 
 variable "monthly_budget" {
-  description = "Monthly budget limit in USD"
+  description = "Monthly budget limit in USD (max $100 enforced)"
   type        = number
-  default     = 50
+  default     = 100
+
+  validation {
+    condition     = var.monthly_budget <= 100
+    error_message = "SAFETY: Monthly budget cannot exceed $100. This limit is hard-coded for cost protection."
+  }
 }
 
-variable "environment" {
-  description = "Environment name"
-  type        = string
-  default     = "dev"
-}
+# Uses var.environment from main.tf
 
 # =============================================================================
 # AWS Budget
@@ -94,11 +98,7 @@ resource "aws_budgets_budget" "monthly" {
 # =============================================================================
 # CloudWatch Billing Alarm (us-east-1 only for billing metrics)
 # =============================================================================
-
-provider "aws" {
-  alias  = "us_east_1"
-  region = "us-east-1"
-}
+# Uses aws.us_east_1 provider from main.tf
 
 resource "aws_cloudwatch_metric_alarm" "billing_alarm" {
   provider            = aws.us_east_1
