@@ -8,3 +8,9 @@ requests>=2.31.0
 
 # Optional: for better data loading
 pyarrow>=14.0.0
+
+# Experiment tracking and model versioning
+wandb>=0.16.0
+
+# Report generation
+matplotlib>=3.7.0

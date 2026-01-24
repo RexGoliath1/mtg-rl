@@ -98,6 +98,12 @@ variable "training_max_samples" {
   default     = 0
 }
 
+variable "auto_shutdown" {
+  description = "Auto-shutdown instance after training completes (saves cost)"
+  type        = bool
+  default     = true
+}
+
 variable "ssh_key_name" {
   description = "SSH key pair name for EC2 access"
   type        = string
@@ -400,11 +406,12 @@ resource "aws_spot_instance_request" "training" {
   }
 
   user_data = base64encode(templatefile("${path.module}/training_userdata.sh.tpl", {
-    s3_bucket    = aws_s3_bucket.checkpoints.bucket
-    sets         = join(" ", var.training_sets)
-    epochs       = var.training_epochs
-    batch_size   = var.training_batch_size
-    max_samples  = var.training_max_samples > 0 ? var.training_max_samples : ""
+    s3_bucket     = aws_s3_bucket.checkpoints.bucket
+    sets          = join(" ", var.training_sets)
+    epochs        = var.training_epochs
+    batch_size    = var.training_batch_size
+    max_samples   = var.training_max_samples > 0 ? var.training_max_samples : ""
+    auto_shutdown = var.auto_shutdown ? "true" : "false"
   }))
 
   tags = {
@@ -428,11 +435,12 @@ resource "aws_instance" "training" {
   }
 
   user_data = base64encode(templatefile("${path.module}/training_userdata.sh.tpl", {
-    s3_bucket    = aws_s3_bucket.checkpoints.bucket
-    sets         = join(" ", var.training_sets)
-    epochs       = var.training_epochs
-    batch_size   = var.training_batch_size
-    max_samples  = var.training_max_samples > 0 ? var.training_max_samples : ""
+    s3_bucket     = aws_s3_bucket.checkpoints.bucket
+    sets          = join(" ", var.training_sets)
+    epochs        = var.training_epochs
+    batch_size    = var.training_batch_size
+    max_samples   = var.training_max_samples > 0 ? var.training_max_samples : ""
+    auto_shutdown = var.auto_shutdown ? "true" : "false"
   }))
 
   tags = {

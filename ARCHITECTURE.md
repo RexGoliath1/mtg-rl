@@ -28,15 +28,23 @@ Raw State → Zone Encodings → Attention Aggregation → Fixed Vector
 ```
 
 **Components:**
-- **Card Embeddings**: Learn 64-128 dim vectors per card (not one-hot)
+- **Card Embeddings**: Hybrid text + structural encoding (see CARD_ENCODING.md)
 - **Zone Encoders**: Separate encoders for hand, battlefield, graveyard, stack
 - **Cross-attention**: Model card interactions across zones
 - **Global Features**: Life, mana, turn, phase as scalar features
 
-**Why not one-hot cards?**
-- 30,000 cards = 30,000 dim vectors = intractable
-- Similar cards should have similar embeddings (Lightning Bolt ≈ Shock)
-- Pre-train embeddings on card text using language models
+**Why text embeddings instead of name-based?**
+- New mechanics work automatically (no retraining needed)
+- Parameterized abilities captured ("Mill 3" vs "Mill 5")
+- Transfer to unseen cards: 42.87% accuracy (2024 research)
+- Similar cards get similar embeddings (Lightning Bolt ≈ Shock)
+
+**Card Encoding Architecture** (see CARD_ENCODING.md for details):
+```
+Card Text → Sentence Transformer (MiniLM-384d) ──┐
+Mana Cost → Linear (11d → 64d) ─────────────────┼→ Fusion → 256d
+Card Types → One-hot (30d → 64d) ───────────────┘
+```
 
 ### 2. Action Representation
 
@@ -250,19 +258,30 @@ reward += on_curve_play * 0.01
 - AlphaGo/AlphaZero (self-play, MCTS)
 - OpenAI Five (PPO, curriculum learning)
 - DeepStack (imperfect information games)
-- Hearthstone bots (similar card game work)
+- [Learning With Generalised Card Representations for MTG](https://arxiv.org/html/2407.05879v1) - July 2024
+- [Mastering Hearthstone](https://arxiv.org/abs/2303.05197) - ByteRL, 2023
+- [minimaxir/mtg-embeddings](https://github.com/minimaxir/mtg-embeddings) - ModernBERT embeddings
+- [Neural Networks for MTG Cards](https://arxiv.org/abs/1810.03744) - 2018
 
 ## Files
 
 ### Core Modules
 | File | Purpose | Status |
 |------|---------|--------|
-| `shared_card_encoder.py` | Simple card encoder (94-dim → 256-dim) | ✅ Complete |
+| `shared_card_encoder.py` | Property-based card encoder (94-dim → 256-dim) | ✅ v1 Complete |
+| `text_embeddings.py` | Sentence transformer embeddings (text → 384-dim) | ✅ Complete |
 | `entity_encoder.py` | Full game state encoder (600-dim → 512-dim) | ✅ Complete |
 | `draft_policy.py` | Draft-specific policy network | ✅ Complete |
-| `text_embeddings.py` | LLM-based card text embeddings | ✅ Complete |
 | `training_pipeline.py` | Unified BC + RL training | ✅ Complete |
 | `data_17lands.py` | 17lands data loading | ✅ Complete |
+
+### Documentation
+| File | Purpose |
+|------|---------|
+| `CARD_ENCODING.md` | **Comprehensive card encoding architecture** - text embeddings vs keywords |
+| `TRANSFER_LEARNING.md` | Analysis of transfer learning approaches |
+| `TRAINING_REPORT.md` | Post-training analysis and metrics |
+| `model_registry.json` | Model versioning and production tracking |
 
 ### Scripts
 | File | Purpose |

@@ -7,7 +7,7 @@
 #   terraform apply
 
 # Required: Your email for budget alerts
-alert_email = "your@email.com"
+alert_email = "sgoncia@gmail.com"
 
 # Optional: Override defaults
 # aws_region = "us-west-2"
