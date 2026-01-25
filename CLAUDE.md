@@ -459,7 +459,19 @@ Selected Modern for training because:
 
 ### Training Time Estimates
 
-Based on benchmarking (scripts/benchmark_network.py):
+**Cloud Test Results (2026-01-25)** - Tesla T4 (g4dn.xlarge), 8 actors:
+
+| Metric | Simulated (no Forge) | With Forge (estimated) |
+|--------|---------------------|------------------------|
+| Samples/second | 1,153 | ~50-100 |
+| Samples/hour | 4,150,000 | ~180,000-360,000 |
+| Time to 1M samples | 14.5 min | 3-6 hours |
+| Cost to 1M samples | $0.04 | $0.50-1.00 |
+
+The simulated test (no Forge) shows pure Python/GPU overhead is minimal.
+When Forge is integrated, communication latency (~50ms/action) will be the bottleneck.
+
+**Original Estimates (before cloud test)**:
 
 | Configuration | Games/hr | Samples/hr | Time to 1M | AWS Cost |
 |---------------|----------|------------|------------|----------|
