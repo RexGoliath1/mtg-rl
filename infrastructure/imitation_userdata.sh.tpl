@@ -67,10 +67,9 @@ GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
 git clone https://$GITHUB_TOKEN@github.com/RexGoliath1/mtg-rl.git
 cd mtg-rl
 
-python3 -m venv venv
-source venv/bin/activate
-pip install --upgrade pip
-pip install h5py numpy requests
+# Install Python deps globally (throwaway instance, no need for venv)
+pip3 install --upgrade pip
+pip3 install h5py numpy requests
 
 # Create collection script
 echo ""
@@ -79,7 +78,6 @@ echo "[5/5] Starting data collection..."
 cat > /home/ubuntu/run_collection.sh << 'SCRIPT'
 #!/bin/bash
 cd /home/ubuntu/mtg-rl
-source venv/bin/activate
 
 S3_BUCKET="${s3_bucket}"
 NUM_GAMES="${num_games}"
@@ -103,9 +101,9 @@ for i in {1..10}; do
     sleep 30
 done
 
-# Run collection
+# Run collection (use python3 on Ubuntu)
 echo "Starting collection of $NUM_GAMES games..."
-python -u scripts/collect_ai_training_data.py \
+python3 -u scripts/collect_ai_training_data.py \
     --games $NUM_GAMES \
     --output training_data/imitation_aws \
     --workers $WORKERS \
