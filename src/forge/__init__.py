@@ -37,6 +37,26 @@ from src.forge.mcts import (
     SimulatedForgeClient,
 )
 
+from src.forge.forge_client import (
+    ForgeClient,
+    ForgeGameEnv,
+    Decision,
+    DecisionType,
+    GameState,
+    PlayerState,
+    CardInfo,
+    ManaPool,
+    ActionOption,
+    GameResult,
+)
+
+from src.forge.state_mapper import (
+    StateMapper,
+    EncodedState,
+    ForgeNetworkAgent,
+    action_index_to_response,
+)
+
 __all__ = [
     # Game state encoder
     "ForgeGameStateEncoder",
@@ -60,4 +80,20 @@ __all__ = [
     "BatchedMCTS",
     "ForgeClientInterface",
     "SimulatedForgeClient",
+    # Forge Client
+    "ForgeClient",
+    "ForgeGameEnv",
+    "Decision",
+    "DecisionType",
+    "GameState",
+    "PlayerState",
+    "CardInfo",
+    "ManaPool",
+    "ActionOption",
+    "GameResult",
+    # State Mapper
+    "StateMapper",
+    "EncodedState",
+    "ForgeNetworkAgent",
+    "action_index_to_response",
 ]
