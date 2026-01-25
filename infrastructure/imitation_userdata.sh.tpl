@@ -51,11 +51,19 @@ echo "[3/5] Pulling Forge daemon from ECR..."
 aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin $ECR_REPO
 docker pull $ECR_REPO:forge-daemon-amd64
 
-# Clone code and setup
+# Clone code using GitHub token from Secrets Manager
 echo ""
 echo "[4/5] Setting up collection environment..."
 cd /home/ubuntu
-git clone https://github.com/RexGoliath1/mtg-rl.git
+
+# Fetch GitHub token from AWS Secrets Manager
+GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
+    --secret-id mtg-rl/github-token \
+    --region us-west-2 \
+    --query SecretString \
+    --output text)
+
+git clone https://$GITHUB_TOKEN@github.com/RexGoliath1/mtg-rl.git
 cd mtg-rl
 
 python3 -m venv venv

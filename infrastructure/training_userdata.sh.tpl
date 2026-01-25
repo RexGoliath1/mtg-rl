@@ -56,13 +56,19 @@ echo "[3/7] Setting up working directory..."
 mkdir -p /home/ubuntu/mtg-rl
 cd /home/ubuntu/mtg-rl
 
-# Download code from S3
+# Download code from S3 or clone from GitHub
 echo ""
 echo "[4/7] Downloading training code..."
 aws s3 cp "s3://$S3_BUCKET/code/training-code.tar.gz" . || {
     echo "Code not in S3, cloning from GitHub..."
     cd /home/ubuntu
-    git clone https://github.com/RexGoliath1/mtg-rl.git
+    # Fetch GitHub token from AWS Secrets Manager
+    GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
+        --secret-id mtg-rl/github-token \
+        --region us-west-2 \
+        --query SecretString \
+        --output text)
+    git clone https://$GITHUB_TOKEN@github.com/RexGoliath1/mtg-rl.git
     cd mtg-rl
 }
 

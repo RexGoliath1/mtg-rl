@@ -367,6 +367,24 @@ resource "aws_iam_role_policy_attachment" "training_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+resource "aws_iam_role_policy" "training_secrets" {
+  name = "${var.project_name}-training-secrets"
+  role = aws_iam_role.training.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:*:secret:mtg-rl/*"
+      }
+    ]
+  })
+}
+
 resource "aws_iam_instance_profile" "training" {
   name = "${var.project_name}-training-profile"
   role = aws_iam_role.training.name
