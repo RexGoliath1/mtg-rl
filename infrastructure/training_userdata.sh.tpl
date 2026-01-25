@@ -152,6 +152,15 @@ if [ -n "$MAX_SAMPLES" ] && [ "$MAX_SAMPLES" != "0" ]; then
     MAX_SAMPLES_ARG="--max-samples $MAX_SAMPLES"
 fi
 
+# Download enriched data if using hybrid encoder
+if [ "$${ENCODER_TYPE:-hybrid}" = "hybrid" ]; then
+    echo ""
+    echo "Downloading enriched card data for hybrid encoder..."
+    mkdir -p data
+    aws s3 cp "s3://$S3_BUCKET/data/card_metadata.json" data/ || echo "No metadata found"
+    aws s3 cp "s3://$S3_BUCKET/data/card_embeddings.pt" data/ || echo "No embeddings found"
+fi
+
 # Run training
 echo ""
 echo "============================================================"
@@ -163,16 +172,29 @@ echo "Max Samples: $${MAX_SAMPLES:-all}"
 echo "Encoder Type: $${ENCODER_TYPE:-hybrid}"
 echo "============================================================"
 
-PYTHONUNBUFFERED=1 python3 train_draft_cloud.py \
-    --sets $SETS \
-    --epochs $EPOCHS \
-    --batch-size $BATCH_SIZE \
-    $MAX_SAMPLES_ARG \
-    --s3-bucket $S3_BUCKET \
-    --encoder-type $${ENCODER_TYPE:-hybrid} \
-    --early-stopping-patience 10 \
-    --checkpoint-every 2 \
-    2>&1 | tee training.log
+# Choose training script based on encoder type
+if [ "$${ENCODER_TYPE:-hybrid}" = "hybrid" ] && [ -f "data/card_embeddings.pt" ]; then
+    echo "Using v2 hybrid encoder training script..."
+    PYTHONUNBUFFERED=1 python3 train_draft_v2.py \
+        --sets $SETS \
+        --epochs $EPOCHS \
+        --batch-size $BATCH_SIZE \
+        $MAX_SAMPLES_ARG \
+        --s3-bucket $S3_BUCKET \
+        2>&1 | tee training.log
+else
+    echo "Using v1 keyword encoder training script..."
+    PYTHONUNBUFFERED=1 python3 train_draft_cloud.py \
+        --sets $SETS \
+        --epochs $EPOCHS \
+        --batch-size $BATCH_SIZE \
+        $MAX_SAMPLES_ARG \
+        --s3-bucket $S3_BUCKET \
+        --encoder-type keyword \
+        --early-stopping-patience 10 \
+        --checkpoint-every 2 \
+        2>&1 | tee training.log
+fi
 TRAINING_EXIT_CODE=$?
 
 # Training complete (or failed)

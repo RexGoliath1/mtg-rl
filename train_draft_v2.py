@@ -36,6 +36,19 @@ from torch.utils.tensorboard import SummaryWriter
 from hybrid_card_encoder import HybridCardEncoder, HybridEncoderConfig, StructuralFeatureExtractor
 
 
+def upload_to_s3(local_path: str, bucket: str, s3_key: str) -> bool:
+    """Upload file to S3."""
+    try:
+        import boto3
+        s3 = boto3.client("s3")
+        s3.upload_file(local_path, bucket, s3_key)
+        print(f"  [S3] Uploaded {local_path} -> s3://{bucket}/{s3_key}")
+        return True
+    except Exception as e:
+        print(f"  [S3] Upload failed: {e}")
+        return False
+
+
 class V2DraftDataset(Dataset):
     """
     Draft dataset with pre-computed embeddings and structural features.
@@ -443,6 +456,8 @@ def main():
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--quick", action="store_true", help="Quick test (1K samples, 3 epochs)")
     parser.add_argument("--s3-bucket", type=str, default=None)
+    parser.add_argument("--early-stopping-patience", type=int, default=10,
+                       help="Stop if no improvement for N epochs (0=disabled)")
 
     args = parser.parse_args()
 
@@ -508,6 +523,7 @@ def main():
     print("=" * 60)
 
     best_val_acc = 0
+    epochs_without_improvement = 0
     for epoch in range(args.epochs):
         start_time = time.time()
 
@@ -529,13 +545,40 @@ def main():
 
         if val_metrics['accuracy'] > best_val_acc:
             best_val_acc = val_metrics['accuracy']
+            epochs_without_improvement = 0
+            checkpoint_path = "checkpoints/draft_v2_best.pt"
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'metrics': val_metrics,
-            }, "checkpoints/draft_v2_best.pt")
+                'encoder_version': 'v2_hybrid',
+            }, checkpoint_path)
             print(f"  [NEW BEST] accuracy={best_val_acc:.4f}")
+
+            if args.s3_bucket:
+                upload_to_s3(checkpoint_path, args.s3_bucket, "checkpoints/best.pt")
+                upload_to_s3(checkpoint_path, args.s3_bucket, f"checkpoints/v2_epoch{epoch}.pt")
+        else:
+            epochs_without_improvement += 1
+            print(f"  No improvement for {epochs_without_improvement} epoch(s)")
+
+        # Periodic checkpoint every 5 epochs
+        if (epoch + 1) % 5 == 0 and args.s3_bucket:
+            periodic_path = f"checkpoints/v2_checkpoint_epoch{epoch}.pt"
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'metrics': val_metrics,
+            }, periodic_path)
+            upload_to_s3(periodic_path, args.s3_bucket, f"checkpoints/v2_epoch{epoch}.pt")
+
+        # Early stopping
+        if args.early_stopping_patience > 0:
+            if epochs_without_improvement >= args.early_stopping_patience:
+                print(f"\n[EARLY STOPPING] No improvement for {args.early_stopping_patience} epochs")
+                break
 
     writer.close()
 
@@ -567,12 +610,18 @@ def main():
     with open("checkpoints/v2_results.json", 'w') as f:
         json.dump(results, f, indent=2)
 
+    if args.s3_bucket:
+        upload_to_s3("checkpoints/v2_results.json", args.s3_bucket, "checkpoints/final_results.json")
+        upload_to_s3("checkpoints/draft_v2_best.pt", args.s3_bucket, "checkpoints/best.pt")
+
     print("\n" + "=" * 60)
     print("TRAINING COMPLETE")
     print("=" * 60)
     print(f"Best Val: {best_val_acc:.4f}")
     print(f"Test: {test_metrics['accuracy']:.4f}")
     print(f"Model: checkpoints/draft_v2_best.pt")
+    if args.s3_bucket:
+        print(f"S3: s3://{args.s3_bucket}/checkpoints/")
 
 
 if __name__ == "__main__":
