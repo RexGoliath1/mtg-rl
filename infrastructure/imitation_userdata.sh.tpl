@@ -103,16 +103,24 @@ done
 
 # Run collection (use python3 on Ubuntu)
 echo "Starting collection of $NUM_GAMES games..."
+echo "Python version: $(python3 --version)"
+echo "Working directory: $(pwd)"
+echo "Script exists: $(ls -la scripts/collect_ai_training_data.py 2>&1)"
+
 python3 -u scripts/collect_ai_training_data.py \
     --games $NUM_GAMES \
     --output training_data/imitation_aws \
     --workers $WORKERS \
     --save-interval 500 \
-    --timeout 60
+    --timeout 60 || echo "COLLECTION FAILED with exit code $?"
 
 # Upload results to S3
 echo "Uploading results to S3..."
-aws s3 sync training_data/imitation_aws/ s3://$S3_BUCKET/imitation_data/
+echo "Local files: $(ls -la training_data/ 2>&1)"
+aws s3 sync training_data/imitation_aws/ s3://$S3_BUCKET/imitation_data/ || echo "S3 sync failed"
+
+# Also upload the log file for debugging
+aws s3 cp /home/ubuntu/collection.log s3://$S3_BUCKET/logs/collection_$(date +%Y%m%d_%H%M%S).log || true
 
 echo "Collection complete at $(date)"
 
