@@ -410,21 +410,21 @@ When W&B is configured:
 ## Active Training Run (2026-01-24)
 
 **Status**: RUNNING (v2 hybrid encoder)
-**Instance**: `16.146.144.143` (g4dn.xlarge spot, us-west-2)
+**Instance**: `i-0fe997b5fa21e192f` / `54.190.192.61` (g4dn.xlarge spot, us-west-2)
 **S3 Bucket**: `mtg-rl-checkpoints-20260124190118616600000001`
 **Encoder**: v2 hybrid (text embeddings + structural features)
 
 ### Monitor Training
 ```bash
+# Check status (finds instance automatically)
+./scripts/connect_training.sh status
+
 # TensorBoard (SSM - keyless)
 ./scripts/connect_training.sh tensorboard
 # Then open http://localhost:6006
 
-# Check status
-./scripts/connect_training.sh status
-
 # View live log
-aws ssm start-session --target i-04a04ae88eb993e07 --region us-west-2
+aws ssm start-session --target i-0fe997b5fa21e192f --region us-west-2
 # Then: tail -f /home/ubuntu/mtg-rl/training.log
 ```
 
