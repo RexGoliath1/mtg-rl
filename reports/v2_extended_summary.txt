@@ -1,0 +1,71 @@
+
+================================================================================
+              V2 EXTENDED TRAINING SUMMARY REPORT
+================================================================================
+
+FINAL PERFORMANCE (v2 Extended - 100 epochs, patience=20)
+----------------------------------------------------------
+Test Accuracy:        65.80%
+Test Top-3 Accuracy:  93.23%
+Test Loss:            0.8985
+Best Val Accuracy:    66.45%
+
+TRAINING PROGRESSION
+--------------------
+Total Epochs:         56 (early stopped at patience=20)
+Best Epoch:           36 (val_acc=66.45%)
+Warmup Epochs:        5
+Learning Rate:        3e-4 with cosine decay
+Dropout:              0.2
+Weight Decay:         0.01
+
+COMPARISON ACROSS RUNS
+----------------------
+| Run           | Test Acc | Top-3   | Best Epoch | Stopped At |
+|---------------|----------|---------|------------|------------|
+| v1 Keyword    | 68.02%   | 94.38%  | 26         | 36         |
+| v2 Hybrid     | 65.95%   | 93.31%  | 13         | 23         |
+| v2 Extended   | 65.80%   | 93.23%  | 36         | 56         |
+
+ANALYSIS
+--------
+1. V1 KEYWORD ENCODER OUTPERFORMS V2 HYBRID:
+   - v1 achieves 68.02% vs v2's best of 65.95-65.80%
+   - Difference of ~2.1% is statistically significant
+
+2. LONGER TRAINING DID NOT HELP V2:
+   - Extended v2 (56 epochs) performed nearly identical to short v2 (23 epochs)
+   - Best val accuracy: 66.45% (extended) vs 66.24% (short)
+   - Test accuracy: 65.80% (extended) vs 65.95% (short)
+   - Suggests v2 architecture has reached its capacity
+
+3. OVERFITTING IN V2 EXTENDED:
+   - Train accuracy at stopping: 70.54%
+   - Val accuracy at stopping: 65.99%
+   - Gap: 4.55% (mild overfitting despite regularization)
+   - v1 had only 2.76% gap
+
+4. IMPLICATIONS:
+   - Pre-computed text embeddings may lose information vs learned embeddings
+   - Frozen embeddings can't adapt to MTG-specific semantics
+   - Structural features (15d) may not complement frozen text well
+   - Consider: fine-tuning text embeddings, or simpler keyword approach
+
+HYPERPARAMETER EFFECTIVENESS
+----------------------------
+- Warmup: Helped stable convergence (no early spikes)
+- Cosine LR: Smooth decay visible in logs
+- Higher dropout (0.2): Did not prevent overfitting
+- Weight decay (0.01): Marginal effect
+
+RECOMMENDATIONS
+---------------
+1. For production: Use v1 keyword encoder (68% accuracy)
+2. For v2 improvement: Try fine-tuning text embeddings
+3. Alternative: Larger model capacity if keeping frozen embeddings
+4. Consider: Hybrid that learns to combine text + keywords
+
+================================================================================
+S3 Artifacts: s3://mtg-rl-checkpoints-20260124190118616600000001/checkpoints/
+Best Model:   checkpoints/draft_v2_long_best.pt (also at best.pt)
+================================================================================
