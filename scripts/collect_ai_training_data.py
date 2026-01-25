@@ -30,16 +30,34 @@ import random
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-# Default deck pool for diverse coverage
-# Covers: mono-color aggro, 2-color aggro, 3-color control, midrange
-DEFAULT_DECKS = [
-    "red_aggro.dck",           # Mono-red aggro
-    "white_weenie.dck",        # Mono-white aggro
-    "mono_red_aggro.dck",      # Mono-red competitive
-    "boros_aggro.dck",         # R/W aggro
-    "dimir_midrange.dck",      # U/B midrange
-    "jeskai_control.dck",      # U/W/R control
-]
+# Deck directories
+MODERN_DECKS_DIR = Path(__file__).parent.parent / "decks" / "modern"
+ROOT_DECKS_DIR = Path(__file__).parent.parent / "decks"
+
+
+def load_deck_pool() -> List[str]:
+    """Load all available decks from decks/modern/ directory."""
+    decks = []
+
+    # Load Modern decks (primary source - 60 decks, 564 unique cards)
+    if MODERN_DECKS_DIR.exists():
+        for dck in MODERN_DECKS_DIR.glob("*.dck"):
+            decks.append(f"modern/{dck.name}")
+
+    # Also load root-level decks for additional coverage
+    if ROOT_DECKS_DIR.exists():
+        for dck in ROOT_DECKS_DIR.glob("*.dck"):
+            decks.append(dck.name)
+
+    if not decks:
+        # Fallback if no decks found
+        decks = ["red_aggro.dck", "white_weenie.dck"]
+
+    return sorted(set(decks))
+
+
+# Load deck pool on import
+DEFAULT_DECKS = load_deck_pool()
 
 
 @dataclass

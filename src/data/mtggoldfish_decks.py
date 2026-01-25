@@ -367,6 +367,8 @@ class MTGGoldfishScraper:
             if include_lists:
                 deck = self.get_deck_list(deck_info["url"])
                 if deck:
+                    # Use name from metagame (more reliable than parsing archetype page)
+                    deck.name = deck_info["name"]
                     deck.meta_share = deck_info["meta_share"]
                     deck.archetype = deck_info["archetype"]
                     decks.append(deck)
