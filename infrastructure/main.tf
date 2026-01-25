@@ -343,6 +343,12 @@ resource "aws_iam_role_policy" "training_ecr" {
   })
 }
 
+# SSM policy for keyless SSH via Session Manager
+resource "aws_iam_role_policy_attachment" "training_ssm" {
+  role       = aws_iam_role.training.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_instance_profile" "training" {
   name = "${var.project_name}-training-profile"
   role = aws_iam_role.training.name

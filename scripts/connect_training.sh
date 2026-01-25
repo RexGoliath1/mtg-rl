@@ -1,0 +1,177 @@
+#!/bin/bash
+# =============================================================================
+# Connect to MTG-RL Training Instance
+# =============================================================================
+#
+# Provides multiple connection methods:
+#   1. SSM Session Manager (keyless, recommended)
+#   2. SSH with key pair
+#   3. TensorBoard port forwarding
+#
+# Usage:
+#   ./scripts/connect_training.sh          # Auto-detect and connect
+#   ./scripts/connect_training.sh ssm      # Use SSM Session Manager
+#   ./scripts/connect_training.sh ssh      # Use SSH with key
+#   ./scripts/connect_training.sh tensorboard  # Forward TensorBoard
+#   ./scripts/connect_training.sh status   # Show instance status
+#
+# Prerequisites:
+#   - AWS CLI configured
+#   - For SSM: AWS Session Manager Plugin installed
+#     brew install --cask session-manager-plugin
+#
+# =============================================================================
+
+set -e
+
+REGION="${AWS_REGION:-us-east-1}"
+PROJECT="mtg-rl"
+KEY_FILE="$HOME/.ssh/mtg-rl-training.pem"
+
+# Get instance ID and IP
+get_instance_info() {
+    # Try spot instance first, then on-demand
+    INSTANCE_INFO=$(aws ec2 describe-instances \
+        --filters "Name=tag:Project,Values=$PROJECT" \
+                  "Name=instance-state-name,Values=running" \
+        --query 'Reservations[0].Instances[0].[InstanceId,PublicIpAddress]' \
+        --output text \
+        --region "$REGION" 2>/dev/null || echo "None None")
+
+    INSTANCE_ID=$(echo "$INSTANCE_INFO" | awk '{print $1}')
+    INSTANCE_IP=$(echo "$INSTANCE_INFO" | awk '{print $2}')
+
+    if [ "$INSTANCE_ID" = "None" ] || [ -z "$INSTANCE_ID" ]; then
+        echo "No running training instance found in $REGION"
+        echo ""
+        echo "To launch a training instance:"
+        echo "  cd infrastructure && terraform apply -var=\"enable_training_instance=true\""
+        exit 1
+    fi
+}
+
+# Show status
+show_status() {
+    echo "============================================================"
+    echo "MTG-RL Training Instance Status"
+    echo "============================================================"
+    get_instance_info
+    echo "Region:      $REGION"
+    echo "Instance ID: $INSTANCE_ID"
+    echo "Public IP:   $INSTANCE_IP"
+    echo ""
+
+    # Try to get training progress
+    echo "Checking training progress..."
+    S3_BUCKET=$(aws s3 ls | grep mtg-rl-checkpoints | awk '{print $3}' | head -1)
+    if [ -n "$S3_BUCKET" ]; then
+        echo "S3 Bucket: $S3_BUCKET"
+        echo ""
+        echo "Latest checkpoints:"
+        aws s3 ls "s3://$S3_BUCKET/checkpoints/" --region "$REGION" 2>/dev/null | tail -5 || echo "  No checkpoints yet"
+        echo ""
+        echo "Training status:"
+        aws s3 cp "s3://$S3_BUCKET/training_complete.json" - 2>/dev/null || echo "  Training in progress..."
+    fi
+}
+
+# Connect via SSM
+connect_ssm() {
+    get_instance_info
+    echo "Connecting via SSM Session Manager..."
+    echo "Instance: $INSTANCE_ID"
+    echo ""
+    aws ssm start-session --target "$INSTANCE_ID" --region "$REGION"
+}
+
+# Connect via SSH
+connect_ssh() {
+    get_instance_info
+    if [ ! -f "$KEY_FILE" ]; then
+        echo "SSH key not found: $KEY_FILE"
+        echo ""
+        echo "Options:"
+        echo "  1. Create key: ./scripts/setup_ssh.sh"
+        echo "  2. Use SSM instead: ./scripts/connect_training.sh ssm"
+        exit 1
+    fi
+    echo "Connecting via SSH..."
+    echo "Instance: $INSTANCE_IP"
+    echo ""
+    ssh -i "$KEY_FILE" -o StrictHostKeyChecking=no ubuntu@"$INSTANCE_IP"
+}
+
+# Forward TensorBoard
+forward_tensorboard() {
+    get_instance_info
+    echo "============================================================"
+    echo "TensorBoard Port Forwarding"
+    echo "============================================================"
+
+    # Prefer SSM for port forwarding (keyless)
+    if command -v session-manager-plugin &> /dev/null; then
+        echo "Using SSM for port forwarding (keyless)..."
+        echo ""
+        echo "TensorBoard will be available at: http://localhost:6006"
+        echo "Press Ctrl+C to stop"
+        echo ""
+        aws ssm start-session \
+            --target "$INSTANCE_ID" \
+            --document-name AWS-StartPortForwardingSession \
+            --parameters '{"portNumber":["6006"],"localPortNumber":["6006"]}' \
+            --region "$REGION"
+    elif [ -f "$KEY_FILE" ]; then
+        echo "Using SSH for port forwarding..."
+        echo ""
+        echo "TensorBoard will be available at: http://localhost:6006"
+        echo "Press Ctrl+C to stop"
+        echo ""
+        ssh -i "$KEY_FILE" -N -L 6006:localhost:6006 ubuntu@"$INSTANCE_IP"
+    else
+        echo "Neither SSM nor SSH available."
+        echo ""
+        echo "Install SSM plugin: brew install --cask session-manager-plugin"
+        echo "Or create SSH key: ./scripts/setup_ssh.sh"
+        echo ""
+        echo "Direct TensorBoard URL (if publicly accessible):"
+        echo "  http://$INSTANCE_IP:6006"
+        exit 1
+    fi
+}
+
+# Main
+case "${1:-auto}" in
+    ssm)
+        connect_ssm
+        ;;
+    ssh)
+        connect_ssh
+        ;;
+    tensorboard|tb)
+        forward_tensorboard
+        ;;
+    status)
+        show_status
+        ;;
+    auto|"")
+        get_instance_info
+        echo "============================================================"
+        echo "MTG-RL Training Instance"
+        echo "============================================================"
+        echo "Instance: $INSTANCE_ID ($INSTANCE_IP)"
+        echo ""
+        echo "Commands:"
+        echo "  ./scripts/connect_training.sh ssm         # Shell access (keyless)"
+        echo "  ./scripts/connect_training.sh ssh         # Shell access (SSH key)"
+        echo "  ./scripts/connect_training.sh tensorboard # TensorBoard"
+        echo "  ./scripts/connect_training.sh status      # Check status"
+        echo ""
+        echo "Quick check training log:"
+        echo "  aws ssm start-session --target $INSTANCE_ID --region $REGION"
+        echo "  Then: tail -f /home/ubuntu/mtg-rl/training.log"
+        ;;
+    *)
+        echo "Usage: $0 [ssm|ssh|tensorboard|status]"
+        exit 1
+        ;;
+esac
