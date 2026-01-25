@@ -407,17 +407,30 @@ When W&B is configured:
 - [ ] v2 hybrid encoder requires enriched 17lands data with Scryfall card metadata
 - [x] v2 hybrid encoder architecture implemented (hybrid_card_encoder.py)
 
-## Latest Training Run (2026-01-24)
+## Active Training Run (2026-01-24)
 
-**Status**: COMPLETED (auto-shutdown)
+**Status**: RUNNING (v2 hybrid encoder)
+**Instance**: `16.146.144.143` (g4dn.xlarge spot, us-west-2)
 **S3 Bucket**: `mtg-rl-checkpoints-20260124190118616600000001`
-**Encoder**: v1 keyword
-**Results**: 68.02% test accuracy, 94.38% top-3 accuracy (epoch 36, early stopped)
+**Encoder**: v2 hybrid (text embeddings + structural features)
 
-To download the model:
+### Monitor Training
 ```bash
-aws s3 cp s3://mtg-rl-checkpoints-20260124190118616600000001/checkpoints/best.pt checkpoints/
+# TensorBoard (SSM - keyless)
+./scripts/connect_training.sh tensorboard
+# Then open http://localhost:6006
+
+# Check status
+./scripts/connect_training.sh status
+
+# View live log
+aws ssm start-session --target i-04a04ae88eb993e07 --region us-west-2
+# Then: tail -f /home/ubuntu/mtg-rl/training.log
 ```
+
+### Previous Run (v1)
+- Results: 68.02% test accuracy, 94.38% top-3 accuracy
+- Model: `s3://mtg-rl-checkpoints-20260124190118616600000001/checkpoints/best.pt`
 
 ### Monitoring
 
