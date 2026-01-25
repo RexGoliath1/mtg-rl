@@ -349,6 +349,37 @@ aws ce get-cost-and-usage \
 - [ ] NaN losses with synthetic data (normal - use real 17lands data)
 - [ ] Forge daemon not integrated yet (simulated drafts work)
 - [x] AWS cost controls configured ($100/month limit)
+- [ ] v2 hybrid encoder requires enriched 17lands data with Scryfall card metadata
+- [x] v2 hybrid encoder architecture implemented (hybrid_card_encoder.py)
+
+## Current Training Run (as of 2026-01-24)
+
+**Instance**: `54.244.139.57` (g4dn.xlarge spot, us-west-2)
+**S3 Bucket**: `mtg-rl-checkpoints-20260124190118616600000001`
+**Encoder**: v1 keyword (v2 hybrid pending data enrichment)
+
+### Monitoring
+
+```bash
+# Check training progress (live logs)
+aws s3 cp s3://mtg-rl-checkpoints-20260124190118616600000001/logs/training_live.log - | tail -50
+
+# TensorBoard (forward port first)
+ssh -L 6006:localhost:6006 ubuntu@54.244.139.57
+# Then open http://localhost:6006
+
+# Check if training complete
+aws s3 ls s3://mtg-rl-checkpoints-20260124190118616600000001/training_complete.json
+
+# Download best model
+aws s3 cp s3://mtg-rl-checkpoints-20260124190118616600000001/checkpoints/best.pt checkpoints/
+```
+
+### EC2 Console Location
+**IMPORTANT**: Instances are in **us-west-2** region. Switch regions in AWS Console:
+1. Click region dropdown (top-right)
+2. Select "US West (Oregon) us-west-2"
+3. Go to EC2 > Instances
 
 ---
 
