@@ -514,6 +514,45 @@ python -m src.data.mtggoldfish_decks --format modern --top 20
 python -m src.training.parallel_selfplay --actors 8 --iterations 100
 ```
 
+### Forge Integration (NEW)
+
+The Forge daemon is now integrated via `src/forge/forge_client.py`.
+
+**Key Components:**
+| File | Purpose |
+|------|---------|
+| `src/forge/forge_client.py` | TCP client for Forge daemon (port 17171) |
+| `src/forge/state_mapper.py` | Maps Forge JSON → neural network tensors |
+| `scripts/profile_forge_games.py` | Profiles game latency and throughput |
+| `scripts/deploy_forge_test.sh` | Cloud deployment for Forge testing |
+
+**Protocol:**
+- Forge daemon listens on TCP port 17171
+- Sends `DECISION:` prefixed JSON with full game state
+- Game state includes: hand, battlefield, graveyard, exile, library_size, mana_pool
+- Client responds with action index (or -1 to pass)
+
+**Start Forge Daemon:**
+```bash
+# Build (once)
+cd forge-repo && mvn package -DskipTests -pl forge-gui-desktop -am
+
+# Start daemon (port 17171)
+java -jar forge-gui-desktop/target/forge-gui-desktop-*-jar-with-dependencies.jar --daemon
+
+# Test connection
+python -c "from src.forge import ForgeClient; c=ForgeClient(); c.connect(); print(c.get_status())"
+```
+
+**Profile Forge Games:**
+```bash
+# Local test (requires daemon running)
+python scripts/profile_forge_games.py --games 10 --deck1 decks/competitive/mono_red_aggro.dck --deck2 decks/competitive/boros_aggro.dck
+
+# Cloud deployment (automatic setup)
+./scripts/deploy_forge_test.sh --games 100 --duration 25
+```
+
 ### Meta Decks
 
 Current Modern meta decks stored in `data/decks/modern_meta.json`:

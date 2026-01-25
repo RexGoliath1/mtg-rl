@@ -20,8 +20,8 @@ set -e
 S3_BUCKET="mtg-rl-checkpoints-20260124190118616600000001"
 REGION="us-west-2"
 INSTANCE_TYPE="${INSTANCE_TYPE:-g4dn.xlarge}"
-NUM_GAMES="${NUM_GAMES:-50}"
-DURATION_MINUTES="${DURATION_MINUTES:-15}"
+NUM_GAMES="${NUM_GAMES:-100}"
+DURATION_MINUTES="${DURATION_MINUTES:-20}"
 KEY_NAME="${KEY_NAME:-}"  # Optional SSH key
 
 # Parse arguments
@@ -213,39 +213,62 @@ echo "Forge JAR: $FORGE_JAR"
 python3 -m pip install -r requirements.txt
 python3 -m pip install numpy
 
-# Create a simple test deck if needed
+# Create test decks - simple modern-legal aggro decks
 mkdir -p decks
 cat > decks/test_deck1.dck << 'DECK'
 [metadata]
-Name=Test Deck 1
+Name=Mono Red Burn
 [main]
-24 Mountain
+20 Mountain
 4 Lightning Bolt
-4 Monastery Swiftspear
-4 Goblin Guide
-4 Eidolon of the Great Revel
 4 Lava Spike
 4 Rift Bolt
+4 Monastery Swiftspear
+4 Goblin Guide
 4 Searing Blaze
+4 Skullcrack
 4 Shard Volley
+4 Eidolon of the Great Revel
 4 Light Up the Stage
 DECK
 
 cat > decks/test_deck2.dck << 'DECK'
 [metadata]
-Name=Test Deck 2
+Name=White Weenie
 [main]
-24 Plains
+20 Plains
 4 Savannah Lions
 4 Elite Vanguard
 4 Soldier of the Pantheon
-4 Dryad Militant
-4 Imposing Sovereign
 4 Thalia, Guardian of Thraben
-4 Honor of the Pure
+4 Luminarch Aspirant
+4 Adanto Vanguard
+4 Benalish Marshal
 4 Path to Exile
 4 Brave the Elements
+4 Honor of the Pure
 DECK
+
+# System monitoring function
+monitor_system() {
+    echo "=== System Resources ===" >> /var/log/system_stats.log
+    echo "CPU Usage:" >> /var/log/system_stats.log
+    top -bn1 | head -5 >> /var/log/system_stats.log
+    echo "" >> /var/log/system_stats.log
+    echo "Memory:" >> /var/log/system_stats.log
+    free -h >> /var/log/system_stats.log
+    echo "" >> /var/log/system_stats.log
+    echo "GPU (if available):" >> /var/log/system_stats.log
+    nvidia-smi --query-gpu=utilization.gpu,utilization.memory,memory.used,memory.total --format=csv 2>/dev/null >> /var/log/system_stats.log || echo "No GPU stats available" >> /var/log/system_stats.log
+    echo "" >> /var/log/system_stats.log
+    echo "Java processes:" >> /var/log/system_stats.log
+    ps aux | grep java | head -3 >> /var/log/system_stats.log
+    echo "---" >> /var/log/system_stats.log
+}
+
+# Start system monitoring in background
+(while true; do monitor_system; sleep 30; done) &
+MONITOR_PID=$!
 
 # Start Forge daemon in background
 echo "Starting Forge daemon..."
@@ -276,12 +299,21 @@ python3 scripts/profile_forge_games.py \
     --timeout 120 \
     --verbose
 
+# Stop system monitoring
+kill $MONITOR_PID 2>/dev/null || true
+
 # Upload results
 echo "Uploading results..."
 aws s3 cp forge_profile_results.json s3://BUCKET_PLACEHOLDER/test_results/forge_profile_TIMESTAMP_PLACEHOLDER.json
 
-# Also upload full log
+# Also upload full log and system stats
 aws s3 cp /var/log/forge-test.log s3://BUCKET_PLACEHOLDER/test_results/forge_test_log_TIMESTAMP_PLACEHOLDER.txt
+aws s3 cp /var/log/system_stats.log s3://BUCKET_PLACEHOLDER/test_results/system_stats_TIMESTAMP_PLACEHOLDER.txt 2>/dev/null || true
+
+# Final system stats
+echo "=== Final System Stats ===" >> /var/log/forge-test.log
+nvidia-smi 2>/dev/null >> /var/log/forge-test.log || true
+free -h >> /var/log/forge-test.log
 
 echo "Test complete! Results uploaded to S3."
 
