@@ -174,10 +174,10 @@ echo "============================================================"
 
 # Choose training script based on encoder type
 if [ "$${ENCODER_TYPE:-hybrid}" = "hybrid" ] && [ -f "data/card_embeddings.pt" ]; then
-    echo "Using v2 hybrid encoder training script..."
-    PYTHONUNBUFFERED=1 python3 train_draft_v2.py \
+    echo "Using v2 hybrid encoder EXTENDED training script..."
+    echo "Config: 100 epochs, patience=20, cosine LR schedule, dropout=0.2"
+    PYTHONUNBUFFERED=1 python3 train_draft_v2_long.py \
         --sets $SETS \
-        --epochs $EPOCHS \
         --batch-size $BATCH_SIZE \
         $MAX_SAMPLES_ARG \
         --s3-bucket $S3_BUCKET \
