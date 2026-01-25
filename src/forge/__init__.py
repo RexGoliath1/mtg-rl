@@ -6,7 +6,7 @@ Components for integrating with the Forge MTG engine:
 - PolicyHead: Outputs action probabilities over legal moves
 - ValueHead: Outputs expected win probability
 - PolicyValueNetwork: Combined AlphaZero-style network
-- (Future) MCTS: Tree search using Forge as simulator
+- MCTS: Monte Carlo Tree Search for gameplay
 """
 
 from src.forge.game_state_encoder import (
@@ -28,6 +28,15 @@ from src.forge.policy_value_heads import (
     decode_action,
 )
 
+from src.forge.mcts import (
+    MCTS,
+    MCTSConfig,
+    MCTSNode,
+    BatchedMCTS,
+    ForgeClientInterface,
+    SimulatedForgeClient,
+)
+
 __all__ = [
     # Game state encoder
     "ForgeGameStateEncoder",
@@ -44,4 +53,11 @@ __all__ = [
     "ActionType",
     "create_action_mask",
     "decode_action",
+    # MCTS
+    "MCTS",
+    "MCTSConfig",
+    "MCTSNode",
+    "BatchedMCTS",
+    "ForgeClientInterface",
+    "SimulatedForgeClient",
 ]
