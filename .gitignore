@@ -118,7 +118,7 @@ replays/
 *.safetensors
 
 # Data files (17lands, training data)
-data/
+/data/
 *.csv
 *.csv.gz
 *.parquet
