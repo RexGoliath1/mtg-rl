@@ -389,11 +389,26 @@ def parse_card(card_data: Dict[str, Any]) -> CardEncoding:
     Returns:
         CardEncoding object
     """
-    # Extract basic info
-    name = card_data.get("name", "Unknown")
-    oracle_text = card_data.get("oracle_text", "")
-    type_line = card_data.get("type_line", "")
-    mana_cost = card_data.get("mana_cost", "")
+    # Handle double-faced/split cards
+    if "card_faces" in card_data and card_data.get("card_faces"):
+        # Use the front face for primary encoding
+        front_face = card_data["card_faces"][0]
+        name = card_data.get("name", front_face.get("name", "Unknown"))
+        oracle_text = front_face.get("oracle_text", "")
+        type_line = front_face.get("type_line", card_data.get("type_line", ""))
+        mana_cost = front_face.get("mana_cost", "")
+
+        # Also parse back face and combine mechanics
+        back_face = card_data["card_faces"][1] if len(card_data["card_faces"]) > 1 else {}
+        back_oracle = back_face.get("oracle_text", "")
+        oracle_text = oracle_text + "\n" + back_oracle if back_oracle else oracle_text
+    else:
+        # Normal single-faced card
+        name = card_data.get("name", "Unknown")
+        oracle_text = card_data.get("oracle_text", "")
+        type_line = card_data.get("type_line", "")
+        mana_cost = card_data.get("mana_cost", "")
+
     cmc = int(card_data.get("cmc", 0))
 
     # Parse mana cost
@@ -404,15 +419,23 @@ def parse_card(card_data: Dict[str, Any]) -> CardEncoding:
         elif symbol.isdigit():
             mana_dict["C"] += int(symbol)
 
-    # Parse types
+    # Parse types (handle various dash characters and // for split cards)
     types = []
     subtypes = []
-    if "—" in type_line:
-        main_types, sub_types = type_line.split("—")
-        types = [t.strip().lower() for t in main_types.split()]
-        subtypes = [t.strip().lower() for t in sub_types.split()]
-    else:
-        types = [t.strip().lower() for t in type_line.split()]
+    # Remove any back-face type line (after //)
+    if "//" in type_line:
+        type_line = type_line.split("//")[0].strip()
+    # Handle em-dash, en-dash, and regular dash
+    for dash in ["—", "–", "-"]:
+        if dash in type_line:
+            parts = type_line.split(dash, 1)
+            if len(parts) == 2:
+                main_types, sub_types = parts
+                types = [t.strip().lower() for t in main_types.split() if t.strip()]
+                subtypes = [t.strip().lower() for t in sub_types.split() if t.strip()]
+                break
+    if not types:
+        types = [t.strip().lower() for t in type_line.split() if t.strip()]
 
     # Parse oracle text
     result = parse_oracle_text(oracle_text, type_line)
