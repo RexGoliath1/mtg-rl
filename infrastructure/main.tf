@@ -33,7 +33,7 @@ terraform {
 variable "aws_region" {
   description = "AWS region for deployment"
   type        = string
-  default     = "us-west-2"
+  default     = "us-east-1"  # Same region as your AWS Console
 }
 
 variable "environment" {
