@@ -442,7 +442,71 @@ When W&B is configured:
 - [x] MCTS integration with Forge (src/forge/mcts.py)
 - [x] Self-play training loop (src/training/self_play.py)
 - [ ] Forge daemon integration (actual game simulation)
-- [ ] Distributed training (multiple actors)
+- [x] Parallel self-play training (src/training/parallel_selfplay.py)
+- [x] Training profiler and benchmarks (src/training/profiler.py)
+- [x] MTGGoldfish deck scraper (src/data/mtggoldfish_decks.py)
+
+---
+
+## Gameplay Training (Modern Format)
+
+### Format Choice: Modern
+Selected Modern for training because:
+- Diverse archetypes (aggro, control, combo, midrange, tempo)
+- Stable card pool (no rotation)
+- Complex decision trees
+- Rich metagame data from MTGGoldfish
+
+### Training Time Estimates
+
+Based on benchmarking (scripts/benchmark_network.py):
+
+| Configuration | Games/hr | Samples/hr | Time to 1M | AWS Cost |
+|---------------|----------|------------|------------|----------|
+| 1 actor, 50 MCTS | 300 | 24,000 | 1.7 days | $6.67 |
+| 4 actors, 50 MCTS | 792 | 63,336 | 0.7 days | $2.53 |
+| **8 actors, 50 MCTS** | **1,286** | **102,890** | **0.4 days** | **$1.56** |
+| 16 actors (g4dn.12xl) | 2,089 | 167,146 | 0.2 days | $7.18 |
+
+**Recommended**: 8 actors on g4dn.xlarge spot ($0.16/hr) - best cost/performance.
+
+### Network Performance
+
+Measured on Apple Silicon MPS (CUDA will be faster):
+
+| Batch Size | Latency | Throughput |
+|------------|---------|------------|
+| 1 | 2.78ms | 360/sec |
+| 32 | 0.30ms | 107,608/sec |
+| 128 | 0.29ms | 442,326/sec |
+| 256 | 0.30ms | 841,974/sec |
+
+**Key insight**: Batching provides massive speedup. Single inference is 2.8ms but batched is 0.01ms per state.
+
+### Training Commands
+
+```bash
+# Local test (verify pipeline)
+python scripts/test_parallel_local.py
+
+# Benchmark network
+python scripts/benchmark_network.py
+
+# View training estimates
+python -m src.training.profiler
+
+# Fetch Modern meta decks
+python -m src.data.mtggoldfish_decks --format modern --top 20
+
+# Run parallel self-play (when Forge is integrated)
+python -m src.training.parallel_selfplay --actors 8 --iterations 100
+```
+
+### Meta Decks
+
+Current Modern meta decks stored in `data/decks/modern_meta.json`:
+- Boros Energy, Ruby Storm, Eldrazi Tron, Jeskai Blink, Affinity
+- Use MTGGoldfish scraper to update: `python -m src.data.mtggoldfish_decks`
 
 ## Active Training Run (2026-01-24)
 
