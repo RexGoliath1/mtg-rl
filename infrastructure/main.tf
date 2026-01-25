@@ -104,6 +104,24 @@ variable "encoder_type" {
   default     = "hybrid"
 }
 
+variable "training_mode" {
+  description = "Training mode: 'bc' for behavioral cloning, 'imitation' for Forge AI observation"
+  type        = string
+  default     = "bc"
+}
+
+variable "imitation_games" {
+  description = "Number of games for imitation learning data collection"
+  type        = number
+  default     = 10000
+}
+
+variable "imitation_workers" {
+  description = "Parallel workers for imitation learning (max 10)"
+  type        = number
+  default     = 8
+}
+
 variable "auto_shutdown" {
   description = "Auto-shutdown instance after training completes (saves cost)"
   type        = bool
@@ -417,18 +435,26 @@ resource "aws_spot_instance_request" "training" {
     volume_type = "gp3"
   }
 
-  user_data = base64encode(templatefile("${path.module}/training_userdata.sh.tpl", {
-    s3_bucket     = aws_s3_bucket.checkpoints.bucket
-    sets          = join(" ", var.training_sets)
-    epochs        = var.training_epochs
-    batch_size    = var.training_batch_size
-    max_samples   = var.training_max_samples > 0 ? var.training_max_samples : ""
-    encoder_type  = var.encoder_type
-    auto_shutdown = var.auto_shutdown ? "true" : "false"
-  }))
+  user_data = base64encode(
+    var.training_mode == "imitation" ? templatefile("${path.module}/imitation_userdata.sh.tpl", {
+      s3_bucket     = aws_s3_bucket.checkpoints.bucket
+      ecr_repo      = aws_ecr_repository.training.repository_url
+      num_games     = var.imitation_games
+      workers       = var.imitation_workers
+      auto_shutdown = var.auto_shutdown ? "true" : "false"
+    }) : templatefile("${path.module}/training_userdata.sh.tpl", {
+      s3_bucket     = aws_s3_bucket.checkpoints.bucket
+      sets          = join(" ", var.training_sets)
+      epochs        = var.training_epochs
+      batch_size    = var.training_batch_size
+      max_samples   = var.training_max_samples > 0 ? var.training_max_samples : ""
+      encoder_type  = var.encoder_type
+      auto_shutdown = var.auto_shutdown ? "true" : "false"
+    })
+  )
 
   tags = {
-    Name = "${var.project_name}-training-spot"
+    Name = "${var.project_name}-${var.training_mode}-spot"
   }
 }
 
@@ -447,18 +473,26 @@ resource "aws_instance" "training" {
     volume_type = "gp3"
   }
 
-  user_data = base64encode(templatefile("${path.module}/training_userdata.sh.tpl", {
-    s3_bucket     = aws_s3_bucket.checkpoints.bucket
-    sets          = join(" ", var.training_sets)
-    epochs        = var.training_epochs
-    batch_size    = var.training_batch_size
-    max_samples   = var.training_max_samples > 0 ? var.training_max_samples : ""
-    encoder_type  = var.encoder_type
-    auto_shutdown = var.auto_shutdown ? "true" : "false"
-  }))
+  user_data = base64encode(
+    var.training_mode == "imitation" ? templatefile("${path.module}/imitation_userdata.sh.tpl", {
+      s3_bucket     = aws_s3_bucket.checkpoints.bucket
+      ecr_repo      = aws_ecr_repository.training.repository_url
+      num_games     = var.imitation_games
+      workers       = var.imitation_workers
+      auto_shutdown = var.auto_shutdown ? "true" : "false"
+    }) : templatefile("${path.module}/training_userdata.sh.tpl", {
+      s3_bucket     = aws_s3_bucket.checkpoints.bucket
+      sets          = join(" ", var.training_sets)
+      epochs        = var.training_epochs
+      batch_size    = var.training_batch_size
+      max_samples   = var.training_max_samples > 0 ? var.training_max_samples : ""
+      encoder_type  = var.encoder_type
+      auto_shutdown = var.auto_shutdown ? "true" : "false"
+    })
+  )
 
   tags = {
-    Name = "${var.project_name}-training-ondemand"
+    Name = "${var.project_name}-${var.training_mode}-ondemand"
   }
 }
 

@@ -8,6 +8,27 @@
 
 ---
 
+## Development Rules
+
+### Cloud-First for Long-Running Jobs
+
+**CRITICAL**: Do NOT run jobs with >50 iterations locally. Deploy to AWS instead.
+
+- Local: Quick tests (<50 games, <5 epochs), debugging, development
+- Cloud: Training runs, data collection (>50 games), any job >10 minutes
+
+```bash
+# LOCAL - Quick test (OK)
+python scripts/collect_ai_training_data.py --games 20 --workers 4
+
+# CLOUD - Full collection (deploy to AWS)
+# 1. Push image to ECR
+# 2. terraform apply -var="enable_training_instance=true"
+# 3. SSH and run collection
+```
+
+---
+
 ## Quick Start for New Sessions
 
 ```bash
