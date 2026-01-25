@@ -30,7 +30,12 @@ KEY_FILE="$HOME/.ssh/mtg-rl-training.pem"
 
 # Get instance ID and IP
 get_instance_info() {
-    # Try spot instance first, then on-demand
+    # Try multiple methods to find the training instance:
+    # 1. By Project tag (on-demand instances)
+    # 2. By IAM instance profile (spot instances don't inherit tags)
+    # 3. By instance type (g4dn.*)
+
+    # Method 1: Tag-based lookup
     INSTANCE_INFO=$(aws ec2 describe-instances \
         --filters "Name=tag:Project,Values=$PROJECT" \
                   "Name=instance-state-name,Values=running" \
@@ -40,6 +45,32 @@ get_instance_info() {
 
     INSTANCE_ID=$(echo "$INSTANCE_INFO" | awk '{print $1}')
     INSTANCE_IP=$(echo "$INSTANCE_INFO" | awk '{print $2}')
+
+    # Method 2: IAM profile lookup (for spot instances)
+    if [ "$INSTANCE_ID" = "None" ] || [ -z "$INSTANCE_ID" ]; then
+        INSTANCE_INFO=$(aws ec2 describe-instances \
+            --filters "Name=iam-instance-profile.arn,Values=*${PROJECT}-training-profile*" \
+                      "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].[InstanceId,PublicIpAddress]' \
+            --output text \
+            --region "$REGION" 2>/dev/null || echo "None None")
+
+        INSTANCE_ID=$(echo "$INSTANCE_INFO" | awk '{print $1}')
+        INSTANCE_IP=$(echo "$INSTANCE_INFO" | awk '{print $2}')
+    fi
+
+    # Method 3: GPU instance type lookup (fallback)
+    if [ "$INSTANCE_ID" = "None" ] || [ -z "$INSTANCE_ID" ]; then
+        INSTANCE_INFO=$(aws ec2 describe-instances \
+            --filters "Name=instance-type,Values=g4dn.*" \
+                      "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].[InstanceId,PublicIpAddress]' \
+            --output text \
+            --region "$REGION" 2>/dev/null || echo "None None")
+
+        INSTANCE_ID=$(echo "$INSTANCE_INFO" | awk '{print $1}')
+        INSTANCE_IP=$(echo "$INSTANCE_INFO" | awk '{print $2}')
+    fi
 
     if [ "$INSTANCE_ID" = "None" ] || [ -z "$INSTANCE_ID" ]; then
         echo "No running training instance found in $REGION"
