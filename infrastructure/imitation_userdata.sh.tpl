@@ -45,11 +45,11 @@ if ! command -v aws &> /dev/null; then
     rm -rf awscliv2.zip aws/
 fi
 
-# Login to ECR and pull Forge daemon image
+# Login to ECR and pull Forge daemon image (amd64 version for EC2)
 echo ""
 echo "[3/5] Pulling Forge daemon from ECR..."
 aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin $ECR_REPO
-docker pull $ECR_REPO:forge-daemon
+docker pull $ECR_REPO:forge-daemon-amd64
 
 # Clone code and setup
 echo ""
@@ -76,9 +76,9 @@ S3_BUCKET="${s3_bucket}"
 NUM_GAMES="${num_games}"
 WORKERS="${workers}"
 
-# Start Forge daemon
+# Start Forge daemon (amd64 version for EC2)
 echo "Starting Forge daemon..."
-docker run -d --name forge-daemon -p 17171:17171 ${ecr_repo}:forge-daemon
+docker run -d --name forge-daemon -p 17171:17171 ${ecr_repo}:forge-daemon-amd64
 
 # Wait for daemon to be ready
 echo "Waiting for daemon to initialize..."

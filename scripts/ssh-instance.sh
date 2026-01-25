@@ -11,12 +11,12 @@ set -e
 
 REGION="${AWS_REGION:-us-west-2}"
 
-# Find running instance
+# Find running instance (by IAM profile since spot instances may not have tags)
 INSTANCE_INFO=$(aws ec2 describe-instances \
     --region "$REGION" \
     --filters "Name=instance-state-name,Values=running" \
-              "Name=tag:Project,Values=mtg-rl" \
-    --query 'Reservations[0].Instances[0].[InstanceId,PublicIpAddress,Tags[?Key==`Name`].Value|[0]]' \
+              "Name=iam-instance-profile.arn,Values=*mtg-rl*" \
+    --query 'Reservations[0].Instances[0].[InstanceId,PublicIpAddress,IamInstanceProfile.Arn]' \
     --output text 2>/dev/null)
 
 if [ -z "$INSTANCE_INFO" ] || [ "$INSTANCE_INFO" = "None" ]; then
@@ -29,9 +29,9 @@ fi
 
 INSTANCE_ID=$(echo "$INSTANCE_INFO" | awk '{print $1}')
 PUBLIC_IP=$(echo "$INSTANCE_INFO" | awk '{print $2}')
-INSTANCE_NAME=$(echo "$INSTANCE_INFO" | awk '{print $3}')
+PROFILE_ARN=$(echo "$INSTANCE_INFO" | awk '{print $3}')
 
-echo "Found instance: $INSTANCE_NAME"
+echo "Found MTG RL instance:"
 echo "  Instance ID: $INSTANCE_ID"
 echo "  Public IP: $PUBLIC_IP"
 echo ""
