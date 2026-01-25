@@ -35,8 +35,11 @@ python training_pipeline.py --mode play --num-games 3
 |------|---------|--------|
 | `src/mechanics/vocabulary.py` | Mechanics primitives (200+) | - |
 | `src/mechanics/card_parser.py` | Oracle text → mechanics | - |
+| `src/mechanics/precompute_embeddings.py` | Pre-compute HDF5 embeddings | - |
+| `src/forge/game_state_encoder.py` | Forge JSON → tensor | 5.8M |
+| `src/forge/policy_value_heads.py` | AlphaZero policy/value | 0.4M |
 | `shared_card_encoder.py` | Simple card encoder (for draft) | 1.2M |
-| `entity_encoder.py` | Full game state encoder (for gameplay) | 9.2M |
+| `entity_encoder.py` | Full game state encoder (legacy) | 9.2M |
 | `draft_policy.py` | Draft-specific policy network | 2.8M |
 | `training_pipeline.py` | Unified BC + RL training | - |
 
@@ -431,10 +434,11 @@ When W&B is configured:
 - [x] v2 hybrid encoder architecture implemented (hybrid_card_encoder.py)
 - [x] Mechanics vocabulary defined (200+ primitives) - src/mechanics/vocabulary.py
 - [x] Card text parser implemented - src/mechanics/card_parser.py
-- [ ] Pre-embed all MTG cards to HDF5 format
-- [ ] Forge game state encoder
-- [ ] AlphaZero-style policy/value network
+- [x] Pre-embed all MTG cards to HDF5 format (data/card_mechanics_commander.h5)
+- [x] Forge game state encoder (src/forge/game_state_encoder.py, 5.8M params)
+- [x] AlphaZero-style policy/value network (src/forge/policy_value_heads.py)
 - [ ] MCTS integration with Forge
+- [ ] Self-play training loop
 
 ## Active Training Run (2026-01-24)
 
