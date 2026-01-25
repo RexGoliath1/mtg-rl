@@ -33,10 +33,11 @@ python training_pipeline.py --mode play --num-games 3
 
 | File | Purpose | Params |
 |------|---------|--------|
+| `src/mechanics/vocabulary.py` | Mechanics primitives (200+) | - |
+| `src/mechanics/card_parser.py` | Oracle text → mechanics | - |
 | `shared_card_encoder.py` | Simple card encoder (for draft) | 1.2M |
 | `entity_encoder.py` | Full game state encoder (for gameplay) | 9.2M |
 | `draft_policy.py` | Draft-specific policy network | 2.8M |
-| `text_embeddings.py` | LLM-based card text embeddings | External |
 | `training_pipeline.py` | Unified BC + RL training | - |
 
 ### Training Pipeline
@@ -107,11 +108,34 @@ git push origin feature/rl-daemon-mode
 
 ## Key Design Decisions
 
-1. **Shared Card Encoder**: Pre-train on draft, transfer to gameplay
-2. **Entity-Based Architecture**: Like AlphaStar, each card is a full entity
-3. **Text Embeddings**: Use sentence-transformers for ability semantics
-4. **Multi-Layer Rate Limiting**: WAF + API Gateway + Application
-5. **Forge as Simulator**: Official MTG rules engine, handles all mechanics
+1. **Mechanics-Based Card Encoding**: Cards are sequences of ~200 primitives, not opaque embeddings
+2. **AlphaZero Architecture**: Policy + Value networks with MCTS, trained via self-play
+3. **Forge as Simulator**: Official MTG rules engine for game tree exploration
+4. **No Meta Features**: Self-play learns optimal play, not human imitation
+5. **HDF5 Storage**: Pre-computed card encodings (~5-10MB for all Commander cards)
+
+### Mechanics Vocabulary Approach (NEW)
+
+Instead of text embeddings or one-hot card IDs, we decompose cards into **mechanics primitives**:
+
+```python
+# Saw in Half encoded as mechanics sequence
+[INSTANT_SPEED, TARGET_CREATURE, DESTROY, IF_TARGET_DIES, CREATE_TOKEN_COPY, HALF_STATS]
+
+# Network learns: DESTROY + CREATE_TOKEN_COPY on own creature = double ETB triggers
+# Discovered through MCTS self-play, not pre-coded
+```
+
+**Key files:**
+- `src/mechanics/vocabulary.py` - 200+ mechanics primitives
+- `src/mechanics/card_parser.py` - Oracle text → mechanics sequence
+- `research/alphazero_mtg_architecture.md` - Full architecture design
+
+**Why this approach:**
+- New mechanics = new combinations of existing primitives (Warp = ALT_COST + EXILE_TEMP + CAST_FROM_EXILE)
+- Transfers to any format (Draft, Standard, Commander)
+- MCTS discovers card interactions, no manual coding
+- ~10MB storage for all 30K Commander-legal cards (HDF5 format)
 
 ---
 
@@ -404,8 +428,13 @@ When W&B is configured:
 - [ ] NaN losses with synthetic data (normal - use real 17lands data)
 - [ ] Forge daemon not integrated yet (simulated drafts work)
 - [x] AWS cost controls configured ($100/month limit)
-- [ ] v2 hybrid encoder requires enriched 17lands data with Scryfall card metadata
 - [x] v2 hybrid encoder architecture implemented (hybrid_card_encoder.py)
+- [x] Mechanics vocabulary defined (200+ primitives) - src/mechanics/vocabulary.py
+- [x] Card text parser implemented - src/mechanics/card_parser.py
+- [ ] Pre-embed all MTG cards to HDF5 format
+- [ ] Forge game state encoder
+- [ ] AlphaZero-style policy/value network
+- [ ] MCTS integration with Forge
 
 ## Active Training Run (2026-01-24)
 
