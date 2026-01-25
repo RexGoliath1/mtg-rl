@@ -300,7 +300,7 @@ When resuming, mention:
 | Setting | Value | Notes |
 |---------|-------|-------|
 | **Budget Limit** | $100/month | Hard-coded, cannot be overridden |
-| **Region** | us-west-2 | Default for compute |
+| **Region** | us-east-1 | Default for compute (changed from us-west-2) |
 | **Billing Region** | us-east-1 | Required for billing metrics |
 | **Infrastructure** | Terraform | Chosen for scalability |
 
@@ -343,6 +343,61 @@ aws ce get-cost-and-usage \
 
 ---
 
+## Training Run Monitoring
+
+**IMPORTANT**: When kicking off long training runs, always provide these monitoring links.
+
+### TensorBoard Access
+
+```bash
+# Option 1: SSM port forwarding (keyless, recommended)
+brew install --cask session-manager-plugin  # One-time install
+./scripts/connect_training.sh tensorboard
+# Then open: http://localhost:6006
+
+# Option 2: SSH port forwarding
+./scripts/connect_training.sh ssh
+# In another terminal:
+ssh -i ~/.ssh/mtg-rl-training.pem -L 6006:localhost:6006 ubuntu@<INSTANCE_IP>
+# Then open: http://localhost:6006
+
+# Option 3: Direct (if security group allows)
+# http://<INSTANCE_IP>:6006
+```
+
+### Check Training Status
+
+```bash
+# Quick status check
+./scripts/connect_training.sh status
+
+# View live training log
+./scripts/connect_training.sh ssm
+# Then: tail -f /home/ubuntu/mtg-rl/training.log
+
+# Check S3 for checkpoints
+aws s3 ls s3://<BUCKET>/checkpoints/ | tail -5
+aws s3 cp s3://<BUCKET>/checkpoints/final_results.json -
+```
+
+### Weights & Biases (Future)
+
+When W&B is configured:
+- Dashboard: https://wandb.ai/your-org/mtg-rl
+- Add to terraform.tfvars: `wandb_api_key = "your-key"`
+
+### Model Artifacts Location
+
+| Artifact | Location |
+|----------|----------|
+| Best checkpoint | `s3://<BUCKET>/checkpoints/best.pt` |
+| Latest checkpoint | `s3://<BUCKET>/checkpoints/latest.pt` |
+| TensorBoard logs | `s3://<BUCKET>/tensorboard-logs/` |
+| Training results | `s3://<BUCKET>/checkpoints/final_results.json` |
+| Local best | `checkpoints/draft_best.pt` |
+
+---
+
 ## Known Issues / TODOs
 
 - [ ] EntityEncoder dimension mismatch with training pipeline (use SharedCardEncoder for now)
@@ -352,11 +407,17 @@ aws ce get-cost-and-usage \
 - [ ] v2 hybrid encoder requires enriched 17lands data with Scryfall card metadata
 - [x] v2 hybrid encoder architecture implemented (hybrid_card_encoder.py)
 
-## Current Training Run (as of 2026-01-24)
+## Latest Training Run (2026-01-24)
 
-**Instance**: `54.244.139.57` (g4dn.xlarge spot, us-west-2)
+**Status**: COMPLETED (auto-shutdown)
 **S3 Bucket**: `mtg-rl-checkpoints-20260124190118616600000001`
-**Encoder**: v1 keyword (v2 hybrid pending data enrichment)
+**Encoder**: v1 keyword
+**Results**: 68.02% test accuracy, 94.38% top-3 accuracy (epoch 36, early stopped)
+
+To download the model:
+```bash
+aws s3 cp s3://mtg-rl-checkpoints-20260124190118616600000001/checkpoints/best.pt checkpoints/
+```
 
 ### Monitoring
 
