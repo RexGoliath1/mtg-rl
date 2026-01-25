@@ -154,3 +154,16 @@ videos/
 *.tfstate.*
 *.tfvars
 !terraform.tfvars.example
+
+# SSH keys and credentials (NEVER commit these)
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*.pub
+ssh_keys/
+
+# Training data outputs (large, regeneratable)
+training_data/
+training_output/
+reports/

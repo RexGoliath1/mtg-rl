@@ -21,14 +21,19 @@ echo "  ECR Repo: $ECR_REPO"
 echo "  Games: $NUM_GAMES"
 echo "  Workers: $WORKERS"
 
-# Install Docker
+# Install Docker and EC2 Instance Connect (for keyless SSH via AWS CLI)
 echo ""
-echo "[1/5] Installing Docker..."
+echo "[1/5] Installing Docker and EC2 Instance Connect..."
 apt-get update -y
-apt-get install -y docker.io python3-pip python3-venv unzip htop
+apt-get install -y docker.io python3-pip python3-venv unzip htop ec2-instance-connect
 systemctl start docker
 systemctl enable docker
 usermod -aG docker ubuntu
+
+# Ensure SSM agent is running (for AWS Systems Manager access)
+snap install amazon-ssm-agent --classic 2>/dev/null || true
+systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service 2>/dev/null || true
+systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service 2>/dev/null || true
 
 # Install AWS CLI
 echo ""

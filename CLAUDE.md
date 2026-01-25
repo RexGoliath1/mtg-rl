@@ -192,8 +192,20 @@ python text_embeddings.py      # Self-test
 
 ### Deploy to AWS
 ```bash
-cd infrastructure && terraform apply
-./scripts/deploy.sh
+# Deploy imitation learning (10K games)
+cd infrastructure
+terraform apply -var="training_mode=imitation" -var="imitation_games=10000"
+
+# Deploy BC training
+terraform apply -var="training_mode=bc"
+
+# SSH into running instance (uses AWS credentials, no PEM needed)
+./scripts/ssh-instance.sh           # Interactive SSH
+./scripts/ssh-instance.sh logs      # Tail collection logs
+./scripts/ssh-instance.sh status    # Check daemon + collection status
+
+# Check S3 for results
+aws s3 ls s3://mtg-rl-checkpoints-*/imitation_data/ --recursive
 ```
 
 ---

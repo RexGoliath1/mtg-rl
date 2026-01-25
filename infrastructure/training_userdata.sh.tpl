@@ -26,11 +26,16 @@ echo "  Batch Size: $BATCH_SIZE"
 echo "  Max Samples: $${MAX_SAMPLES:-all}"
 echo "  Encoder Type: $${ENCODER_TYPE:-hybrid}"
 
-# Install system dependencies
+# Install system dependencies + EC2 Instance Connect (keyless SSH via AWS CLI)
 echo ""
 echo "[1/7] Installing system dependencies..."
 apt-get update -y || true
-apt-get install -y python3-pip python3-venv htop nvtop unzip || true
+apt-get install -y python3-pip python3-venv htop nvtop unzip ec2-instance-connect || true
+
+# Ensure SSM agent is running
+snap install amazon-ssm-agent --classic 2>/dev/null || true
+systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service 2>/dev/null || true
+systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service 2>/dev/null || true
 
 # Check AWS CLI (Deep Learning AMI has it pre-installed)
 echo ""
