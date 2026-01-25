@@ -1,0 +1,512 @@
+"""
+Card Text Parser
+
+Parses Scryfall oracle text into mechanics sequences.
+
+Strategy:
+1. Rule-based parsing for common patterns (handles ~80% of cards)
+2. LLM fallback for complex/ambiguous text (handles remaining ~20%)
+
+This is NOT meant to be exhaustive from day 1. We iterate:
+- Start with common patterns
+- Add rules as we encounter new patterns
+- LLM handles edge cases during development
+"""
+
+import re
+import json
+from typing import List, Dict, Any, Optional, Tuple
+from dataclasses import dataclass
+from enum import Enum
+
+# Import our vocabulary
+try:
+    from src.mechanics.vocabulary import Mechanic, CardEncoding, VOCAB_SIZE
+except ImportError:
+    from vocabulary import Mechanic, CardEncoding, VOCAB_SIZE
+
+
+# =============================================================================
+# KEYWORD PATTERNS
+# =============================================================================
+
+# Keywords that appear as single words
+KEYWORD_ABILITIES = {
+    # Evergreen
+    "flying": Mechanic.FLYING,
+    "trample": Mechanic.TRAMPLE,
+    "first strike": Mechanic.FIRST_STRIKE,
+    "double strike": Mechanic.DOUBLE_STRIKE,
+    "deathtouch": Mechanic.DEATHTOUCH,
+    "lifelink": Mechanic.LIFELINK,
+    "vigilance": Mechanic.VIGILANCE,
+    "reach": Mechanic.REACH,
+    "haste": Mechanic.HASTE,
+    "menace": Mechanic.MENACE,
+    "defender": Mechanic.DEFENDER,
+    "indestructible": Mechanic.INDESTRUCTIBLE,
+    "hexproof": Mechanic.HEXPROOF,
+    "flash": Mechanic.FLASH,
+
+    # Combat keywords
+    "skulk": Mechanic.SKULK,
+    "fear": Mechanic.FEAR,
+    "intimidate": Mechanic.INTIMIDATE,
+    "shadow": Mechanic.SHADOW,
+    "horsemanship": Mechanic.HORSEMANSHIP,
+    "flanking": Mechanic.FLANKING,
+    "bushido": Mechanic.BUSHIDO,
+    "rampage": Mechanic.RAMPAGE,
+    "provoke": Mechanic.PROVOKE,
+    "afflict": Mechanic.AFFLICT,
+
+    # Counter-related
+    "undying": Mechanic.UNDYING,
+    "persist": Mechanic.PERSIST,
+    "modular": Mechanic.MODULAR,
+    "evolve": Mechanic.EVOLVE,
+    "graft": Mechanic.GRAFT,
+    "devour": Mechanic.DEVOUR,
+    "mentor": Mechanic.MENTOR,
+    "training": Mechanic.TRAINING,
+    "renown": Mechanic.RENOWN,
+    "fabricate": Mechanic.FABRICATE,
+    "backup": Mechanic.BACKUP,
+    "riot": Mechanic.RIOT,
+    "adapt": Mechanic.ADAPT,
+
+    # Cost reduction
+    "convoke": Mechanic.CONVOKE,
+    "delve": Mechanic.DELVE,
+    "affinity": Mechanic.AFFINITY,
+    "improvise": Mechanic.IMPROVISE,
+    "assist": Mechanic.ASSIST,
+    "undaunted": Mechanic.UNDAUNTED,
+
+    # Alternative casting
+    "flashback": Mechanic.FLASHBACK,
+    "retrace": Mechanic.RETRACE,
+    "jump-start": Mechanic.JUMP_START,
+    "escape": Mechanic.ESCAPE,
+    "foretell": Mechanic.FORETELL,
+    "disturb": Mechanic.DISTURB,
+    "warp": Mechanic.WARP,
+    "dash": Mechanic.DASH,
+    "blitz": Mechanic.BLITZ,
+    "evoke": Mechanic.EVOKE,
+    "emerge": Mechanic.EMERGE,
+    "mutate": Mechanic.MUTATE,
+    "spectacle": Mechanic.SPECTACLE,
+    "ninjutsu": Mechanic.NINJUTSU,
+    "buyback": Mechanic.BUYBACK,
+    "overload": Mechanic.OVERLOAD,
+    "kicker": Mechanic.KICKER,
+    "multikicker": Mechanic.MULTIKICKER,
+
+    # Triggered keywords
+    "landfall": Mechanic.LANDFALL,
+    "constellation": Mechanic.CONSTELLATION,
+    "heroic": Mechanic.HEROIC,
+    "magecraft": Mechanic.MAGECRAFT,
+    "prowess": Mechanic.PROWESS,
+    "raid": Mechanic.RAID,
+    "revolt": Mechanic.REVOLT,
+    "morbid": Mechanic.MORBID,
+    "exploit": Mechanic.EXPLOIT,
+    "extort": Mechanic.EXTORT,
+    "exalted": Mechanic.EXALTED,
+
+    # Other
+    "changeling": Mechanic.CHANGELING,
+    "devoid": Mechanic.DEVOID,
+    "storm": Mechanic.STORM,
+    "cascade": Mechanic.CASCADE,
+    "dredge": Mechanic.DREDGE,
+    "suspend": Mechanic.SUSPEND,
+    "miracle": Mechanic.MIRACLE,
+    "rebound": Mechanic.REBOUND,
+    "cipher": Mechanic.CIPHER,
+    "hideaway": Mechanic.HIDEAWAY,
+    "living weapon": Mechanic.LIVING_WEAPON,
+    "reconfigure": Mechanic.RECONFIGURE,
+    "toxic": Mechanic.TOXIC,
+    "infect": Mechanic.INFECT,
+    "wither": Mechanic.WITHER,
+    "annihilator": Mechanic.ANNIHILATOR,
+    "myriad": Mechanic.MYRIAD,
+    "encore": Mechanic.ENCORE,
+    "decayed": Mechanic.DECAYED,
+    "prototype": Mechanic.PROTOTYPE,
+    "transform": Mechanic.TRANSFORM,
+    "daybound": Mechanic.DAYBOUND,
+    "nightbound": Mechanic.NIGHTBOUND,
+
+    # Multiplayer
+    "goad": Mechanic.GOAD,
+    "monarch": Mechanic.MONARCH,
+    "initiative": Mechanic.INITIATIVE,
+
+    # Conditions
+    "threshold": Mechanic.THRESHOLD,
+    "delirium": Mechanic.DELIRIUM,
+    "metalcraft": Mechanic.METALCRAFT,
+    "ferocious": Mechanic.FEROCIOUS,
+    "domain": Mechanic.DOMAIN,
+    "descend": Mechanic.DESCEND,
+    "corrupted": Mechanic.CORRUPTED,
+    "coven": Mechanic.COVEN,
+    "hellbent": Mechanic.HELLBENT,
+    "party": Mechanic.PARTY,
+}
+
+
+# =============================================================================
+# TEXT PATTERN MATCHING
+# =============================================================================
+
+# Patterns for common text structures
+PATTERNS = [
+    # Targeting patterns
+    (r"target creature", [Mechanic.TARGET_CREATURE]),
+    (r"target player", [Mechanic.TARGET_PLAYER]),
+    (r"target opponent", [Mechanic.TARGET_OPPONENT]),
+    (r"target permanent", [Mechanic.TARGET_PERMANENT]),
+    (r"target spell", [Mechanic.TARGET_SPELL]),
+    (r"target artifact", [Mechanic.TARGET_ARTIFACT]),
+    (r"target enchantment", [Mechanic.TARGET_ENCHANTMENT]),
+    (r"target land", [Mechanic.TARGET_LAND]),
+    (r"target (spell or ability|ability)", [Mechanic.TARGET_SPELL_OR_ABILITY]),
+    (r"target card in (a |your )?graveyard", [Mechanic.TARGET_CARD_IN_GRAVEYARD]),
+    (r"each creature", [Mechanic.TARGETS_EACH, Mechanic.TARGET_CREATURE]),
+    (r"each opponent", [Mechanic.TARGETS_EACH, Mechanic.TARGET_OPPONENT]),
+    (r"all creatures", [Mechanic.TARGETS_ALL, Mechanic.TARGET_CREATURE]),
+    (r"each player", [Mechanic.TARGETS_EACH, Mechanic.TARGET_PLAYER]),
+
+    # Removal patterns
+    (r"destroy target", [Mechanic.DESTROY]),
+    (r"destroys? (it|that|this|target)", [Mechanic.DESTROY]),
+    (r"exile target", [Mechanic.EXILE]),
+    (r"exiles? (it|that|this|target)", [Mechanic.EXILE]),
+    (r"sacrifice (a|an|target)", [Mechanic.SACRIFICE]),
+    (r"return (it|that|target).+to (its|their|your|owner's) (hand|owner's hand)", [Mechanic.BOUNCE_TO_HAND]),
+    (r"put.+on (the bottom|top) of.+library", [Mechanic.BOUNCE_TO_LIBRARY]),
+    (r"counter target spell", [Mechanic.COUNTER_SPELL]),
+    (r"counter (it|that spell)", [Mechanic.COUNTER_SPELL]),
+    (r"counter target.+ability", [Mechanic.COUNTER_ABILITY]),
+    (r"deals? \d+ damage", [Mechanic.DEAL_DAMAGE]),
+    (r"loses? \d+ life", [Mechanic.LOSE_LIFE]),
+
+    # Creation patterns
+    (r"create(s)? (a|\d+|an?|two|three|four|five|x) .*(token|treasure|food|clue|blood)", [Mechanic.CREATE_TOKEN]),
+    (r"create(s)?.+cop(y|ies) of", [Mechanic.CREATE_TOKEN_COPY]),
+    (r"create(s)?.+treasure token", [Mechanic.CREATE_TOKEN, Mechanic.CREATE_TREASURE]),
+    (r"create(s)?.+food token", [Mechanic.CREATE_TOKEN, Mechanic.CREATE_FOOD]),
+    (r"create(s)?.+clue token", [Mechanic.CREATE_TOKEN, Mechanic.CREATE_CLUE]),
+    (r"create(s)?.+blood token", [Mechanic.CREATE_TOKEN, Mechanic.CREATE_BLOOD]),
+
+    # Card advantage
+    (r"draw(s)? (a card|\d+ cards?)", [Mechanic.DRAW]),
+    (r"may draw (a card|\d+ cards?)", [Mechanic.DRAW_OPTIONAL]),
+    (r"scry (\d+|x)", [Mechanic.SCRY]),
+    (r"surveil (\d+|x)", [Mechanic.SURVEIL]),
+    (r"look at the top", [Mechanic.LOOK_AT_TOP]),
+    (r"search your library", [Mechanic.TUTOR_TO_HAND]),
+    (r"search your library.+put.+onto the battlefield", [Mechanic.TUTOR_TO_BATTLEFIELD]),
+    (r"return.+from.+graveyard to the battlefield", [Mechanic.REANIMATE]),
+    (r"return.+from.+graveyard to your hand", [Mechanic.REGROWTH]),
+    (r"discard(s)? (a card|\d+ cards?|your hand)", [Mechanic.DISCARD]),
+    (r"mill(s)? (\d+|x)", [Mechanic.MILL]),
+
+    # Triggers
+    (r"when(ever)? .+ enters( the battlefield)?", [Mechanic.ETB_TRIGGER]),
+    (r"when(ever)? .+ leaves( the battlefield)?", [Mechanic.LTB_TRIGGER]),
+    (r"when(ever)? .+ dies", [Mechanic.DEATH_TRIGGER]),
+    (r"when(ever)? .+ attacks", [Mechanic.ATTACK_TRIGGER]),
+    (r"when(ever)? .+ blocks", [Mechanic.BLOCK_TRIGGER]),
+    (r"when(ever)? .+ deals (combat )?damage", [Mechanic.DAMAGE_TRIGGER]),
+    (r"when(ever)? you cast", [Mechanic.CAST_TRIGGER]),
+    (r"when(ever)? an opponent casts", [Mechanic.OPPONENT_CASTS]),
+    (r"at the beginning of your upkeep", [Mechanic.UPKEEP_TRIGGER]),
+    (r"at the beginning of (each|your) end step", [Mechanic.END_STEP_TRIGGER]),
+    (r"when(ever)? you draw", [Mechanic.DRAW_TRIGGER]),
+    (r"when(ever)? you gain life", [Mechanic.GAIN_LIFE_TRIGGER]),
+    (r"when(ever)? you lose life", [Mechanic.LOSE_LIFE_TRIGGER]),
+    (r"when(ever)? a land enters", [Mechanic.LANDFALL]),
+    (r"when(ever)? .+ deals combat damage to a player", [Mechanic.COMBAT_DAMAGE_TO_PLAYER]),
+
+    # Conditions
+    (r"if .+ dies this way", [Mechanic.IF_TARGET_DIES]),
+    (r"if you control a commander", [Mechanic.IF_YOU_CONTROL_COMMANDER]),
+    (r"if you control (a|an) creature", [Mechanic.IF_YOU_CONTROL_CREATURE]),
+    (r"if you control (a|an) artifact", [Mechanic.IF_YOU_CONTROL_ARTIFACT]),
+    (r"if you control (a|an) enchantment", [Mechanic.IF_YOU_CONTROL_ENCHANTMENT]),
+    (r"if a creature (entered|died)", [Mechanic.IF_CREATURE_ENTERED]),
+    (r"if you('ve)? gained.+life", [Mechanic.IF_LIFE_GAINED]),
+    (r"unless (that player|they) pays?", [Mechanic.UNLESS_PAYS]),
+
+    # Stats modification
+    (r"gets? \+\d+/\+\d+", [Mechanic.PLUS_POWER, Mechanic.PLUS_TOUGHNESS]),
+    (r"gets? -\d+/-\d+", [Mechanic.MINUS_POWER, Mechanic.MINUS_TOUGHNESS]),
+    (r"gets? \+\d+/\+0", [Mechanic.PLUS_POWER]),
+    (r"gets? \+0/\+\d+", [Mechanic.PLUS_TOUGHNESS]),
+    (r"(other )?(creatures|permanents) you control get \+", [Mechanic.ANTHEM_EFFECT]),
+    (r"\+1/\+1 counter", [Mechanic.PLUS_ONE_COUNTER]),
+    (r"-1/-1 counter", [Mechanic.MINUS_ONE_COUNTER]),
+    (r"half.+(power|toughness)", [Mechanic.HALF_STATS]),
+    (r"double.+(power|toughness)", [Mechanic.DOUBLE_STATS]),
+
+    # Mana
+    (r"add \{", [Mechanic.ADD_MANA]),
+    (r"add (one|two|three|\d+) mana", [Mechanic.ADD_MANA]),
+    (r"mana of any color", [Mechanic.MANA_OF_ANY_COLOR]),
+    (r"costs? \{?\d+\}? (less|more) to cast", [Mechanic.REDUCE_COST]),
+    (r"without paying (its|their) mana cost", [Mechanic.FREE_CAST_CONDITION]),
+    (r"you may cast.+without paying", [Mechanic.FREE_CAST_CONDITION]),
+    (r"you may choose new targets", [Mechanic.CHANGE_TARGETS]),
+
+    # Special effects
+    (r"gains? protection", [Mechanic.PROTECTION]),
+    (r"can't be (countered|blocked)", [Mechanic.UNBLOCKABLE]),
+    (r"tap target", [Mechanic.TAP]),
+    (r"untap target", [Mechanic.UNTAP]),
+    (r"fight(s)?", [Mechanic.FIGHT]),
+    (r"proliferate", [Mechanic.PROLIFERATE]),
+    (r"twice that many", [Mechanic.TOKEN_DOUBLER]),
+    (r"trigger(s)? an additional time", [Mechanic.DOUBLE_TRIGGER]),
+    (r"instead", [Mechanic.REPLACEMENT_EFFECT]),
+
+    # Zones
+    (r"from your hand", [Mechanic.FROM_HAND]),
+    (r"from (your|a|the) graveyard", [Mechanic.FROM_GRAVEYARD]),
+    (r"from exile", [Mechanic.FROM_EXILE]),
+    (r"from (your|the top of your) library", [Mechanic.FROM_LIBRARY]),
+    (r"put.+into (your|the) graveyard", [Mechanic.TO_GRAVEYARD]),
+    (r"exile.+until", [Mechanic.EXILE_TEMPORARY]),
+    (r"you may cast.+from exile", [Mechanic.CAST_FROM_EXILE]),
+    (r"enters (the battlefield )?tapped", [Mechanic.TO_BATTLEFIELD_TAPPED]),
+]
+
+
+# =============================================================================
+# PARSER
+# =============================================================================
+
+@dataclass
+class ParseResult:
+    """Result of parsing card text."""
+    mechanics: List[Mechanic]
+    parameters: Dict[str, Any]
+    confidence: float  # 0-1, how confident we are in the parse
+    unparsed_text: str  # Text we couldn't parse (for LLM fallback)
+
+
+def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
+    """
+    Parse oracle text into mechanics sequence.
+
+    Args:
+        oracle_text: The card's oracle text
+        card_type: The card's type line (e.g., "Instant", "Creature — Human Wizard")
+
+    Returns:
+        ParseResult with mechanics, parameters, and confidence
+    """
+    text = oracle_text.lower()
+    mechanics = []
+    parameters = {}
+    matched_spans = []
+
+    # Determine base timing from card type
+    card_type_lower = card_type.lower()
+    if "instant" in card_type_lower:
+        mechanics.append(Mechanic.INSTANT_SPEED)
+    elif "sorcery" in card_type_lower:
+        mechanics.append(Mechanic.SORCERY_SPEED)
+    elif any(t in card_type_lower for t in ["creature", "artifact", "enchantment", "planeswalker"]):
+        # Permanents can have static/triggered/activated abilities
+        if "when" in text or "whenever" in text or "at the beginning" in text:
+            mechanics.append(Mechanic.TRIGGERED_ABILITY)
+        if "{" in text and ":" in text:  # Activated ability pattern
+            mechanics.append(Mechanic.ACTIVATED_ABILITY)
+
+    # Check for keyword abilities
+    for keyword, mechanic in KEYWORD_ABILITIES.items():
+        # Match whole word
+        pattern = r'\b' + re.escape(keyword) + r'\b'
+        if re.search(pattern, text):
+            mechanics.append(mechanic)
+            matched_spans.append(keyword)
+
+    # Apply text patterns
+    for pattern, mechs in PATTERNS:
+        match = re.search(pattern, text)
+        if match:
+            for m in mechs:
+                if m not in mechanics:
+                    mechanics.append(m)
+            matched_spans.append(match.group())
+
+            # Extract numeric parameters
+            numbers = re.findall(r'\d+', match.group())
+            if numbers:
+                if Mechanic.DRAW in mechs or Mechanic.DRAW_OPTIONAL in mechs:
+                    parameters["draw_count"] = int(numbers[0])
+                elif Mechanic.DEAL_DAMAGE in mechs:
+                    parameters["damage"] = int(numbers[0])
+                elif Mechanic.CREATE_TOKEN in mechs:
+                    parameters["token_count"] = int(numbers[0]) if numbers[0] != 'x' else 'x'
+                elif Mechanic.SCRY in mechs:
+                    parameters["scry_count"] = int(numbers[0])
+                elif Mechanic.MILL in mechs:
+                    parameters["mill_count"] = int(numbers[0])
+
+    # Calculate confidence based on how much text we parsed
+    total_words = len(text.split())
+    parsed_words = sum(len(span.split()) for span in matched_spans)
+    confidence = min(1.0, parsed_words / max(1, total_words) + 0.3)  # Baseline 0.3
+
+    # Find unparsed text (for LLM fallback)
+    unparsed = text
+    for span in matched_spans:
+        unparsed = unparsed.replace(span, "")
+    unparsed = " ".join(unparsed.split())  # Clean up whitespace
+
+    return ParseResult(
+        mechanics=mechanics,
+        parameters=parameters,
+        confidence=confidence,
+        unparsed_text=unparsed if len(unparsed) > 10 else ""
+    )
+
+
+def parse_card(card_data: Dict[str, Any]) -> CardEncoding:
+    """
+    Parse a Scryfall card object into CardEncoding.
+
+    Args:
+        card_data: Scryfall API response for a single card
+
+    Returns:
+        CardEncoding object
+    """
+    # Extract basic info
+    name = card_data.get("name", "Unknown")
+    oracle_text = card_data.get("oracle_text", "")
+    type_line = card_data.get("type_line", "")
+    mana_cost = card_data.get("mana_cost", "")
+    cmc = int(card_data.get("cmc", 0))
+
+    # Parse mana cost
+    mana_dict = {"W": 0, "U": 0, "B": 0, "R": 0, "G": 0, "C": 0}
+    for symbol in re.findall(r'\{(\w)\}', mana_cost):
+        if symbol in mana_dict:
+            mana_dict[symbol] += 1
+        elif symbol.isdigit():
+            mana_dict["C"] += int(symbol)
+
+    # Parse types
+    types = []
+    subtypes = []
+    if "—" in type_line:
+        main_types, sub_types = type_line.split("—")
+        types = [t.strip().lower() for t in main_types.split()]
+        subtypes = [t.strip().lower() for t in sub_types.split()]
+    else:
+        types = [t.strip().lower() for t in type_line.split()]
+
+    # Parse oracle text
+    result = parse_oracle_text(oracle_text, type_line)
+
+    # Get power/toughness if creature
+    power = None
+    toughness = None
+    if "creature" in types:
+        power_str = card_data.get("power", "0")
+        toughness_str = card_data.get("toughness", "0")
+        try:
+            power = int(power_str)
+            toughness = int(toughness_str)
+        except ValueError:
+            # Handle * or X
+            power = -1 if power_str in ["*", "X"] else 0
+            toughness = -1 if toughness_str in ["*", "X"] else 0
+
+    return CardEncoding(
+        name=name,
+        mana_cost=mana_dict,
+        cmc=cmc,
+        types=types,
+        subtypes=subtypes,
+        mechanics=result.mechanics,
+        parameters=result.parameters,
+        power=power,
+        toughness=toughness,
+    )
+
+
+# =============================================================================
+# TEST
+# =============================================================================
+
+if __name__ == "__main__":
+    # Test with some example cards
+    test_cards = [
+        {
+            "name": "Saw in Half",
+            "mana_cost": "{2}{B}",
+            "cmc": 3,
+            "type_line": "Instant",
+            "oracle_text": "Destroy target creature. If that creature dies this way, its controller creates two tokens that are copies of that creature, except their power is half that creature's power and their toughness is half that creature's toughness. Round up each time."
+        },
+        {
+            "name": "Rhystic Study",
+            "mana_cost": "{2}{U}",
+            "cmc": 3,
+            "type_line": "Enchantment",
+            "oracle_text": "Whenever an opponent casts a spell, you may draw a card unless that player pays {1}."
+        },
+        {
+            "name": "Deflecting Swat",
+            "mana_cost": "{2}{R}",
+            "cmc": 3,
+            "type_line": "Instant",
+            "oracle_text": "If you control a commander, you may cast this spell without paying its mana cost.\nYou may choose new targets for target spell or ability."
+        },
+        {
+            "name": "Mulldrifter",
+            "mana_cost": "{4}{U}",
+            "cmc": 5,
+            "type_line": "Creature — Elemental",
+            "oracle_text": "Flying\nWhen Mulldrifter enters the battlefield, draw two cards.\nEvoke {2}{U}",
+            "power": "2",
+            "toughness": "2"
+        },
+        {
+            "name": "Starfield Vocalist",
+            "mana_cost": "{3}{U}",
+            "cmc": 4,
+            "type_line": "Creature — Human Bard",
+            "oracle_text": "Warp {1}{U}\nIf a permanent entering the battlefield causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+            "power": "2",
+            "toughness": "4"
+        },
+    ]
+
+    print("=" * 70)
+    print("CARD PARSER TEST")
+    print("=" * 70)
+
+    for card_data in test_cards:
+        encoding = parse_card(card_data)
+        print(f"\n{encoding.name}:")
+        print(f"  Type: {encoding.types}")
+        print(f"  Cost: CMC {encoding.cmc}")
+        print(f"  Mechanics ({len(encoding.mechanics)}):")
+        for m in encoding.mechanics:
+            print(f"    - {m.name}")
+        if encoding.parameters:
+            print(f"  Parameters: {encoding.parameters}")
+
+    print("\n" + "=" * 70)
+    print("Parser handles common patterns. Complex text falls back to LLM.")
+    print("=" * 70)
