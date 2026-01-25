@@ -4,17 +4,38 @@ Collect AI Training Data
 
 Run games in observation mode (-o) where Forge AI makes decisions
 and all decisions are logged for training data collection.
+
+Storage: HDF5 for efficient numerical data, with JSON metadata.
 """
 
 import os
 import sys
 import json
 import socket
+import h5py
+import numpy as np
 from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
+from dataclasses import dataclass, field
+from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+@dataclass
+class CollectionStats:
+    """Track collection statistics."""
+    games_completed: int = 0
+    games_timeout: int = 0
+    games_error: int = 0
+    total_decisions: int = 0
+    total_turns: int = 0
+    decision_counts: dict = field(default_factory=lambda: defaultdict(int))
+    game_durations_ms: list = field(default_factory=list)
+    decisions_per_game: list = field(default_factory=list)
+    turns_per_game: list = field(default_factory=list)
+    winners: list = field(default_factory=list)
 
 
 def collect_training_game(
@@ -35,6 +56,7 @@ def collect_training_game(
 
     decisions = []
     game_result = None
+    max_turn = 0
 
     try:
         # Start game in observation mode (-o)
@@ -56,6 +78,7 @@ def collect_training_game(
                 try:
                     data = json.loads(line[9:])
                     decisions.append(data)
+                    max_turn = max(max_turn, data.get("turn", 0))
                 except json.JSONDecodeError:
                     pass
 
@@ -83,25 +106,261 @@ def collect_training_game(
         "result": game_result,
         "deck1": deck1,
         "deck2": deck2,
-        "seed": seed
+        "seed": seed,
+        "max_turn": max_turn
     }
+
+
+def encode_game_state(state: dict) -> np.ndarray:
+    """Encode game state as fixed-size numpy array."""
+    # Fixed-size encoding: [p1_life, p1_hand, p1_lib, p1_creatures, p1_lands, p1_other, p1_mana,
+    #                       p2_life, p2_hand, p2_lib, p2_creatures, p2_lands, p2_other, p2_mana,
+    #                       turn, phase_idx, is_game_over]
+    players = state.get("players", [{}, {}])
+    p1 = players[0] if len(players) > 0 else {}
+    p2 = players[1] if len(players) > 1 else {}
+
+    phase_map = {
+        "UNTAP": 0, "UPKEEP": 1, "DRAW": 2, "MAIN1": 3,
+        "COMBAT_BEGIN": 4, "COMBAT_DECLARE_ATTACKERS": 5,
+        "COMBAT_DECLARE_BLOCKERS": 6, "COMBAT_FIRST_STRIKE_DAMAGE": 7,
+        "COMBAT_DAMAGE": 8, "COMBAT_END": 9, "MAIN2": 10,
+        "END_OF_TURN": 11, "CLEANUP": 12
+    }
+
+    return np.array([
+        p1.get("life", 20),
+        p1.get("hand_size", 0),
+        p1.get("library_size", 0),
+        p1.get("battlefield_creatures", 0),
+        p1.get("battlefield_lands", 0),
+        p1.get("battlefield_other", 0),
+        p1.get("mana_pool", {}).get("total", 0),
+        p2.get("life", 20),
+        p2.get("hand_size", 0),
+        p2.get("library_size", 0),
+        p2.get("battlefield_creatures", 0),
+        p2.get("battlefield_lands", 0),
+        p2.get("battlefield_other", 0),
+        p2.get("mana_pool", {}).get("total", 0),
+        state.get("turn", 1) if "turn" not in state else 1,
+        phase_map.get(state.get("phase", "MAIN1"), 3),
+        1 if state.get("is_game_over", False) else 0
+    ], dtype=np.float32)
+
+
+def encode_decision(decision: dict) -> tuple:
+    """Encode a decision into arrays for HDF5 storage."""
+    dtype = decision.get("decision_type", "unknown")
+
+    # Encode game state
+    game_state = decision.get("game_state", {})
+    state_vec = encode_game_state(game_state)
+
+    # Encode decision metadata
+    turn = decision.get("turn", 0)
+    phase_idx = state_vec[15]  # Already encoded
+
+    # Encode AI choice as index
+    ai_choice = decision.get("ai_choice", {})
+    if dtype == "choose_action":
+        if isinstance(ai_choice, dict) and ai_choice.get("action") == "pass":
+            choice_idx = -1
+        elif isinstance(ai_choice, dict):
+            choice_idx = 0  # Played something
+        else:
+            choice_idx = -1
+    elif dtype in ("declare_attackers", "declare_blockers"):
+        if isinstance(ai_choice, list):
+            choice_idx = len(ai_choice)  # Number of attackers/blockers
+        else:
+            choice_idx = 0
+    else:
+        choice_idx = -1
+
+    # Number of available actions
+    actions = decision.get("actions", [])
+    num_actions = len(actions)
+
+    return state_vec, turn, choice_idx, num_actions, dtype
+
+
+def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
+    """Save decisions to HDF5 file."""
+    if not decisions:
+        return
+
+    # Encode all decisions
+    state_vecs = []
+    turns = []
+    choices = []
+    num_actions_list = []
+    decision_types = []
+
+    type_map = {"choose_action": 0, "declare_attackers": 1, "declare_blockers": 2, "unknown": 3}
+
+    for d in decisions:
+        state_vec, turn, choice_idx, num_actions, dtype = encode_decision(d)
+        state_vecs.append(state_vec)
+        turns.append(turn)
+        choices.append(choice_idx)
+        num_actions_list.append(num_actions)
+        decision_types.append(type_map.get(dtype, 3))
+
+    # Stack into arrays
+    states = np.stack(state_vecs)
+    turns = np.array(turns, dtype=np.int32)
+    choices = np.array(choices, dtype=np.int32)
+    num_actions = np.array(num_actions_list, dtype=np.int32)
+    dtypes = np.array(decision_types, dtype=np.int8)
+
+    # Save to HDF5
+    with h5py.File(output_path, "w") as f:
+        f.create_dataset("states", data=states, compression="gzip", compression_opts=4)
+        f.create_dataset("turns", data=turns, compression="gzip")
+        f.create_dataset("choices", data=choices, compression="gzip")
+        f.create_dataset("num_actions", data=num_actions, compression="gzip")
+        f.create_dataset("decision_types", data=dtypes, compression="gzip")
+
+        # Store metadata as attributes
+        for k, v in metadata.items():
+            if isinstance(v, (str, int, float)):
+                f.attrs[k] = v
+            elif isinstance(v, dict):
+                f.attrs[k] = json.dumps(v)
+
+
+def generate_report(stats: CollectionStats, output_dir: Path, timestamp: str):
+    """Generate a LaTeX training report."""
+    report_path = output_dir / f"collection_report_{timestamp}.tex"
+
+    avg_decisions = np.mean(stats.decisions_per_game) if stats.decisions_per_game else 0
+    avg_turns = np.mean(stats.turns_per_game) if stats.turns_per_game else 0
+    avg_duration = np.mean(stats.game_durations_ms) if stats.game_durations_ms else 0
+
+    # Count winners
+    winner_counts = defaultdict(int)
+    for w in stats.winners:
+        winner_counts[w] += 1
+
+    latex = f"""
+\\documentclass[11pt]{{article}}
+\\usepackage[utf8]{{inputenc}}
+\\usepackage{{geometry}}
+\\usepackage{{booktabs}}
+\\usepackage{{xcolor}}
+\\geometry{{margin=1in}}
+
+\\title{{AI Training Data Collection Report}}
+\\author{{ForgeRL System}}
+\\date{{{datetime.now().strftime("%Y-%m-%d %H:%M")}}}
+
+\\begin{{document}}
+\\maketitle
+
+\\section{{Collection Summary}}
+
+\\begin{{table}}[h]
+\\centering
+\\begin{{tabular}}{{lr}}
+\\toprule
+\\textbf{{Metric}} & \\textbf{{Value}} \\\\
+\\midrule
+Total Games & {stats.games_completed + stats.games_timeout + stats.games_error} \\\\
+Completed & {stats.games_completed} \\\\
+Timeout & {stats.games_timeout} \\\\
+Error & {stats.games_error} \\\\
+\\midrule
+Total Decisions & {stats.total_decisions:,} \\\\
+Total Turns & {stats.total_turns} \\\\
+\\midrule
+Avg Decisions/Game & {avg_decisions:.1f} \\\\
+Avg Turns/Game & {avg_turns:.1f} \\\\
+Avg Duration (ms) & {avg_duration:.0f} \\\\
+\\bottomrule
+\\end{{tabular}}
+\\caption{{Collection Metrics}}
+\\end{{table}}
+
+\\section{{Decision Types}}
+
+\\begin{{table}}[h]
+\\centering
+\\begin{{tabular}}{{lr}}
+\\toprule
+\\textbf{{Type}} & \\textbf{{Count}} \\\\
+\\midrule
+"""
+    for dtype, count in sorted(stats.decision_counts.items()):
+        latex += f"{dtype} & {count:,} \\\\\n"
+
+    latex += f"""\\bottomrule
+\\end{{tabular}}
+\\caption{{Decisions by Type}}
+\\end{{table}}
+
+\\section{{Game Outcomes}}
+
+\\begin{{table}}[h]
+\\centering
+\\begin{{tabular}}{{lr}}
+\\toprule
+\\textbf{{Winner}} & \\textbf{{Wins}} \\\\
+\\midrule
+"""
+    for winner, count in sorted(winner_counts.items(), key=lambda x: -x[1]):
+        latex += f"{winner[:30]} & {count} \\\\\n"
+
+    latex += f"""\\bottomrule
+\\end{{tabular}}
+\\caption{{Win Distribution}}
+\\end{{table}}
+
+\\section{{Data Quality Notes}}
+
+\\begin{{itemize}}
+\\item Forge AI serves as the expert for imitation learning
+\\item Decision logging captures: game state, available actions, AI choice
+\\item Storage format: HDF5 with gzip compression
+\\item State encoding: 17-dimensional vector (life, hand, library, battlefield, mana)
+\\end{{itemize}}
+
+\\section{{Recommended Next Steps}}
+
+\\begin{{enumerate}}
+\\item Collect \\textbf{{{max(1000 - stats.games_completed, 0):,} more games}} to reach 1000 game minimum
+\\item Train imitation learning policy on collected data
+\\item Evaluate against random/heuristic baselines
+\\item Begin self-play fine-tuning once imitation accuracy $>$ 60\\%
+\\end{{enumerate}}
+
+\\end{{document}}
+"""
+
+    with open(report_path, "w") as f:
+        f.write(latex)
+
+    return report_path
 
 
 def collect_training_batch(
     num_games: int = 10,
     output_dir: str = "training_data",
     deck1: str = "red_aggro.dck",
-    deck2: str = "white_weenie.dck"
+    deck2: str = "white_weenie.dck",
+    host: str = "localhost",
+    port: int = 17171
 ):
     """Collect training data from multiple games."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     all_decisions = []
-    stats = defaultdict(int)
+    stats = CollectionStats()
 
     print(f"Collecting training data from {num_games} games...")
     print(f"Decks: {deck1} vs {deck2}")
+    print(f"Output: {output_path}")
     print()
 
     for game_id in range(1, num_games + 1):
@@ -111,62 +370,119 @@ def collect_training_batch(
         result = collect_training_game(
             deck1=deck1,
             deck2=deck2,
-            seed=seed
+            seed=seed,
+            host=host,
+            port=port
         )
 
         num_decisions = len(result["decisions"])
         game_result = result["result"]
+        max_turn = result["max_turn"]
 
+        # Parse result
         if game_result and "won" in game_result.lower():
-            stats["completed"] += 1
+            stats.games_completed += 1
+            # Extract winner name and duration
+            parts = game_result.split(" won in ")
+            if len(parts) == 2:
+                winner = parts[0].strip()
+                duration_str = parts[1].replace("ms", "").strip()
+                try:
+                    duration = int(duration_str)
+                    stats.game_durations_ms.append(duration)
+                except ValueError:
+                    pass
+                stats.winners.append(winner)
         elif game_result == "TIMEOUT":
-            stats["timeout"] += 1
+            stats.games_timeout += 1
         else:
-            stats["error"] += 1
+            stats.games_error += 1
 
         # Count decision types
         for d in result["decisions"]:
             dtype = d.get("decision_type", "unknown")
-            stats[f"decision_{dtype}"] += 1
+            stats.decision_counts[dtype] += 1
             all_decisions.append(d)
 
-        print(f"{num_decisions} decisions, {game_result}")
+        stats.total_decisions += num_decisions
+        stats.total_turns += max_turn
+        stats.decisions_per_game.append(num_decisions)
+        stats.turns_per_game.append(max_turn)
 
-    # Save all decisions
+        duration_str = f"{stats.game_durations_ms[-1]}ms" if stats.game_durations_ms else "N/A"
+        print(f"{num_decisions} decisions, {max_turn} turns, {game_result}")
+
+    # Save to HDF5
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    decisions_file = output_path / f"decisions_{timestamp}.jsonl"
+    hdf5_file = output_path / f"training_data_{timestamp}.h5"
 
-    with open(decisions_file, "w") as f:
-        for d in all_decisions:
-            f.write(json.dumps(d) + "\n")
+    metadata = {
+        "timestamp": timestamp,
+        "num_games": num_games,
+        "total_decisions": stats.total_decisions,
+        "deck1": deck1,
+        "deck2": deck2,
+        "games_completed": stats.games_completed,
+        "games_timeout": stats.games_timeout,
+        "games_error": stats.games_error
+    }
 
-    print(f"\nSaved {len(all_decisions)} decisions to {decisions_file}")
+    save_to_hdf5(all_decisions, hdf5_file, metadata)
+
+    # Also save raw JSONL for debugging (optional, smaller subset)
+    if len(all_decisions) <= 1000:
+        jsonl_file = output_path / f"decisions_{timestamp}.jsonl"
+        with open(jsonl_file, "w") as f:
+            for d in all_decisions:
+                f.write(json.dumps(d) + "\n")
+        print(f"\nRaw decisions saved to {jsonl_file}")
+
+    print(f"\nHDF5 data saved to {hdf5_file}")
+    print(f"  States shape: ({stats.total_decisions}, 17)")
+    print(f"  Compressed size: {hdf5_file.stat().st_size / 1024:.1f} KB")
+
+    # Generate report
+    report_path = generate_report(stats, output_path, timestamp)
+    print(f"Report saved to {report_path}")
 
     # Print summary
-    print(f"\n=== Collection Summary ===")
+    print(f"\n{'='*50}")
+    print("COLLECTION SUMMARY")
+    print(f"{'='*50}")
     print(f"Total games: {num_games}")
-    print(f"Completed: {stats['completed']}")
-    print(f"Timeout: {stats['timeout']}")
-    print(f"Error: {stats['error']}")
+    print(f"  Completed: {stats.games_completed}")
+    print(f"  Timeout: {stats.games_timeout}")
+    print(f"  Error: {stats.games_error}")
+    print(f"\nTotal decisions: {stats.total_decisions:,}")
+    print(f"Avg decisions/game: {np.mean(stats.decisions_per_game):.1f}")
+    print(f"Avg turns/game: {np.mean(stats.turns_per_game):.1f}")
     print(f"\nDecisions by type:")
-    for key, value in sorted(stats.items()):
-        if key.startswith("decision_"):
-            print(f"  {key[9:]}: {value}")
+    for dtype, count in sorted(stats.decision_counts.items()):
+        print(f"  {dtype}: {count:,}")
 
-    # Save summary
+    # Save summary JSON
     summary = {
         "timestamp": timestamp,
         "num_games": num_games,
-        "total_decisions": len(all_decisions),
+        "total_decisions": stats.total_decisions,
         "decks": {"deck1": deck1, "deck2": deck2},
-        "stats": dict(stats)
+        "stats": {
+            "completed": stats.games_completed,
+            "timeout": stats.games_timeout,
+            "error": stats.games_error,
+            "avg_decisions_per_game": float(np.mean(stats.decisions_per_game)),
+            "avg_turns_per_game": float(np.mean(stats.turns_per_game)),
+            "decision_counts": dict(stats.decision_counts)
+        },
+        "files": {
+            "hdf5": str(hdf5_file),
+            "report": str(report_path)
+        }
     }
 
     summary_file = output_path / f"summary_{timestamp}.json"
     with open(summary_file, "w") as f:
         json.dump(summary, f, indent=2)
-
-    print(f"\nSummary saved to {summary_file}")
 
     return summary
 
@@ -178,13 +494,17 @@ def main():
     parser.add_argument("--output", default="training_data", help="Output directory")
     parser.add_argument("--deck1", default="red_aggro.dck", help="First deck")
     parser.add_argument("--deck2", default="white_weenie.dck", help="Second deck")
+    parser.add_argument("--host", default="localhost", help="Daemon host")
+    parser.add_argument("--port", type=int, default=17171, help="Daemon port")
     args = parser.parse_args()
 
     collect_training_batch(
         num_games=args.games,
         output_dir=args.output,
         deck1=args.deck1,
-        deck2=args.deck2
+        deck2=args.deck2,
+        host=args.host,
+        port=args.port
     )
 
 
