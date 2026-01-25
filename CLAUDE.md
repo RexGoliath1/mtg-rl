@@ -427,11 +427,67 @@ When W&B is configured:
 
 ---
 
+## Development Priorities
+
+**IMPORTANT**: Prefer training-side edits over Forge edits when possible.
+- Training code (Python) is faster to iterate and test
+- Forge changes require rebuilding Docker image (~2 min)
+- Only modify Forge for data collection improvements
+
+---
+
+## Data Storage Best Practices
+
+**Use HDF5 over JSON/JSONL for training data at scale.**
+
+| Scale | JSONL | HDF5 (gzip) | Recommendation |
+|-------|-------|-------------|----------------|
+| <1K decisions | ~200 KB | ~10 KB | Either works |
+| 10K decisions | ~2 MB | ~100 KB | HDF5 preferred |
+| 100K+ decisions | ~20 MB | ~1 MB | **HDF5 required** |
+
+**Why HDF5:**
+- 20x smaller with compression
+- Memory-mapped loading for large datasets
+- Random access during training
+- Stores numerical arrays efficiently
+
+**Current encoding:** 17-dimensional state vector per decision:
+- Player 1: life, hand_size, library_size, creatures, lands, other, mana (7)
+- Player 2: same (7)
+- Game: turn, phase_idx, is_game_over (3)
+
+---
+
+## Imitation Learning Strategy
+
+**Goal:** Bootstrap a policy that understands basic game flow before self-play.
+
+**Target:** 50,000 games across diverse decks (~15M decisions)
+
+**Focus areas:**
+1. Card selection (which spell to play)
+2. Turn flow (when to pass priority)
+3. Combat decisions (attackers/blockers)
+4. Mana usage (tap correct lands)
+
+**NOT focused on:**
+- Win rate optimization (self-play handles this)
+- Perfect play (just "reasonable" moves)
+- Specific matchup knowledge
+
+**Deck diversity is critical** - cover different:
+- Colors (mono, 2-color, 3-color)
+- Archetypes (aggro, midrange, control)
+- Mechanics (tokens, counters, removal)
+
+---
+
 ## Known Issues / TODOs
 
 - [ ] EntityEncoder dimension mismatch with training pipeline (use SharedCardEncoder for now)
 - [ ] NaN losses with synthetic data (normal - use real 17lands data)
-- [ ] Forge daemon not integrated yet (simulated drafts work)
+- [x] Forge daemon integrated with observation mode (-o flag)
 - [x] AWS cost controls configured ($100/month limit)
 - [x] v2 hybrid encoder architecture implemented (hybrid_card_encoder.py)
 - [x] Mechanics vocabulary defined (200+ primitives) - src/mechanics/vocabulary.py

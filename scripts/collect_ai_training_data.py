@@ -6,6 +6,11 @@ Run games in observation mode (-o) where Forge AI makes decisions
 and all decisions are logged for training data collection.
 
 Storage: HDF5 for efficient numerical data, with JSON metadata.
+
+For imitation learning bootstrapping:
+- Focus on card selection and turn flow
+- Use diverse decks for embedding space coverage
+- Target 50,000+ games for robust training
 """
 
 import os
@@ -18,9 +23,23 @@ from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import List, Tuple, Optional
+import itertools
+import random
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+# Default deck pool for diverse coverage
+# Covers: mono-color aggro, 2-color aggro, 3-color control, midrange
+DEFAULT_DECKS = [
+    "red_aggro.dck",           # Mono-red aggro
+    "white_weenie.dck",        # Mono-white aggro
+    "mono_red_aggro.dck",      # Mono-red competitive
+    "boros_aggro.dck",         # R/W aggro
+    "dimir_midrange.dck",      # U/B midrange
+    "jeskai_control.dck",      # U/W/R control
+]
 
 
 @dataclass
@@ -36,6 +55,8 @@ class CollectionStats:
     decisions_per_game: list = field(default_factory=list)
     turns_per_game: list = field(default_factory=list)
     winners: list = field(default_factory=list)
+    deck_pairs_played: dict = field(default_factory=lambda: defaultdict(int))
+    cards_seen: set = field(default_factory=set)
 
 
 def collect_training_game(
@@ -57,6 +78,7 @@ def collect_training_game(
     decisions = []
     game_result = None
     max_turn = 0
+    cards_seen = set()
 
     try:
         # Start game in observation mode (-o)
@@ -79,6 +101,16 @@ def collect_training_game(
                     data = json.loads(line[9:])
                     decisions.append(data)
                     max_turn = max(max_turn, data.get("turn", 0))
+
+                    # Track cards seen for coverage metrics
+                    for action in data.get("actions", []):
+                        card = action.get("card", "")
+                        if card:
+                            cards_seen.add(card)
+                    ai_choice = data.get("ai_choice", {})
+                    if isinstance(ai_choice, dict) and ai_choice.get("card"):
+                        cards_seen.add(ai_choice["card"])
+
                 except json.JSONDecodeError:
                     pass
 
@@ -107,7 +139,8 @@ def collect_training_game(
         "deck1": deck1,
         "deck2": deck2,
         "seed": seed,
-        "max_turn": max_turn
+        "max_turn": max_turn,
+        "cards_seen": cards_seen
     }
 
 
@@ -159,7 +192,6 @@ def encode_decision(decision: dict) -> tuple:
 
     # Encode decision metadata
     turn = decision.get("turn", 0)
-    phase_idx = state_vec[15]  # Already encoded
 
     # Encode AI choice as index
     ai_choice = decision.get("ai_choice", {})
@@ -230,6 +262,27 @@ def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
                 f.attrs[k] = json.dumps(v)
 
 
+def generate_deck_pairs(decks: List[str], num_pairs: int) -> List[Tuple[str, str]]:
+    """Generate deck pairs for diverse matchup coverage."""
+    # Generate all possible pairs (including mirrors)
+    all_pairs = list(itertools.combinations_with_replacement(decks, 2))
+
+    # Also add reverse pairs for non-mirrors (player order matters)
+    extended_pairs = []
+    for d1, d2 in all_pairs:
+        extended_pairs.append((d1, d2))
+        if d1 != d2:
+            extended_pairs.append((d2, d1))
+
+    # Repeat to reach desired count
+    pairs = []
+    while len(pairs) < num_pairs:
+        random.shuffle(extended_pairs)
+        pairs.extend(extended_pairs)
+
+    return pairs[:num_pairs]
+
+
 def generate_report(stats: CollectionStats, output_dir: Path, timestamp: str):
     """Generate a LaTeX training report."""
     report_path = output_dir / f"collection_report_{timestamp}.tex"
@@ -237,6 +290,7 @@ def generate_report(stats: CollectionStats, output_dir: Path, timestamp: str):
     avg_decisions = np.mean(stats.decisions_per_game) if stats.decisions_per_game else 0
     avg_turns = np.mean(stats.turns_per_game) if stats.turns_per_game else 0
     avg_duration = np.mean(stats.game_durations_ms) if stats.game_durations_ms else 0
+    total_games = stats.games_completed + stats.games_timeout + stats.games_error
 
     # Count winners
     winner_counts = defaultdict(int)
@@ -249,6 +303,7 @@ def generate_report(stats: CollectionStats, output_dir: Path, timestamp: str):
 \\usepackage{{geometry}}
 \\usepackage{{booktabs}}
 \\usepackage{{xcolor}}
+\\usepackage{{longtable}}
 \\geometry{{margin=1in}}
 
 \\title{{AI Training Data Collection Report}}
@@ -266,13 +321,14 @@ def generate_report(stats: CollectionStats, output_dir: Path, timestamp: str):
 \\toprule
 \\textbf{{Metric}} & \\textbf{{Value}} \\\\
 \\midrule
-Total Games & {stats.games_completed + stats.games_timeout + stats.games_error} \\\\
-Completed & {stats.games_completed} \\\\
-Timeout & {stats.games_timeout} \\\\
-Error & {stats.games_error} \\\\
+Total Games & {total_games:,} \\\\
+Completed & {stats.games_completed:,} \\\\
+Timeout & {stats.games_timeout:,} \\\\
+Error & {stats.games_error:,} \\\\
 \\midrule
 Total Decisions & {stats.total_decisions:,} \\\\
-Total Turns & {stats.total_turns} \\\\
+Total Turns & {stats.total_turns:,} \\\\
+Unique Cards Seen & {len(stats.cards_seen):,} \\\\
 \\midrule
 Avg Decisions/Game & {avg_decisions:.1f} \\\\
 Avg Turns/Game & {avg_turns:.1f} \\\\
@@ -299,39 +355,48 @@ Avg Duration (ms) & {avg_duration:.0f} \\\\
 \\caption{{Decisions by Type}}
 \\end{{table}}
 
-\\section{{Game Outcomes}}
+\\section{{Deck Coverage}}
 
 \\begin{{table}}[h]
 \\centering
 \\begin{{tabular}}{{lr}}
 \\toprule
-\\textbf{{Winner}} & \\textbf{{Wins}} \\\\
+\\textbf{{Deck Pair}} & \\textbf{{Games}} \\\\
 \\midrule
 """
-    for winner, count in sorted(winner_counts.items(), key=lambda x: -x[1]):
-        latex += f"{winner[:30]} & {count} \\\\\n"
+    for pair, count in sorted(stats.deck_pairs_played.items(), key=lambda x: -x[1])[:15]:
+        latex += f"{pair[:40]} & {count:,} \\\\\n"
 
     latex += f"""\\bottomrule
 \\end{{tabular}}
-\\caption{{Win Distribution}}
+\\caption{{Top Deck Matchups}}
 \\end{{table}}
 
 \\section{{Data Quality Notes}}
 
 \\begin{{itemize}}
 \\item Forge AI serves as the expert for imitation learning
-\\item Decision logging captures: game state, available actions, AI choice
-\\item Storage format: HDF5 with gzip compression
-\\item State encoding: 17-dimensional vector (life, hand, library, battlefield, mana)
+\\item Focus: card selection, turn flow, combat decisions
+\\item NOT optimizing for win rate (self-play handles that)
+\\item Storage: HDF5 with gzip compression (\\textasciitilde 20x smaller than JSON)
+\\item State encoding: 17-dimensional vector
+\\end{{itemize}}
+
+\\section{{Coverage Analysis}}
+
+\\begin{{itemize}}
+\\item Unique cards observed: {len(stats.cards_seen):,}
+\\item Unique deck pairs: {len(stats.deck_pairs_played)}
+\\item Games per deck pair (avg): {total_games / max(len(stats.deck_pairs_played), 1):.1f}
 \\end{{itemize}}
 
 \\section{{Recommended Next Steps}}
 
 \\begin{{enumerate}}
-\\item Collect \\textbf{{{max(1000 - stats.games_completed, 0):,} more games}} to reach 1000 game minimum
+\\item {"\\textbf{COMPLETE} - Ready for imitation learning training" if stats.games_completed >= 50000 else f"Collect \\textbf{{{max(50000 - stats.games_completed, 0):,} more games}} to reach 50K target"}
 \\item Train imitation learning policy on collected data
-\\item Evaluate against random/heuristic baselines
-\\item Begin self-play fine-tuning once imitation accuracy $>$ 60\\%
+\\item Evaluate policy accuracy on held-out decisions
+\\item Begin self-play fine-tuning once accuracy $>$ 50\\%
 \\end{{enumerate}}
 
 \\end{{document}}
@@ -346,43 +411,74 @@ Avg Duration (ms) & {avg_duration:.0f} \\\\
 def collect_training_batch(
     num_games: int = 10,
     output_dir: str = "training_data",
-    deck1: str = "red_aggro.dck",
-    deck2: str = "white_weenie.dck",
+    decks: List[str] = None,
     host: str = "localhost",
-    port: int = 17171
+    port: int = 17171,
+    save_interval: int = 1000,
+    timeout: int = 60
 ):
-    """Collect training data from multiple games."""
+    """Collect training data from multiple games with deck rotation."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+
+    if decks is None:
+        decks = DEFAULT_DECKS
+
+    # Generate deck pairs for full coverage
+    deck_pairs = generate_deck_pairs(decks, num_games)
 
     all_decisions = []
     stats = CollectionStats()
 
-    print(f"Collecting training data from {num_games} games...")
-    print(f"Decks: {deck1} vs {deck2}")
+    print(f"=" * 60)
+    print("AI TRAINING DATA COLLECTION")
+    print(f"=" * 60)
+    print(f"Target games: {num_games:,}")
+    print(f"Deck pool: {len(decks)} decks")
+    print(f"Unique matchups: {len(set(deck_pairs))}")
     print(f"Output: {output_path}")
+    print(f"Save interval: every {save_interval} games")
+    print(f"=" * 60)
     print()
 
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    start_time = datetime.now()
+
     for game_id in range(1, num_games + 1):
-        seed = game_id * 1000
-        print(f"Game {game_id}/{num_games}...", end=" ", flush=True)
+        deck1, deck2 = deck_pairs[game_id - 1]
+        seed = game_id * 1000 + random.randint(0, 999)
+
+        # Progress indicator
+        if game_id % 100 == 0 or game_id == 1:
+            elapsed = (datetime.now() - start_time).total_seconds()
+            rate = game_id / elapsed if elapsed > 0 else 0
+            eta = (num_games - game_id) / rate if rate > 0 else 0
+            print(f"Game {game_id:,}/{num_games:,} ({game_id*100/num_games:.1f}%) - "
+                  f"{rate:.1f} games/sec - ETA: {eta/60:.1f} min")
 
         result = collect_training_game(
             deck1=deck1,
             deck2=deck2,
             seed=seed,
             host=host,
-            port=port
+            port=port,
+            timeout=timeout
         )
 
         num_decisions = len(result["decisions"])
         game_result = result["result"]
         max_turn = result["max_turn"]
 
+        # Track deck pair
+        pair_key = f"{deck1} vs {deck2}"
+        stats.deck_pairs_played[pair_key] += 1
+
+        # Track cards seen
+        stats.cards_seen.update(result.get("cards_seen", set()))
+
         # Parse result
         if game_result and "won" in game_result.lower():
             stats.games_completed += 1
-            # Extract winner name and duration
             parts = game_result.split(" won in ")
             if len(parts) == 2:
                 winner = parts[0].strip()
@@ -409,53 +505,62 @@ def collect_training_batch(
         stats.decisions_per_game.append(num_decisions)
         stats.turns_per_game.append(max_turn)
 
-        duration_str = f"{stats.game_durations_ms[-1]}ms" if stats.game_durations_ms else "N/A"
-        print(f"{num_decisions} decisions, {max_turn} turns, {game_result}")
+        # Periodic save
+        if game_id % save_interval == 0:
+            checkpoint_file = output_path / f"training_data_{timestamp}_checkpoint_{game_id}.h5"
+            metadata = {
+                "timestamp": timestamp,
+                "num_games": game_id,
+                "total_decisions": stats.total_decisions,
+                "games_completed": stats.games_completed,
+                "checkpoint": True
+            }
+            save_to_hdf5(all_decisions, checkpoint_file, metadata)
+            print(f"  Checkpoint saved: {checkpoint_file.name} ({stats.total_decisions:,} decisions)")
 
-    # Save to HDF5
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    hdf5_file = output_path / f"training_data_{timestamp}.h5"
-
+    # Final save
+    hdf5_file = output_path / f"training_data_{timestamp}_final.h5"
     metadata = {
         "timestamp": timestamp,
         "num_games": num_games,
         "total_decisions": stats.total_decisions,
-        "deck1": deck1,
-        "deck2": deck2,
         "games_completed": stats.games_completed,
         "games_timeout": stats.games_timeout,
-        "games_error": stats.games_error
+        "games_error": stats.games_error,
+        "unique_cards": len(stats.cards_seen),
+        "unique_matchups": len(stats.deck_pairs_played)
     }
-
     save_to_hdf5(all_decisions, hdf5_file, metadata)
 
-    # Also save raw JSONL for debugging (optional, smaller subset)
-    if len(all_decisions) <= 1000:
-        jsonl_file = output_path / f"decisions_{timestamp}.jsonl"
-        with open(jsonl_file, "w") as f:
-            for d in all_decisions:
-                f.write(json.dumps(d) + "\n")
-        print(f"\nRaw decisions saved to {jsonl_file}")
-
+    print(f"\n{'='*60}")
+    print("COLLECTION COMPLETE")
+    print(f"{'='*60}")
     print(f"\nHDF5 data saved to {hdf5_file}")
-    print(f"  States shape: ({stats.total_decisions}, 17)")
-    print(f"  Compressed size: {hdf5_file.stat().st_size / 1024:.1f} KB")
+    print(f"  States shape: ({stats.total_decisions:,}, 17)")
+    print(f"  Compressed size: {hdf5_file.stat().st_size / (1024*1024):.2f} MB")
 
     # Generate report
     report_path = generate_report(stats, output_path, timestamp)
     print(f"Report saved to {report_path}")
 
     # Print summary
-    print(f"\n{'='*50}")
-    print("COLLECTION SUMMARY")
-    print(f"{'='*50}")
-    print(f"Total games: {num_games}")
-    print(f"  Completed: {stats.games_completed}")
-    print(f"  Timeout: {stats.games_timeout}")
-    print(f"  Error: {stats.games_error}")
+    print(f"\n{'='*60}")
+    print("SUMMARY")
+    print(f"{'='*60}")
+    print(f"Total games: {num_games:,}")
+    print(f"  Completed: {stats.games_completed:,}")
+    print(f"  Timeout: {stats.games_timeout:,}")
+    print(f"  Error: {stats.games_error:,}")
     print(f"\nTotal decisions: {stats.total_decisions:,}")
+    print(f"Unique cards seen: {len(stats.cards_seen):,}")
+    print(f"Unique matchups: {len(stats.deck_pairs_played)}")
     print(f"Avg decisions/game: {np.mean(stats.decisions_per_game):.1f}")
     print(f"Avg turns/game: {np.mean(stats.turns_per_game):.1f}")
+
+    elapsed = (datetime.now() - start_time).total_seconds()
+    print(f"\nCollection time: {elapsed/60:.1f} minutes ({elapsed/3600:.2f} hours)")
+    print(f"Rate: {num_games/elapsed:.1f} games/sec")
+
     print(f"\nDecisions by type:")
     for dtype, count in sorted(stats.decision_counts.items()):
         print(f"  {dtype}: {count:,}")
@@ -465,7 +570,8 @@ def collect_training_batch(
         "timestamp": timestamp,
         "num_games": num_games,
         "total_decisions": stats.total_decisions,
-        "decks": {"deck1": deck1, "deck2": deck2},
+        "unique_cards": len(stats.cards_seen),
+        "unique_matchups": len(stats.deck_pairs_played),
         "stats": {
             "completed": stats.games_completed,
             "timeout": stats.games_timeout,
@@ -477,7 +583,8 @@ def collect_training_batch(
         "files": {
             "hdf5": str(hdf5_file),
             "report": str(report_path)
-        }
+        },
+        "collection_time_seconds": elapsed
     }
 
     summary_file = output_path / f"summary_{timestamp}.json"
@@ -490,21 +597,23 @@ def collect_training_batch(
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Collect AI training data")
-    parser.add_argument("--games", type=int, default=10, help="Number of games")
+    parser.add_argument("--games", type=int, default=100, help="Number of games")
     parser.add_argument("--output", default="training_data", help="Output directory")
-    parser.add_argument("--deck1", default="red_aggro.dck", help="First deck")
-    parser.add_argument("--deck2", default="white_weenie.dck", help="Second deck")
+    parser.add_argument("--decks", nargs="+", default=None, help="Deck files to use")
     parser.add_argument("--host", default="localhost", help="Daemon host")
     parser.add_argument("--port", type=int, default=17171, help="Daemon port")
+    parser.add_argument("--save-interval", type=int, default=1000, help="Save checkpoint every N games")
+    parser.add_argument("--timeout", type=int, default=60, help="Game timeout in seconds")
     args = parser.parse_args()
 
     collect_training_batch(
         num_games=args.games,
         output_dir=args.output,
-        deck1=args.deck1,
-        deck2=args.deck2,
+        decks=args.decks,
         host=args.host,
-        port=args.port
+        port=args.port,
+        save_interval=args.save_interval,
+        timeout=args.timeout
     )
 
 
