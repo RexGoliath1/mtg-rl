@@ -381,6 +381,60 @@ The bottleneck is Forge communication latency (~50-100ms per decision).
 
 ---
 
+## Docker Deployment
+
+### Building Images
+
+The project uses multi-stage Docker builds for efficient deployment:
+
+```bash
+# Build all images
+./scripts/deploy_docker.sh --build
+
+# Or build individually:
+docker build -t mtg-daemon:latest -f Dockerfile.daemon .
+docker build -t mtg-training:latest -f Dockerfile.training .
+```
+
+**Image Sizes (approximate):**
+| Image | Size | Contents |
+|-------|------|----------|
+| mtg-daemon | ~800MB | Java 17, Forge JAR, card data |
+| mtg-training | ~5GB | PyTorch, CUDA, sentence-transformers |
+
+### Local Testing
+
+```bash
+# Test with docker-compose
+./scripts/deploy_docker.sh --local --games 10
+
+# Or manually:
+docker-compose up -d daemon
+docker-compose run training python scripts/profile_forge_games.py --host daemon --port 17171
+docker-compose down
+```
+
+### Cloud Deployment (ECR + EC2)
+
+```bash
+# Full deployment pipeline
+./scripts/deploy_docker.sh --all --games 100
+
+# Step by step:
+./scripts/deploy_docker.sh --build   # Build locally
+./scripts/deploy_docker.sh --push    # Push to ECR
+./scripts/deploy_docker.sh --deploy  # Launch EC2 instance
+```
+
+### Lessons Learned
+
+1. **Avoid tar-based deployment**: Extracting large archives on EC2 is very slow
+2. **Pre-bake dependencies**: Docker images with PyTorch/CUDA pre-installed save time
+3. **Build Forge in image**: Multi-stage Docker build handles Maven compilation
+4. **Use xvfb**: Forge may need a virtual display even in headless mode
+
+---
+
 ## Testing Strategy
 
 ### Unit Tests (tests/)
