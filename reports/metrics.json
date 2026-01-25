@@ -1,47 +1,82 @@
 {
-  "date": "2026-01-25T13:00:39.511813",
-  "total_games": 5,
-  "total_turns": 540,
-  "total_decisions": 7401,
-  "avg_turns_per_game": 108.0,
-  "avg_decisions_per_game": 1480.2,
-  "avg_decisions_per_turn": 13.705555555555556,
-  "max_decisions_per_turn": 17,
+  "date": "2026-01-25T14:19:05.832045",
+  "total_games": 10,
+  "total_turns": 120,
+  "total_decisions": 2508,
+  "avg_turns_per_game": 12.0,
+  "avg_decisions_per_game": 250.8,
+  "avg_decisions_per_turn": 20.9,
+  "max_decisions_per_turn": 40,
   "games": [
     {
       "game_id": 1,
-      "turns": 108,
-      "decisions": 1557,
+      "turns": 13,
+      "decisions": 316,
       "winner": "Agent(2)-White Weenie",
-      "duration_s": 28.467876195907593
+      "duration_s": 1.7776541709899902
     },
     {
       "game_id": 2,
-      "turns": 108,
-      "decisions": 1443,
+      "turns": 25,
+      "decisions": 558,
       "winner": "Agent(2)-White Weenie",
-      "duration_s": 28.741106271743774
+      "duration_s": 4.009210109710693
     },
     {
       "game_id": 3,
-      "turns": 108,
-      "decisions": 1553,
-      "winner": "Agent(1)-Red Aggro",
-      "duration_s": 27.227945804595947
+      "turns": 8,
+      "decisions": 141,
+      "winner": "Agent(2)-White Weenie",
+      "duration_s": 1.152101755142212
     },
     {
       "game_id": 4,
-      "turns": 108,
-      "decisions": 1504,
+      "turns": 7,
+      "decisions": 147,
       "winner": "Agent(2)-White Weenie",
-      "duration_s": 24.316921949386597
+      "duration_s": 1.0486268997192383
     },
     {
       "game_id": 5,
-      "turns": 108,
-      "decisions": 1344,
-      "winner": "Agent(1)-Red Aggro",
-      "duration_s": 25.222165822982788
+      "turns": 10,
+      "decisions": 131,
+      "winner": "Agent(2)-White Weenie",
+      "duration_s": 1.3792078495025635
+    },
+    {
+      "game_id": 6,
+      "turns": 10,
+      "decisions": 252,
+      "winner": "Agent(2)-White Weenie",
+      "duration_s": 1.4257922172546387
+    },
+    {
+      "game_id": 7,
+      "turns": 12,
+      "decisions": 261,
+      "winner": "Agent(2)-White Weenie",
+      "duration_s": 1.3757810592651367
+    },
+    {
+      "game_id": 8,
+      "turns": 11,
+      "decisions": 207,
+      "winner": "Agent(2)-White Weenie",
+      "duration_s": 1.347344160079956
+    },
+    {
+      "game_id": 9,
+      "turns": 12,
+      "decisions": 247,
+      "winner": "Agent(2)-White Weenie",
+      "duration_s": 1.3368048667907715
+    },
+    {
+      "game_id": 10,
+      "turns": 12,
+      "decisions": 248,
+      "winner": "Agent(2)-White Weenie",
+      "duration_s": 1.4745118618011475
     }
   ]
 }

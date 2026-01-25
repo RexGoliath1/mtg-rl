@@ -17,7 +17,7 @@ from collections import defaultdict
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.forge.forge_client import ForgeClient
-from src.training.simple_agent import SimpleAgent
+from src.training.aggressive_agent import AggressiveAgent
 
 
 @dataclass
@@ -39,7 +39,7 @@ def run_games(num_games: int = 10, host: str = "localhost", port: int = 17171):
         print(f"Game {game_id}/{num_games}...", end=" ", flush=True)
 
         client = ForgeClient(host, port, timeout=120)
-        agent = SimpleAgent()
+        agent = AggressiveAgent()
         game_metrics = GameMetrics(game_id=game_id)
 
         import time
