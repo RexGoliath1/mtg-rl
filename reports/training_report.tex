@@ -1,0 +1,91 @@
+
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\geometry{margin=1in}
+
+\title{Forge Imitation Training Report}
+\author{ForgeRL System}
+\date{2026-01-25 13:00}
+
+\begin{document}
+\maketitle
+
+\section{Summary}
+
+Training run with Simple Agent to collect game metrics.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lr}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Total Games & 5 \\
+Total Decisions & 7,401 \\
+Total Turns & 540 \\
+\midrule
+Avg Turns/Game & 108.0 \\
+Avg Decisions/Game & 1480.2 \\
+Avg Decisions/Turn & 13.7 \\
+Max Decisions/Turn & 17 \\
+\bottomrule
+\end{tabular}
+\caption{Game Complexity Metrics}
+\end{table}
+
+\section{Target vs Current}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Metric} & \textbf{Target} & \textbf{Current} \\
+\midrule
+Turns/Game & 8-15 & 108.0 \\
+Decisions/Turn & 5-20 & 13.7 \\
+Decisions/Game & 50-200 & 1480.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Observations}
+
+\begin{itemize}
+\item \textcolor{red}{Games are too long (> 50 turns). Agents may not be attacking effectively.}
+\item Decisions per turn is acceptable.
+
+\item Games complete with winners (not draws)
+\item Next: Integrate Forge AI suggestions for better play patterns
+\end{itemize}
+
+\section{Individual Games}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{rrrrl}
+\toprule
+\textbf{Game} & \textbf{Turns} & \textbf{Decisions} & \textbf{D/Turn} & \textbf{Winner} \\
+\midrule
+1 & 108 & 1557 & 14.4 & 2-White Weenie \\
+2 & 108 & 1443 & 13.4 & 2-White Weenie \\
+3 & 108 & 1553 & 14.4 & 1-Red Aggro \\
+4 & 108 & 1504 & 13.9 & 2-White Weenie \\
+5 & 108 & 1344 & 12.4 & 1-Red Aggro \\
+
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Next Steps}
+
+\begin{enumerate}
+\item Add Forge AI suggestion support to daemon
+\item Implement confidence network for uncertain decisions
+\item Reduce game length through better attack patterns
+\item Train neural network on collected data
+\end{enumerate}
+
+\end{document}
