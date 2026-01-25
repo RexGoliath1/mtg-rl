@@ -25,7 +25,8 @@ echo "  Workers: $WORKERS"
 echo ""
 echo "[1/5] Installing Docker and EC2 Instance Connect..."
 apt-get update -y
-apt-get install -y docker.io python3-pip python3-venv unzip htop ec2-instance-connect
+# Note: python3.10-venv specifically needed on Ubuntu 22.04 Deep Learning AMI
+apt-get install -y docker.io python3-pip python3-venv python3.10-venv unzip htop ec2-instance-connect netcat
 systemctl start docker
 systemctl enable docker
 usermod -aG docker ubuntu
