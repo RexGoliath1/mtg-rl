@@ -39,6 +39,7 @@ python training_pipeline.py --mode play --num-games 3
 | `src/forge/game_state_encoder.py` | Forge JSON → tensor | 5.8M |
 | `src/forge/policy_value_heads.py` | AlphaZero policy/value | 0.4M |
 | `src/forge/mcts.py` | Monte Carlo Tree Search | - |
+| `src/training/self_play.py` | Self-play training loop | - |
 | `shared_card_encoder.py` | Simple card encoder (for draft) | 1.2M |
 | `entity_encoder.py` | Full game state encoder (legacy) | 9.2M |
 | `draft_policy.py` | Draft-specific policy network | 2.8M |
@@ -439,8 +440,9 @@ When W&B is configured:
 - [x] Forge game state encoder (src/forge/game_state_encoder.py, 5.8M params)
 - [x] AlphaZero-style policy/value network (src/forge/policy_value_heads.py)
 - [x] MCTS integration with Forge (src/forge/mcts.py)
-- [ ] Self-play training loop
+- [x] Self-play training loop (src/training/self_play.py)
 - [ ] Forge daemon integration (actual game simulation)
+- [ ] Distributed training (multiple actors)
 
 ## Active Training Run (2026-01-24)
 
