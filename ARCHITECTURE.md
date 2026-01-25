@@ -377,7 +377,11 @@ Python Client ◄──────────────────► Forge
 | **With Forge (estimated)** | 360-720 | 180K-360K | 3-6 hrs | $0.50-1.00 |
 
 **Key Insight**: Pure Python/GPU overhead is minimal (1,153 samples/sec in cloud test).
-The bottleneck is Forge communication latency (~50-100ms per decision).
+
+**Local Forge Daemon Profiling** (Jan 2026):
+- Decision latency: 1.44ms mean, 2.0ms P95
+- Throughput: ~700 decisions/sec
+- Bottleneck: Neural network forward pass (~0.5ms), not Forge communication
 
 ---
 
