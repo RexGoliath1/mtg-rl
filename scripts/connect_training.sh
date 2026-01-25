@@ -90,19 +90,26 @@ show_status() {
     echo "Region:      $REGION"
     echo "Instance ID: $INSTANCE_ID"
     echo "Public IP:   $INSTANCE_IP"
+    echo "TensorBoard: http://$INSTANCE_IP:6006"
     echo ""
 
     # Try to get training progress
-    echo "Checking training progress..."
     S3_BUCKET=$(aws s3 ls | grep mtg-rl-checkpoints | awk '{print $3}' | head -1)
     if [ -n "$S3_BUCKET" ]; then
         echo "S3 Bucket: $S3_BUCKET"
         echo ""
-        echo "Latest checkpoints:"
-        aws s3 ls "s3://$S3_BUCKET/checkpoints/" --region "$REGION" 2>/dev/null | tail -5 || echo "  No checkpoints yet"
+
+        # Show live training log (last 15 lines)
+        echo "=== Training Progress (live log) ==="
+        aws s3 cp "s3://$S3_BUCKET/logs/training_live.log" - --region "$REGION" 2>/dev/null | tail -15 || echo "  Waiting for training to start..."
         echo ""
-        echo "Training status:"
-        aws s3 cp "s3://$S3_BUCKET/training_complete.json" - 2>/dev/null || echo "  Training in progress..."
+
+        # Check if training is complete
+        COMPLETE=$(aws s3 cp "s3://$S3_BUCKET/training_complete.json" - --region "$REGION" 2>/dev/null)
+        if [ -n "$COMPLETE" ]; then
+            echo "=== Training Complete ==="
+            echo "$COMPLETE"
+        fi
     fi
 }
 
