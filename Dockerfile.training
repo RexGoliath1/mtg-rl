@@ -16,28 +16,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.training.txt /app/
-RUN pip install --no-cache-dir -r requirements.training.txt
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy training code
-COPY daemon_environment.py /app/
-COPY rl_environment.py /app/
-COPY replay_recorder.py /app/
-COPY train.py /app/
-COPY checkpoint_manager.py /app/
-
-# Copy deck files (for environment initialization)
+# Copy source code structure
+COPY src/ /app/src/
+COPY scripts/ /app/scripts/
 COPY decks/ /app/decks/
+
+# Copy root-level Python files
+COPY *.py /app/
 
 # Environment variables
 ENV DAEMON_HOST=localhost
 ENV DAEMON_PORT=17171
 ENV S3_BUCKET=""
 ENV CHECKPOINT_DIR=/app/checkpoints
+ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# Create checkpoint directory
-RUN mkdir -p /app/checkpoints
+# Create directories
+RUN mkdir -p /app/checkpoints /app/logs
 
-# Default command
-CMD ["python", "/app/train.py"]
+# Default command - run profiling
+CMD ["python", "/app/scripts/profile_forge_games.py", "--host", "${DAEMON_HOST}", "--port", "${DAEMON_PORT}", "--num-games", "100"]

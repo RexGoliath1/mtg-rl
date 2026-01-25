@@ -1,35 +1,80 @@
 # Forge Daemon Container
 # Runs the MTG game engine in daemon mode for RL training
+# Multi-stage build: Stage 1 builds Forge, Stage 2 runs daemon
 
-FROM eclipse-temurin:17-jre-alpine
+# ==============================================================================
+# Stage 1: Build Forge
+# ==============================================================================
+FROM maven:3.9-eclipse-temurin-17 AS builder
+
+WORKDIR /build
+
+# Copy the Forge source
+COPY forge-repo/ ./
+
+# Remove problematic plugins using perl
+RUN perl -i -0777 -pe 's/<plugin>\s*<groupId>com\.akathist\.maven\.plugins\.launch4j<\/groupId>.*?<\/plugin>//gs' \
+    forge-gui-desktop/pom.xml && \
+    perl -i -0777 -pe 's/<plugin>\s*<groupId>se\.bjurr\.gitchangelog<\/groupId>.*?<\/plugin>//gs' \
+    forge-gui-desktop/pom.xml
+
+# Build only what we need (skip Android, iOS, etc.)
+RUN mvn clean package -DskipTests \
+    -pl !forge-gui-android,!forge-gui-ios,!forge-gui-mobile,!forge-gui-mobile-dev,!forge-installer,!adventure-editor,!forge-lda \
+    -Dmaven.javadoc.skip=true \
+    -Dcheckstyle.skip=true \
+    -am
+
+# Find and copy the jar
+RUN find /build -name "forge-gui-desktop-*-jar-with-dependencies.jar" -exec cp {} /build/forge.jar \;
+
+# ==============================================================================
+# Stage 2: Runtime
+# ==============================================================================
+FROM eclipse-temurin:17-jre
 
 LABEL maintainer="MTG RL Training"
 LABEL description="Forge MTG daemon for reinforcement learning"
 
-# Set working directory
+# Install netcat for healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends netcat-openbsd xvfb \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Install required packages
-RUN apk add --no-cache bash
+# Create required directories
+RUN mkdir -p /app/res /app/decks /app/userdata/decks/constructed /app/cache
 
-# Copy the Forge JAR (built with Maven)
-COPY forge-repo/forge-gui-desktop/target/forge-gui-desktop-2.0.09-SNAPSHOT-jar-with-dependencies.jar /app/forge.jar
+# Copy the built jar
+COPY --from=builder /build/forge.jar /app/forge.jar
+
+# Copy resources (card data, editions, etc.)
+COPY --from=builder /build/forge-gui/res/ /app/res/
 
 # Copy deck files
 COPY decks/ /app/decks/
+COPY decks/ /app/userdata/decks/constructed/
 
-# Copy card data resources (required for Forge)
-COPY forge-repo/forge-gui/res/ /app/res/
+# Create forge profile properties
+RUN echo "userDir=/app/userdata/" > /app/forge.profile.properties \
+    && echo "cacheDir=/app/cache/" >> /app/forge.profile.properties \
+    && echo "decksDir=/app/userdata/decks/" >> /app/forge.profile.properties \
+    && echo "decksConstructedDir=/app/userdata/decks/constructed/" >> /app/forge.profile.properties
 
 # Expose daemon port
 EXPOSE 17171
 
 # Set Java options
-ENV JAVA_OPTS="-Xmx2g -Djava.awt.headless=true"
+ENV JAVA_OPTS="-Xmx2g \
+    --add-opens java.base/java.lang=ALL-UNNAMED \
+    --add-opens java.base/java.util=ALL-UNNAMED \
+    --add-opens java.base/java.text=ALL-UNNAMED \
+    --add-opens java.base/java.lang.reflect=ALL-UNNAMED \
+    --add-opens java.desktop/java.beans=ALL-UNNAMED"
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD echo "STATUS" | nc -w 5 localhost 17171 | grep -q "FORGE DAEMON" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD echo "STATUS" | nc -w 5 localhost 17171 || exit 1
 
-# Run the daemon
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/forge.jar daemon -p 17171"]
+# Run the daemon with xvfb (Forge may need a display even in headless mode)
+ENTRYPOINT ["sh", "-c", "xvfb-run -a java $JAVA_OPTS -Dsentry.dsn= -jar /app/forge.jar daemon -p 17171"]
