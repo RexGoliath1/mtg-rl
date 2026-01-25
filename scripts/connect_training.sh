@@ -24,7 +24,7 @@
 
 set -e
 
-REGION="${AWS_REGION:-us-east-1}"
+REGION="${AWS_REGION:-us-west-2}"
 PROJECT="mtg-rl"
 KEY_FILE="$HOME/.ssh/mtg-rl-training.pem"
 
