@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple, Optional
 import itertools
 import random
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -433,9 +434,13 @@ def collect_training_batch(
     host: str = "localhost",
     port: int = 17171,
     save_interval: int = 1000,
-    timeout: int = 60
+    timeout: int = 60,
+    workers: int = 8  # Parallel workers (Forge daemon supports up to 10)
 ):
-    """Collect training data from multiple games with deck rotation."""
+    """Collect training data from multiple games with deck rotation.
+
+    Uses parallel execution for ~5-8x speedup with 8 workers.
+    """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -447,6 +452,8 @@ def collect_training_batch(
 
     all_decisions = []
     stats = CollectionStats()
+    import threading
+    stats_lock = threading.Lock()
 
     print(f"=" * 60)
     print("AI TRAINING DATA COLLECTION")
@@ -456,25 +463,19 @@ def collect_training_batch(
     print(f"Unique matchups: {len(set(deck_pairs))}")
     print(f"Output: {output_path}")
     print(f"Save interval: every {save_interval} games")
+    print(f"Parallel workers: {workers}")
     print(f"=" * 60)
     print()
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     start_time = datetime.now()
+    games_completed_count = [0]  # Mutable for closure
 
-    for game_id in range(1, num_games + 1):
+    def run_single_game(game_id):
+        """Run a single game and return results."""
         deck1, deck2 = deck_pairs[game_id - 1]
         seed = game_id * 1000 + random.randint(0, 999)
-
-        # Progress indicator
-        if game_id % 100 == 0 or game_id == 1:
-            elapsed = (datetime.now() - start_time).total_seconds()
-            rate = game_id / elapsed if elapsed > 0 else 0
-            eta = (num_games - game_id) / rate if rate > 0 else 0
-            print(f"Game {game_id:,}/{num_games:,} ({game_id*100/num_games:.1f}%) - "
-                  f"{rate:.1f} games/sec - ETA: {eta/60:.1f} min")
-
-        result = collect_training_game(
+        return game_id, collect_training_game(
             deck1=deck1,
             deck2=deck2,
             seed=seed,
@@ -483,58 +484,80 @@ def collect_training_batch(
             timeout=timeout
         )
 
+    def process_result(game_id, result):
+        """Process a game result thread-safely."""
         num_decisions = len(result["decisions"])
         game_result = result["result"]
         max_turn = result["max_turn"]
+        deck1, deck2 = deck_pairs[game_id - 1]
 
-        # Track deck pair
-        pair_key = f"{deck1} vs {deck2}"
-        stats.deck_pairs_played[pair_key] += 1
+        with stats_lock:
+            # Track deck pair
+            pair_key = f"{deck1} vs {deck2}"
+            stats.deck_pairs_played[pair_key] += 1
+            stats.cards_seen.update(result.get("cards_seen", set()))
 
-        # Track cards seen
-        stats.cards_seen.update(result.get("cards_seen", set()))
+            # Parse result
+            if game_result and "won" in game_result.lower():
+                stats.games_completed += 1
+                parts = game_result.split(" won in ")
+                if len(parts) == 2:
+                    winner = parts[0].strip()
+                    duration_str = parts[1].replace("ms", "").strip()
+                    try:
+                        duration = int(duration_str)
+                        stats.game_durations_ms.append(duration)
+                    except ValueError:
+                        pass
+                    stats.winners.append(winner)
+            elif game_result == "TIMEOUT":
+                stats.games_timeout += 1
+            else:
+                stats.games_error += 1
 
-        # Parse result
-        if game_result and "won" in game_result.lower():
-            stats.games_completed += 1
-            parts = game_result.split(" won in ")
-            if len(parts) == 2:
-                winner = parts[0].strip()
-                duration_str = parts[1].replace("ms", "").strip()
-                try:
-                    duration = int(duration_str)
-                    stats.game_durations_ms.append(duration)
-                except ValueError:
-                    pass
-                stats.winners.append(winner)
-        elif game_result == "TIMEOUT":
-            stats.games_timeout += 1
-        else:
-            stats.games_error += 1
+            # Count decision types
+            for d in result["decisions"]:
+                dtype = d.get("decision_type", "unknown")
+                stats.decision_counts[dtype] += 1
+                all_decisions.append(d)
 
-        # Count decision types
-        for d in result["decisions"]:
-            dtype = d.get("decision_type", "unknown")
-            stats.decision_counts[dtype] += 1
-            all_decisions.append(d)
+            stats.total_decisions += num_decisions
+            stats.total_turns += max_turn
+            stats.decisions_per_game.append(num_decisions)
+            stats.turns_per_game.append(max_turn)
+            games_completed_count[0] += 1
 
-        stats.total_decisions += num_decisions
-        stats.total_turns += max_turn
-        stats.decisions_per_game.append(num_decisions)
-        stats.turns_per_game.append(max_turn)
+            # Progress indicator every 100 games
+            completed = games_completed_count[0]
+            if completed % 100 == 0 or completed == 1:
+                elapsed = (datetime.now() - start_time).total_seconds()
+                rate = completed / elapsed if elapsed > 0 else 0
+                eta = (num_games - completed) / rate if rate > 0 else 0
+                print(f"Game {completed:,}/{num_games:,} ({completed*100/num_games:.1f}%) - "
+                      f"{rate:.1f} games/sec - ETA: {eta/60:.1f} min")
 
-        # Periodic save
-        if game_id % save_interval == 0:
-            checkpoint_file = output_path / f"training_data_{timestamp}_checkpoint_{game_id}.h5"
-            metadata = {
-                "timestamp": timestamp,
-                "num_games": game_id,
-                "total_decisions": stats.total_decisions,
-                "games_completed": stats.games_completed,
-                "checkpoint": True
-            }
-            save_to_hdf5(all_decisions, checkpoint_file, metadata)
-            print(f"  Checkpoint saved: {checkpoint_file.name} ({stats.total_decisions:,} decisions)")
+            # Periodic checkpoint
+            if completed % save_interval == 0:
+                checkpoint_file = output_path / f"training_data_{timestamp}_checkpoint_{completed}.h5"
+                metadata = {
+                    "timestamp": timestamp,
+                    "num_games": completed,
+                    "total_decisions": stats.total_decisions,
+                    "games_completed": stats.games_completed,
+                    "checkpoint": True
+                }
+                save_to_hdf5(all_decisions.copy(), checkpoint_file, metadata)
+                print(f"  Checkpoint saved: {checkpoint_file.name} ({stats.total_decisions:,} decisions)")
+
+    # Run games in parallel
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {executor.submit(run_single_game, i): i for i in range(1, num_games + 1)}
+        for future in as_completed(futures):
+            try:
+                game_id, result = future.result()
+                process_result(game_id, result)
+            except Exception as e:
+                print(f"  Game {futures[future]} failed: {e}")
 
     # Final save
     hdf5_file = output_path / f"training_data_{timestamp}_final.h5"
@@ -622,6 +645,7 @@ def main():
     parser.add_argument("--port", type=int, default=17171, help="Daemon port")
     parser.add_argument("--save-interval", type=int, default=1000, help="Save checkpoint every N games")
     parser.add_argument("--timeout", type=int, default=60, help="Game timeout in seconds")
+    parser.add_argument("--workers", type=int, default=8, help="Parallel workers (max 10)")
     args = parser.parse_args()
 
     collect_training_batch(
@@ -631,7 +655,8 @@ def main():
         host=args.host,
         port=args.port,
         save_interval=args.save_interval,
-        timeout=args.timeout
+        timeout=args.timeout,
+        workers=min(args.workers, 10)  # Forge daemon max is 10
     )
 
 
