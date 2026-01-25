@@ -295,12 +295,89 @@ reward += on_curve_play * 0.01
 | `infrastructure/main.tf` | Terraform AWS config |
 | `Dockerfile` | Container build (planned) |
 
-### Legacy/Forge Integration
+### Forge Integration (Active)
+| File | Purpose | Status |
+|------|---------|--------|
+| `src/forge/forge_client.py` | TCP client for Forge daemon (port 17171) | ✅ Complete |
+| `src/forge/state_mapper.py` | Maps Forge JSON → neural network tensors | ✅ Complete |
+| `src/forge/game_state_encoder.py` | Full game state encoding (5.8M params) | ✅ Complete |
+| `src/forge/policy_value_heads.py` | AlphaZero policy/value networks | ✅ Complete |
+| `src/forge/mcts.py` | Monte Carlo Tree Search | ✅ Complete |
+| `scripts/profile_forge_games.py` | Profiles game latency and throughput | ✅ Complete |
+| `scripts/deploy_forge_test.sh` | Cloud deployment for Forge testing | ✅ Complete |
+
+### Training Infrastructure
+| File | Purpose | Status |
+|------|---------|--------|
+| `src/training/self_play.py` | Self-play training loop | ✅ Complete |
+| `src/training/parallel_selfplay.py` | Multi-actor parallel training | ✅ Complete |
+| `src/training/profiler.py` | Performance profiling and benchmarks | ✅ Complete |
+
+### Legacy (Deprecated)
 | File | Purpose |
 |------|---------|
-| `rl_environment.py` | Main RL environment |
-| `agent_wrapper.py` | Low-level game communication |
-| `test_interactive.py` | Testing script |
+| `rl_environment.py` | Old RL environment |
+| `agent_wrapper.py` | Old game communication |
+| `test_interactive.py` | Old testing script |
+
+---
+
+## Forge Integration Architecture
+
+### Communication Protocol
+```
+                    TCP/17171
+Python Client ◄──────────────────► Forge Daemon (Java)
+     │                                    │
+     │  1. NEWGAME deck1 deck2 -i         │
+     │  ─────────────────────────────────►│
+     │                                    │
+     │  2. DECISION:{"game_state":{...}}  │
+     │  ◄─────────────────────────────────│
+     │                                    │
+     │  3. Response: "0" (action index)   │
+     │  ─────────────────────────────────►│
+     │                                    │
+     │  4. GAME_RESULT: Winner won        │
+     │  ◄─────────────────────────────────│
+```
+
+### Game State Structure
+```json
+{
+  "decision_type": "choose_action",
+  "game_state": {
+    "is_game_over": false,
+    "active_player": "Player1",
+    "players": [{
+      "name": "Player1",
+      "life": 20,
+      "hand": [...],           // Full cards
+      "battlefield": [...],    // Cards with tapped, counters
+      "graveyard": [...],
+      "exile": [...],
+      "library_size": 50,      // Count only (hidden)
+      "mana_pool": {"white": 2, "blue": 0, ...}
+    }],
+    "stack": [...],
+    "combat": {...}
+  },
+  "actions": [
+    {"index": 0, "description": "Cast Lightning Bolt", "is_land": false},
+    {"index": -1, "description": "Pass", "is_land": false}
+  ]
+}
+```
+
+### Throughput Estimates
+
+| Configuration | Games/hr | Samples/hr | Time to 1M | Cost |
+|---------------|----------|------------|------------|------|
+| **Simulated (no Forge)** | 63K | 4.15M | 14 min | $0.04 |
+| **With Forge (estimated)** | 360-720 | 180K-360K | 3-6 hrs | $0.50-1.00 |
+
+**Key Insight**: Pure Python/GPU overhead is minimal (1,153 samples/sec in cloud test).
+The bottleneck is Forge communication latency (~50-100ms per decision).
 
 ---
 
