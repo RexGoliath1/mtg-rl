@@ -553,6 +553,21 @@ python scripts/profile_forge_games.py --games 10 --deck1 decks/competitive/mono_
 ./scripts/deploy_forge_test.sh --games 100 --duration 25
 ```
 
+**Collect AI Training Data (Imitation Learning):**
+```bash
+# Start daemon in Docker
+docker run -d --name forge-daemon -p 17171:17171 mtg-daemon:debug
+
+# Collect training data (AI observation mode)
+python scripts/collect_ai_training_data.py --games 100 --output training_data
+
+# Output: JSONL with (state, action) pairs from Forge AI
+# - decision_type: choose_action, declare_attackers, declare_blockers
+# - game_state: life totals, hand/library sizes, battlefield
+# - actions: available actions
+# - ai_choice: expert decision label
+```
+
 ### Meta Decks
 
 Current Modern meta decks stored in `data/decks/modern_meta.json`:
