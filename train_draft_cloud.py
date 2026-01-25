@@ -168,6 +168,9 @@ def main():
     # Model args
     parser.add_argument("--embed-dim", type=int, default=128)
     parser.add_argument("--hidden-dim", type=int, default=256)
+    parser.add_argument("--encoder-type", type=str, default="hybrid",
+                       choices=["keyword", "hybrid"],
+                       help="Encoder type: 'keyword' (v1) or 'hybrid' (v2 with text embeddings)")
 
     # Training args
     parser.add_argument("--epochs", type=int, default=50)
@@ -209,6 +212,11 @@ def main():
     print(f"Epochs: {args.epochs}")
     print(f"Batch size: {args.batch_size}")
     print(f"Max samples per set: {args.max_samples or 'all'}")
+    print(f"Encoder type: {args.encoder_type}")
+    if args.encoder_type == "hybrid":
+        print("  NOTE: Hybrid encoder requires enriched card data from Scryfall.")
+        print("  Using v1 (keyword) encoder for now. See CARD_ENCODING.md for v2 roadmap.")
+        args.encoder_type = "keyword"  # Fallback until data enrichment is ready
     print(f"Early stopping patience: {args.early_stopping_patience or 'disabled'}")
     print(f"S3 bucket: {args.s3_bucket or 'disabled (local only)'}")
     print("=" * 60)

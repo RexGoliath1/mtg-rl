@@ -98,6 +98,12 @@ variable "training_max_samples" {
   default     = 0
 }
 
+variable "encoder_type" {
+  description = "Card encoder type: 'keyword' (v1) or 'hybrid' (v2 with text embeddings)"
+  type        = string
+  default     = "hybrid"
+}
+
 variable "auto_shutdown" {
   description = "Auto-shutdown instance after training completes (saves cost)"
   type        = bool
@@ -411,6 +417,7 @@ resource "aws_spot_instance_request" "training" {
     epochs        = var.training_epochs
     batch_size    = var.training_batch_size
     max_samples   = var.training_max_samples > 0 ? var.training_max_samples : ""
+    encoder_type  = var.encoder_type
     auto_shutdown = var.auto_shutdown ? "true" : "false"
   }))
 
@@ -440,6 +447,7 @@ resource "aws_instance" "training" {
     epochs        = var.training_epochs
     batch_size    = var.training_batch_size
     max_samples   = var.training_max_samples > 0 ? var.training_max_samples : ""
+    encoder_type  = var.encoder_type
     auto_shutdown = var.auto_shutdown ? "true" : "false"
   }))
 

@@ -16,6 +16,7 @@ SETS="${sets}"
 EPOCHS="${epochs}"
 BATCH_SIZE="${batch_size}"
 MAX_SAMPLES="${max_samples}"
+ENCODER_TYPE="${encoder_type}"
 
 echo "Configuration:"
 echo "  S3 Bucket: $S3_BUCKET"
@@ -23,6 +24,7 @@ echo "  Sets: $SETS"
 echo "  Epochs: $EPOCHS"
 echo "  Batch Size: $BATCH_SIZE"
 echo "  Max Samples: $${MAX_SAMPLES:-all}"
+echo "  Encoder Type: $${ENCODER_TYPE:-hybrid}"
 
 # Install system dependencies
 echo ""
@@ -77,7 +79,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
-pip install tensorboard boto3 requests numpy pandas
+pip install tensorboard boto3 requests numpy pandas sentence-transformers wandb
 
 # Create training wrapper script with monitoring
 echo ""
@@ -94,12 +96,14 @@ SETS="${sets}"
 EPOCHS="${epochs}"
 BATCH_SIZE="${batch_size}"
 MAX_SAMPLES="${max_samples}"
+ENCODER_TYPE="${encoder_type}"
 AUTO_SHUTDOWN="${auto_shutdown}"
 
 echo "============================================================"
-echo "MTG-RL Training Run"
+echo "MTG-RL Training Run (v2 Hybrid Encoder)"
 echo "============================================================"
 echo "Started at: $(date)"
+echo "Encoder Type: $ENCODER_TYPE"
 echo "Auto-shutdown: $AUTO_SHUTDOWN"
 echo "============================================================"
 
@@ -156,6 +160,7 @@ echo "Sets: $SETS"
 echo "Epochs: $EPOCHS"
 echo "Batch Size: $BATCH_SIZE"
 echo "Max Samples: $${MAX_SAMPLES:-all}"
+echo "Encoder Type: $${ENCODER_TYPE:-hybrid}"
 echo "============================================================"
 
 PYTHONUNBUFFERED=1 python3 train_draft_cloud.py \
@@ -164,6 +169,7 @@ PYTHONUNBUFFERED=1 python3 train_draft_cloud.py \
     --batch-size $BATCH_SIZE \
     $MAX_SAMPLES_ARG \
     --s3-bucket $S3_BUCKET \
+    --encoder-type $${ENCODER_TYPE:-hybrid} \
     --early-stopping-patience 10 \
     --checkpoint-every 2 \
     2>&1 | tee training.log
