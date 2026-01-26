@@ -448,6 +448,9 @@ resource "aws_spot_instance_request" "training" {
   subnet_id              = data.aws_subnets.default.ids[0]
   key_name               = var.ssh_key_name != "" ? var.ssh_key_name : null
 
+  # Force new instance when userdata changes
+  user_data_replace_on_change = true
+
   root_block_device {
     volume_size = 100
     volume_type = "gp3"
@@ -485,6 +488,9 @@ resource "aws_instance" "training" {
   vpc_security_group_ids = [aws_security_group.training.id]
   subnet_id              = data.aws_subnets.default.ids[0]
   key_name               = var.ssh_key_name != "" ? var.ssh_key_name : null
+
+  # Force new instance when userdata changes
+  user_data_replace_on_change = true
 
   root_block_device {
     volume_size = 100

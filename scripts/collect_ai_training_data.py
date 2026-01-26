@@ -316,6 +316,13 @@ def generate_report(stats: CollectionStats, output_dir: Path, timestamp: str):
     for w in stats.winners:
         winner_counts[w] += 1
 
+    # Compute next steps text (avoid backslashes in f-string expressions for Python 3.10)
+    games_needed = max(50000 - stats.games_completed, 0)
+    if stats.games_completed >= 50000:
+        next_step_text = r"\textbf{COMPLETE} - Ready for imitation learning training"
+    else:
+        next_step_text = r"Collect \textbf{" + f"{games_needed:,}" + r" more games} to reach 50K target"
+
     latex = f"""
 \\documentclass[11pt]{{article}}
 \\usepackage[utf8]{{inputenc}}
@@ -412,7 +419,7 @@ Avg Duration (ms) & {avg_duration:.0f} \\\\
 \\section{{Recommended Next Steps}}
 
 \\begin{{enumerate}}
-\\item {"\\textbf{COMPLETE} - Ready for imitation learning training" if stats.games_completed >= 50000 else f"Collect \\textbf{{{max(50000 - stats.games_completed, 0):,} more games}} to reach 50K target"}
+\\item {next_step_text}
 \\item Train imitation learning policy on collected data
 \\item Evaluate policy accuracy on held-out decisions
 \\item Begin self-play fine-tuning once accuracy $>$ 50\\%
