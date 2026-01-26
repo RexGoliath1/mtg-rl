@@ -67,6 +67,9 @@ GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
 git clone https://$GITHUB_TOKEN@github.com/RexGoliath1/mtg-rl.git
 cd mtg-rl
 
+# Fix ownership so ubuntu user can write
+chown -R ubuntu:ubuntu /home/ubuntu/mtg-rl
+
 # Install Python deps globally (throwaway instance, no need for venv)
 pip3 install --upgrade pip
 pip3 install h5py numpy requests
