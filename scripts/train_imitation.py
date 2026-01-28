@@ -42,10 +42,12 @@ class ImitationDataset(Dataset):
             self.turns = f['turns'][:]
 
         # Filter out invalid decisions:
-        # 1. choice must be < num_actions (valid expert choice)
-        # 2. choice must be < max_actions (fits in our action space)
-        # 3. num_actions must be > 0
+        # 1. choice must be >= 0 (not -1 or other sentinel)
+        # 2. choice must be < num_actions (valid expert choice)
+        # 3. choice must be < max_actions (fits in our action space)
+        # 4. num_actions must be > 0
         valid_mask = (
+            (self.choices >= 0) &
             (self.choices < self.num_actions) &
             (self.choices < self.max_actions) &
             (self.num_actions > 0)
