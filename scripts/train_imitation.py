@@ -41,25 +41,39 @@ class ImitationDataset(Dataset):
             self.decision_types = f['decision_types'][:]
             self.turns = f['turns'][:]
 
-        # Filter out invalid decisions (choice >= num_actions)
-        valid_mask = self.choices < self.num_actions
+        # Filter out invalid decisions:
+        # 1. choice must be < num_actions (valid expert choice)
+        # 2. choice must be < max_actions (fits in our action space)
+        # 3. num_actions must be > 0
+        valid_mask = (
+            (self.choices < self.num_actions) &
+            (self.choices < self.max_actions) &
+            (self.num_actions > 0)
+        )
         self.states = self.states[valid_mask]
         self.choices = self.choices[valid_mask]
         self.num_actions = self.num_actions[valid_mask]
         self.decision_types = self.decision_types[valid_mask]
         self.turns = self.turns[valid_mask]
 
+        # Clip num_actions to max_actions for masking
+        self.num_actions = np.clip(self.num_actions, 0, self.max_actions)
+
         print(f"Loaded {len(self.states):,} valid decisions")
         print(f"State shape: {self.states.shape}")
         print(f"Max actions in data: {self.num_actions.max()}")
+        print(f"Max choice in data: {self.choices.max()}")
 
     def __len__(self):
         return len(self.states)
 
     def __getitem__(self, idx):
         state = torch.FloatTensor(self.states[idx])
-        choice = self.choices[idx]
-        num_actions = min(self.num_actions[idx], self.max_actions)
+        choice = int(self.choices[idx])
+        num_actions = int(self.num_actions[idx])
+
+        # Ensure choice is within bounds (should already be filtered, but double-check)
+        assert 0 <= choice < self.max_actions, f"Invalid choice {choice} >= {self.max_actions}"
 
         # Create action mask (1 for valid actions, 0 for invalid)
         action_mask = torch.zeros(self.max_actions)
@@ -67,7 +81,7 @@ class ImitationDataset(Dataset):
 
         return {
             'state': state,
-            'choice': torch.LongTensor([min(choice, self.max_actions - 1)])[0],
+            'choice': torch.tensor(choice, dtype=torch.long),
             'action_mask': action_mask,
             'num_actions': num_actions
         }
