@@ -201,6 +201,42 @@ def encode_game_state(state: dict) -> np.ndarray:
     ], dtype=np.float32)
 
 
+def find_action_index(ai_choice: dict, actions: list) -> int:
+    """Find the index of ai_choice in the actions list.
+
+    Matches by comparing action type and card name (if present).
+    Returns -1 if not found.
+    """
+    if not isinstance(ai_choice, dict) or not actions:
+        return -1
+
+    choice_action = ai_choice.get("action", "")
+    choice_card = ai_choice.get("card", "")
+
+    for idx, action in enumerate(actions):
+        if not isinstance(action, dict):
+            continue
+        # Match by action type and card name
+        if action.get("action") == choice_action:
+            # If both have cards, they must match
+            if choice_card and action.get("card"):
+                if action.get("card") == choice_card:
+                    return idx
+            # If choice has no card, just match action type
+            elif not choice_card and not action.get("card"):
+                return idx
+            # If only action matches and there's no card to compare
+            elif not choice_card:
+                return idx
+
+    # Fallback: try exact match on action type only (first match)
+    for idx, action in enumerate(actions):
+        if isinstance(action, dict) and action.get("action") == choice_action:
+            return idx
+
+    return -1
+
+
 def encode_decision(decision: dict) -> tuple:
     """Encode a decision into arrays for HDF5 storage."""
     dtype = decision.get("decision_type", "unknown")
@@ -212,13 +248,21 @@ def encode_decision(decision: dict) -> tuple:
     # Encode decision metadata
     turn = decision.get("turn", 0)
 
-    # Encode AI choice as index
+    # Get actions list first (needed for index lookup)
+    actions = decision.get("actions", [])
+    num_actions = len(actions)
+
+    # Encode AI choice as index into actions list
     ai_choice = decision.get("ai_choice", {})
     if dtype == "choose_action":
         if isinstance(ai_choice, dict) and ai_choice.get("action") == "pass":
-            choice_idx = -1
+            choice_idx = -1  # Pass is not in actions list
         elif isinstance(ai_choice, dict):
-            choice_idx = 0  # Played something
+            # Find actual index in actions list
+            choice_idx = find_action_index(ai_choice, actions)
+            if choice_idx == -1:
+                # Couldn't find match - log for debugging but treat as pass
+                choice_idx = -1
         else:
             choice_idx = -1
     elif dtype in ("declare_attackers", "declare_blockers"):
@@ -228,10 +272,6 @@ def encode_decision(decision: dict) -> tuple:
             choice_idx = 0
     else:
         choice_idx = -1
-
-    # Number of available actions
-    actions = decision.get("actions", [])
-    num_actions = len(actions)
 
     return state_vec, turn, choice_idx, num_actions, dtype
 
