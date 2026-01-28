@@ -90,12 +90,13 @@ HIDDEN_DIM="${hidden_dim}"
 AUTO_SHUTDOWN="${auto_shutdown}"
 
 echo "============================================================"
-echo "IMITATION LEARNING MODEL TRAINING"
+echo "PASS/PLAY POLICY TRAINING"
 echo "============================================================"
 echo "Started at: $(date)"
 echo "Epochs: $EPOCHS"
 echo "Batch Size: $BATCH_SIZE"
 echo "Hidden Dim: $HIDDEN_DIM"
+echo "Note: Training binary classifier (pass vs play) on existing data"
 echo "============================================================"
 
 mkdir -p checkpoints logs
@@ -115,14 +116,17 @@ upload_logs &
 LOG_UPLOADER_PID=$!
 
 # Run training
+# Note: Using pass/play policy since existing data only has pass vs play labels
+# (action indices were not properly encoded in data collection v1)
 echo ""
-echo "Starting imitation policy training..."
-PYTHONUNBUFFERED=1 python3 scripts/train_imitation.py \
+echo "Starting pass/play policy training..."
+PYTHONUNBUFFERED=1 python3 scripts/train_pass_policy.py \
     --data-dir training_data/imitation_aws \
     --epochs $EPOCHS \
     --batch-size $BATCH_SIZE \
     --hidden-dim $HIDDEN_DIM \
-    --output checkpoints/imitation_policy.pt \
+    --output checkpoints/pass_policy.pt \
+    --balanced \
     2>&1 | tee imitation_training.log
 
 TRAINING_EXIT_CODE=$?
@@ -131,9 +135,9 @@ TRAINING_EXIT_CODE=$?
 echo ""
 echo "Uploading results to S3..."
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-aws s3 cp imitation_training.log "s3://$S3_BUCKET/logs/imitation_training_$TIMESTAMP.log"
-aws s3 cp checkpoints/imitation_policy.pt "s3://$S3_BUCKET/checkpoints/imitation_policy.pt" || true
-aws s3 cp checkpoints/imitation_policy.json "s3://$S3_BUCKET/checkpoints/imitation_policy_summary.json" || true
+aws s3 cp imitation_training.log "s3://$S3_BUCKET/logs/pass_policy_training_$TIMESTAMP.log"
+aws s3 cp checkpoints/pass_policy.pt "s3://$S3_BUCKET/checkpoints/pass_policy.pt" || true
+aws s3 cp checkpoints/pass_policy.json "s3://$S3_BUCKET/checkpoints/pass_policy_summary.json" || true
 
 echo ""
 echo "============================================================"
@@ -146,8 +150,8 @@ echo "Finished at: $(date)"
 echo "============================================================"
 
 # Generate completion marker
-echo "{\"status\": \"$( [ $TRAINING_EXIT_CODE -eq 0 ] && echo 'success' || echo 'failed')\", \"timestamp\": \"$(date -Iseconds)\", \"exit_code\": $TRAINING_EXIT_CODE}" > imitation_training_complete.json
-aws s3 cp imitation_training_complete.json "s3://$S3_BUCKET/imitation_training_complete.json"
+echo "{\"status\": \"$( [ $TRAINING_EXIT_CODE -eq 0 ] && echo 'success' || echo 'failed')\", \"timestamp\": \"$(date -Iseconds)\", \"exit_code\": $TRAINING_EXIT_CODE, \"model\": \"pass_policy\"}" > pass_policy_training_complete.json
+aws s3 cp pass_policy_training_complete.json "s3://$S3_BUCKET/pass_policy_training_complete.json"
 
 # Cleanup
 kill $TENSORBOARD_PID 2>/dev/null || true
