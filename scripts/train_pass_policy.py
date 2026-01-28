@@ -72,7 +72,7 @@ class PassPlayDataset(Dataset):
         n_pass = (self.labels == 0).sum()
         n_play = (self.labels == 1).sum()
         total = len(self.labels)
-        return torch.tensor([total / (2 * n_pass), total / (2 * n_play)])
+        return torch.tensor([total / (2 * n_pass), total / (2 * n_play)], dtype=torch.float32)
 
 
 class PassPlayPolicy(nn.Module):
