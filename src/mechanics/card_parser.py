@@ -506,6 +506,54 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
                 parameters["power_mod"] = p_sign * int(stat_match.group(2))
                 parameters["toughness_mod"] = t_sign * int(stat_match.group(4))
 
+    # Saga chapter parsing (use original text for roman numeral case matching)
+    oracle_lower = oracle_text.lower()
+    if "saga" in card_type_lower or re.search(r'^[IV]+\s*[—–\-]', oracle_text, re.MULTILINE):
+        if Mechanic.SAGA not in mechanics:
+            mechanics.append(Mechanic.SAGA)
+        chapter_map = {"I": Mechanic.CHAPTER_I, "II": Mechanic.CHAPTER_II,
+                       "III": Mechanic.CHAPTER_III, "IV": Mechanic.CHAPTER_IV}
+        chapters = re.findall(r'^(I{1,3}|IV)\s*[—–\-]\s*(.+)$', oracle_text, re.MULTILINE)
+        chapter_count = 0
+        for chapter_num, chapter_text in chapters:
+            if chapter_num in chapter_map:
+                if chapter_map[chapter_num] not in mechanics:
+                    mechanics.append(chapter_map[chapter_num])
+                chapter_count += 1
+                # Parse chapter text for sub-effects (non-recursive via patterns)
+                chapter_text_lower = chapter_text.lower()
+                for pattern, mechs in PATTERNS:
+                    sub_match = re.search(pattern, chapter_text_lower)
+                    if sub_match:
+                        for m in mechs:
+                            if m not in mechanics:
+                                mechanics.append(m)
+                        matched_spans.append(sub_match.group())
+        if chapter_count > 0:
+            parameters["chapter_count"] = chapter_count
+
+    # Life gain parameter extraction
+    life_gain_match = re.search(r'gains?\s+(\d+)\s+life', text)
+    if not life_gain_match:
+        life_gain_match = re.search(r'you gain\s+(\d+)\s+life', text)
+    if life_gain_match:
+        parameters["life_gain"] = int(life_gain_match.group(1))
+
+    # Saddle parameter extraction
+    saddle_match = re.search(r'saddle\s+(\d+)', text)
+    if saddle_match:
+        parameters["saddle_power"] = int(saddle_match.group(1))
+
+    # Collect evidence parameter extraction
+    evidence_match = re.search(r'collect evidence\s+(\d+)', text)
+    if evidence_match:
+        parameters["collect_evidence_mv"] = int(evidence_match.group(1))
+
+    # Impending parameter extraction
+    impending_match = re.search(r'impending\s+(\d+)', text)
+    if impending_match:
+        parameters["impending_cost"] = int(impending_match.group(1))
+
     # Calculate confidence based on how much text we parsed
     total_words = len(text.split())
     parsed_words = sum(len(span.split()) for span in matched_spans)
