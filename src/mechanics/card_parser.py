@@ -392,6 +392,26 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
             mechanics.append(mechanic)
             matched_spans.append(keyword)
 
+    # Extract numeric parameters from keyword abilities
+    # Ward N
+    ward_match = re.search(r'ward\s*\{(\d+)\}', text)
+    if not ward_match:
+        ward_match = re.search(r'ward\s+(\d+)', text)
+    if ward_match:
+        parameters["ward_cost"] = int(ward_match.group(1))
+    # Toxic N
+    toxic_match = re.search(r'toxic\s+(\d+)', text)
+    if toxic_match:
+        parameters["toxic_count"] = int(toxic_match.group(1))
+    # Annihilator N
+    annih_match = re.search(r'annihilator\s+(\d+)', text)
+    if annih_match:
+        parameters["annihilator_count"] = int(annih_match.group(1))
+    # Kicker {N} or kicker cost
+    kicker_match = re.search(r'kicker\s*\{(\d+)\}', text)
+    if kicker_match:
+        parameters["kicker_cost"] = int(kicker_match.group(1))
+
     # Apply text patterns
     for pattern, mechs in PATTERNS:
         match = re.search(pattern, text)
@@ -414,6 +434,23 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
                     parameters["scry_count"] = int(numbers[0])
                 elif Mechanic.MILL in mechs:
                     parameters["mill_count"] = int(numbers[0])
+                elif Mechanic.SURVEIL in mechs:
+                    parameters["surveil_count"] = int(numbers[0])
+                elif Mechanic.LOSE_LIFE in mechs:
+                    parameters["life_loss"] = int(numbers[0])
+                elif Mechanic.PLUS_ONE_COUNTER in mechs:
+                    # Try to extract counter count from surrounding text
+                    counter_match = re.search(r'(\d+)\s+\+1/\+1 counter', match.group())
+                    if counter_match:
+                        parameters["counter_count"] = int(counter_match.group(1))
+
+            # Extract stat modifiers from +X/+Y or -X/-Y patterns
+            stat_match = re.search(r'gets?\s+([+-])(\d+)/([+-])(\d+)', match.group())
+            if stat_match:
+                p_sign = 1 if stat_match.group(1) == '+' else -1
+                t_sign = 1 if stat_match.group(3) == '+' else -1
+                parameters["power_mod"] = p_sign * int(stat_match.group(2))
+                parameters["toughness_mod"] = t_sign * int(stat_match.group(4))
 
     # Calculate confidence based on how much text we parsed
     total_words = len(text.split())
