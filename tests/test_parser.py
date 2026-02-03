@@ -17,7 +17,7 @@ Test categories:
 """
 
 from src.mechanics.vocabulary import Mechanic
-from src.mechanics.card_parser import parse_card, parse_oracle_text
+from src.mechanics.card_parser import parse_card, parse_oracle_text, strip_reminder_text
 
 
 # =============================================================================
@@ -1155,3 +1155,178 @@ class TestDoubleFacedCards:
             Mechanic.FLYING,
             Mechanic.TRANSFORM,
         ], card.get("name"))
+
+
+# =============================================================================
+# REMINDER TEXT STRIPPING
+# =============================================================================
+
+class TestReminderTextStripping:
+    """Test that parenthetical reminder text is properly stripped."""
+
+    def test_strip_basic_reminder(self):
+        text = "Flying (This creature can't be blocked except by creatures with flying or reach.)"
+        stripped = strip_reminder_text(text)
+        assert "can't be blocked" not in stripped
+        assert "Flying" in stripped
+
+    def test_strip_multiple_reminders(self):
+        text = "Deathtouch (Any amount of damage this deals to a creature is enough to destroy it.)\nLifelink (Damage dealt by this creature also causes you to gain that much life.)"
+        stripped = strip_reminder_text(text)
+        assert "Any amount" not in stripped
+        assert "Damage dealt" not in stripped
+        assert "Deathtouch" in stripped
+        assert "Lifelink" in stripped
+
+    def test_strip_preserves_non_reminder(self):
+        text = "When this creature enters the battlefield, draw two cards."
+        stripped = strip_reminder_text(text)
+        assert stripped == text
+
+    def test_reminder_text_confidence_boost(self):
+        """Cards with keyword + long reminder text should get higher confidence."""
+        # Without reminder stripping, "Flying (This creature can't be blocked
+        # except by creatures with flying or reach.)" would have low confidence
+        # because "This creature can't be blocked..." inflates word count.
+        result = parse_oracle_text(
+            "Flying (This creature can't be blocked except by creatures with flying or reach.)",
+            "Creature — Bird"
+        )
+        assert result.confidence >= 0.5, (
+            f"Confidence {result.confidence} too low — reminder text should be stripped from word count"
+        )
+
+    def test_menace_with_reminder(self):
+        result = parse_oracle_text(
+            "Menace (This creature can't be blocked except by two or more creatures.)",
+            "Creature — Zombie"
+        )
+        assert Mechanic.MENACE in result.mechanics
+        assert result.confidence >= 0.5
+
+    def test_protection_with_reminder(self):
+        result = parse_oracle_text(
+            "Protection from red (This creature can't be blocked, targeted, dealt damage, "
+            "enchanted, or equipped by anything red.)",
+            "Creature — Knight"
+        )
+        assert Mechanic.PROTECTION in result.mechanics
+        assert result.confidence >= 0.3
+
+
+# =============================================================================
+# VARIABLE EFFECTS ("where X is" / "equal to" / "for each")
+# =============================================================================
+
+class TestVariableEffects:
+    """Test parsing of variable-count effects."""
+
+    def test_draw_for_each(self):
+        """Draw a card for each creature you control."""
+        result = parse_oracle_text(
+            "Draw a card for each creature you control.",
+            "Sorcery"
+        )
+        assert Mechanic.DRAW in result.mechanics
+
+    def test_draw_x_where_x_is(self):
+        """Draw X cards, where X is the number of lands you control."""
+        result = parse_oracle_text(
+            "Draw X cards, where X is the number of lands you control.",
+            "Sorcery"
+        )
+        assert Mechanic.DRAW in result.mechanics
+        assert result.confidence >= 0.4
+
+    def test_damage_equal_to(self):
+        """Deals damage equal to the number of creatures you control."""
+        result = parse_oracle_text(
+            "This spell deals damage to target creature equal to the number of creatures you control.",
+            "Instant"
+        )
+        assert Mechanic.DEAL_DAMAGE in result.mechanics
+
+    def test_damage_where_x_is(self):
+        """Deals X damage, where X is the number of artifacts you control."""
+        result = parse_oracle_text(
+            "Shrapnel Blast deals X damage to any target, where X is the number of artifacts you control.",
+            "Instant"
+        )
+        assert Mechanic.DEAL_DAMAGE in result.mechanics
+
+    def test_lose_life_equal_to(self):
+        """You lose life equal to that card's mana value."""
+        result = parse_oracle_text(
+            "You lose life equal to that card's mana value.",
+            "Enchantment"
+        )
+        assert Mechanic.LOSE_LIFE in result.mechanics
+
+    def test_gain_life_equal_to(self):
+        """You gain life equal to its power."""
+        result = parse_oracle_text(
+            "When this creature enters the battlefield, you gain life equal to its power.",
+            "Creature — Angel"
+        )
+        assert Mechanic.GAIN_LIFE in result.mechanics
+
+    def test_mill_where_x_is(self):
+        """Target player mills X cards, where X is the number of cards in your hand."""
+        result = parse_oracle_text(
+            "Target player mills X cards, where X is the number of cards in your hand.",
+            "Sorcery"
+        )
+        assert Mechanic.MILL in result.mechanics
+
+    def test_mill_equal_to(self):
+        """Each opponent mills cards equal to the number of creatures you control."""
+        result = parse_oracle_text(
+            "Each opponent mills cards equal to the number of creatures you control.",
+            "Sorcery"
+        )
+        assert Mechanic.MILL in result.mechanics
+
+    def test_create_tokens_for_each(self):
+        """Create a 1/1 token for each creature that died this turn."""
+        result = parse_oracle_text(
+            "Create a 1/1 white Spirit creature token with flying for each creature that died this turn.",
+            "Sorcery"
+        )
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+
+    def test_variable_confidence(self):
+        """Variable-effect cards should have reasonable confidence."""
+        result = parse_oracle_text(
+            "Draw X cards, where X is the number of creatures you control.",
+            "Sorcery"
+        )
+        # "draw X cards" matches, "where X is the number of" should be consumed,
+        # "creatures you control" should be consumed
+        assert result.confidence >= 0.4, (
+            f"Variable-effect confidence {result.confidence} too low"
+        )
+
+    def test_tarmogoyf_variable_stats(self):
+        """Tarmogoyf's power/toughness based on card types in graveyards."""
+        card = make_card(
+            "Tarmogoyf", "{1}{G}", 2,
+            "Creature — Lhurgoyf",
+            "Tarmogoyf's power is equal to the number of card types among cards in all graveyards "
+            "and its toughness is equal to that number plus 1.",
+            power="*", toughness="1+*",
+        )
+        enc = parse_card(card)
+        # Should parse "equal to the number of" and "card types" / "graveyards"
+        assert enc.power == -1  # * power
+
+    def test_craterhoof_behemoth(self):
+        """Craterhoof Behemoth — anthem effect for each creature."""
+        result = parse_oracle_text(
+            "When Craterhoof Behemoth enters the battlefield, creatures you control "
+            "gain trample and get +X/+X until end of turn, where X is the number "
+            "of creatures you control.",
+            "Creature — Beast"
+        )
+        assert Mechanic.TRAMPLE in result.mechanics
+        assert Mechanic.ETB_TRIGGER in result.mechanics
+        assert Mechanic.UNTIL_END_OF_TURN in result.mechanics

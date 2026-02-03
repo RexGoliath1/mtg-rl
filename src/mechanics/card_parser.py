@@ -397,12 +397,71 @@ PATTERNS = [
     # =========================================================================
     (r"gains?\s+\d+\s+life", [Mechanic.GAIN_LIFE]),
     (r"you gain\s+\d+\s+life", [Mechanic.GAIN_LIFE]),
+
+    # =========================================================================
+    # VARIABLE EFFECTS ("where X is" / "equal to" / "for each")
+    # =========================================================================
+    # Variable draw
+    (r"draw(s)?\s+(a\s+)?cards?\s+for\s+each", [Mechanic.DRAW]),
+    (r"draw(s)?\s+\w+\s+cards?,?\s+where", [Mechanic.DRAW]),
+    (r"draw(s)?\s+cards?\s+equal\s+to", [Mechanic.DRAW]),
+
+    # Variable damage
+    (r"deals?\s+damage\s+(to\s+.+?\s+)?equal\s+to", [Mechanic.DEAL_DAMAGE]),
+    (r"deals?\s+\w+\s+damage.+?where\s+\w+\s+is", [Mechanic.DEAL_DAMAGE]),
+    (r"deals?\s+damage\s+to\s+.+?\s+for\s+each", [Mechanic.DEAL_DAMAGE]),
+
+    # Variable life loss/gain
+    (r"loses?\s+life\s+equal\s+to", [Mechanic.LOSE_LIFE]),
+    (r"loses?\s+\w+\s+life,?\s+where", [Mechanic.LOSE_LIFE]),
+    (r"gains?\s+life\s+equal\s+to", [Mechanic.GAIN_LIFE]),
+
+    # Variable mill
+    (r"mills?\s+\w+\s+cards?,?\s+where", [Mechanic.MILL]),
+    (r"mills?\s+cards?\s+equal\s+to", [Mechanic.MILL]),
+
+    # Variable scry/surveil
+    (r"scry\s+\w+,?\s+where", [Mechanic.SCRY]),
+    (r"surveil\s+\w+,?\s+where", [Mechanic.SURVEIL]),
+
+    # Variable tokens
+    (r"create\s+.*?\s+tokens?\s+for\s+each", [Mechanic.CREATE_TOKEN]),
+
+    # =========================================================================
+    # WORD-CONSUMING PATTERNS (no mechanics, just improve confidence)
+    # =========================================================================
+    # These patterns match common MTG phrases that follow variable effects.
+    # They don't emit mechanics but consume words so confidence scoring
+    # correctly reflects that this text has been understood.
+    (r"where\s+\w+\s+is\s+the\s+number\s+of", []),
+    (r"equal\s+to\s+the\s+number\s+of", []),
+    (r"equal\s+to\s+(its|that\s+creature's|that\s+card's)\s+(power|toughness|mana\s+value|converted\s+mana\s+cost)", []),
+    (r"for\s+each\s+(creature|land|artifact|enchantment|permanent|card|instant|sorcery|spell|player|opponent|color)", []),
+    (r"(creatures?|lands?|artifacts?|enchantments?|permanents?|cards?)\s+(you\s+control|in\s+your\s+graveyard|in\s+your\s+hand)", []),
+    (r"(creatures?|lands?|artifacts?|enchantments?|permanents?|cards?)\s+your\s+opponents?\s+controls?", []),
+    (r"(you\s+control|your\s+opponents?\s+controls?)", []),
+    (r"in\s+(your|the)\s+(graveyard|hand|library|exile)", []),
+    (r"that\s+(died|entered|left)\s+this\s+turn", []),
+    (r"among\s+(creatures|permanents|cards)", []),
 ]
 
 
 # =============================================================================
 # PARSER
 # =============================================================================
+
+def strip_reminder_text(text: str) -> str:
+    """Strip parenthetical reminder text from oracle text.
+
+    Reminder text in MTG cards appears in parentheses and explains mechanics
+    but doesn't represent parseable abilities. Stripping it before word
+    counting prevents artificial confidence deflation.
+
+    Example: "Flying (This creature can't be blocked except by creatures
+    with flying or reach.)" -> "Flying "
+    """
+    return re.sub(r'\([^)]*\)', '', text)
+
 
 @dataclass
 class ParseResult:
@@ -497,13 +556,13 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
                 elif Mechanic.CREATE_TOKEN in mechs:
                     parameters["token_count"] = int(numbers[0]) if numbers[0] != 'x' else 'x'
                 elif Mechanic.SCRY in mechs:
-                    parameters["scry_count"] = int(numbers[0])
+                    parameters["scry_count"] = int(numbers[0]) if numbers[0] != 'x' else 'x'
                 elif Mechanic.MILL in mechs:
-                    parameters["mill_count"] = int(numbers[0])
+                    parameters["mill_count"] = int(numbers[0]) if numbers[0] != 'x' else 'x'
                 elif Mechanic.SURVEIL in mechs:
-                    parameters["surveil_count"] = int(numbers[0])
+                    parameters["surveil_count"] = int(numbers[0]) if numbers[0] != 'x' else 'x'
                 elif Mechanic.LOSE_LIFE in mechs:
-                    parameters["life_loss"] = int(numbers[0])
+                    parameters["life_loss"] = int(numbers[0]) if numbers[0] != 'x' else 'x'
                 elif Mechanic.PLUS_ONE_COUNTER in mechs:
                     # Try to extract counter count from surrounding text
                     counter_match = re.search(r'(\d+)\s+\+1/\+1 counter', match.group())
@@ -566,7 +625,10 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
         parameters["impending_cost"] = int(impending_match.group(1))
 
     # Calculate confidence based on how much text we parsed
-    total_words = len(text.split())
+    # Strip reminder text (parenthetical) — it inflates word count without
+    # being parseable and shouldn't penalize confidence
+    stripped_text = strip_reminder_text(text)
+    total_words = len(stripped_text.split())
     parsed_words = sum(len(span.split()) for span in matched_spans)
     if total_words == 0:
         confidence = 1.0  # No text to parse (e.g., vanilla creature)
@@ -574,7 +636,8 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
         confidence = max(0.05, min(1.0, parsed_words / total_words))
 
     # Find unparsed text (for LLM fallback)
-    unparsed = text
+    # Use stripped text (no reminder text) as the baseline
+    unparsed = stripped_text
     for span in matched_spans:
         unparsed = unparsed.replace(span, "")
     unparsed = " ".join(unparsed.split())  # Clean up whitespace
