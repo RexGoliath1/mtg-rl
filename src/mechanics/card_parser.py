@@ -363,7 +363,10 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
     # Calculate confidence based on how much text we parsed
     total_words = len(text.split())
     parsed_words = sum(len(span.split()) for span in matched_spans)
-    confidence = min(1.0, parsed_words / max(1, total_words) + 0.3)  # Baseline 0.3
+    if total_words == 0:
+        confidence = 1.0  # No text to parse (e.g., vanilla creature)
+    else:
+        confidence = max(0.05, min(1.0, parsed_words / total_words))
 
     # Find unparsed text (for LLM fallback)
     unparsed = text
