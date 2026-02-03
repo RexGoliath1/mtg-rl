@@ -484,6 +484,7 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
         ParseResult with mechanics, parameters, and confidence
     """
     text = oracle_text.lower()
+    text = strip_reminder_text(text)
     mechanics = []
     parameters = {}
     matched_spans = []
@@ -504,7 +505,7 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
     # Check for keyword abilities
     for keyword, mechanic in KEYWORD_ABILITIES.items():
         # Match whole word
-        pattern = r'\b' + re.escape(keyword) + r'\b'
+        pattern = r'(?<!with )(?<!without )\b' + re.escape(keyword) + r'\b'
         if re.search(pattern, text):
             mechanics.append(mechanic)
             matched_spans.append(keyword)
@@ -625,9 +626,8 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
         parameters["impending_cost"] = int(impending_match.group(1))
 
     # Calculate confidence based on how much text we parsed
-    # Strip reminder text (parenthetical) — it inflates word count without
-    # being parseable and shouldn't penalize confidence
-    stripped_text = strip_reminder_text(text)
+    # Reminder text was already stripped at the top of this function
+    stripped_text = text
     total_words = len(stripped_text.split())
     parsed_words = sum(len(span.split()) for span in matched_spans)
     if total_words == 0:
