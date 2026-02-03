@@ -427,6 +427,71 @@ class Mechanic(IntEnum):
     JOIN_FORCES = 1309
     MYRIAD_TOKENS = 1310
 
+    # ==========================================================================
+    # RECENT SET MECHANICS (1271-1295)
+    # ==========================================================================
+    SPREE = 1271                # OTJ - Choose modes by paying costs
+    OFFSPRING = 1272            # BLB - Pay extra, create 1/1 token copy
+    VALIANT = 1273              # BLB - When 2+ targets
+    EERIE = 1274                # DSK - Enchantment/room enters
+    SURVIVAL = 1275             # DSK - If 2+ creatures died
+    IMPENDING = 1276            # DSK - Cheaper cost, enters without creature type
+    ROOM = 1277                 # DSK - Door/room enchantments
+    GIFT = 1278                 # FDN - May give gift to opponent
+    BARGAIN = 1279              # WOE - Sacrifice artifact/enchantment/token as cost
+    CELEBRATION = 1280          # WOE - Two+ nonland permanents entered
+    ROLE_TOKEN = 1281           # WOE - Young Hero, Wicked, Royal, etc.
+    CASE = 1282                 # MKM - Enchantments that "solve"
+    SUSPECT = 1283              # MKM - Menace + can't block
+    CLOAK = 1284                # MKM - Face-down 2/2, turn up for mana
+    COLLECT_EVIDENCE = 1285     # MKM - Exile cards from GY with total MV
+    COMMIT_A_CRIME = 1286       # OTJ - Target opponent or their stuff
+    SADDLE = 1288               # OTJ - Tap creatures with total power
+    OUTLAW = 1289               # OTJ - Assassin/Mercenary/Pirate/Rogue/Warlock
+    DESCEND_4 = 1290            # LCI - 4+ permanent cards in GY
+    DESCEND_8 = 1291            # LCI - 8+ permanent cards in GY
+    FATHOMLESS_DESCENT = 1292   # LCI - Count permanents in GY
+    MAP_TOKEN = 1294            # LCI - Explore token artifact
+    DISCOVER_X = 1295           # LCI - Exile til cheaper nonland, cast or hand
+
+    # ==========================================================================
+    # MODAL / CHOICE (1296-1299)
+    # ==========================================================================
+    MODAL_CHOOSE_ONE = 1296
+    MODAL_CHOOSE_TWO = 1297
+    MODAL_CHOOSE_THREE = 1298
+    MODAL_CHOOSE_X = 1299
+
+    # ==========================================================================
+    # TYPE FILTERS (1311-1314)
+    # ==========================================================================
+    FILTER_NONLAND = 1311
+    FILTER_NONCREATURE = 1312
+    FILTER_NONTOKEN = 1313
+    FILTER_NONARTIFACT = 1314
+
+    # ==========================================================================
+    # DURATION MARKERS (1315-1318)
+    # ==========================================================================
+    UNTIL_END_OF_TURN = 1315
+    UNTIL_YOUR_NEXT_TURN = 1316
+    AS_LONG_AS = 1317
+    PERPETUAL = 1318
+
+    # ==========================================================================
+    # SAGA / CHAPTER (1319-1323)
+    # ==========================================================================
+    SAGA = 1319
+    CHAPTER_I = 1320
+    CHAPTER_II = 1321
+    CHAPTER_III = 1322
+    CHAPTER_IV = 1323
+
+    # ==========================================================================
+    # LIFE EFFECTS (1324)
+    # ==========================================================================
+    GAIN_LIFE = 1324
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1
