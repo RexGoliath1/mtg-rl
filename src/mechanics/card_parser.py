@@ -562,11 +562,26 @@ def parse_card(card_data: Dict[str, Any]) -> CardEncoding:
 
     # Parse mana cost
     mana_dict = {"W": 0, "U": 0, "B": 0, "R": 0, "G": 0, "C": 0}
+    # Single symbols: {W}, {U}, {B}, {R}, {G}, {C}, {1}, {2}, etc.
     for symbol in re.findall(r'\{(\w)\}', mana_cost):
         if symbol in mana_dict:
             mana_dict[symbol] += 1
         elif symbol.isdigit():
             mana_dict["C"] += int(symbol)
+
+    # Hybrid mana: {W/U}, {B/G}, etc. — count each color
+    for hybrid in re.findall(r'\{(\w)/(\w)\}', mana_cost):
+        c1, c2 = hybrid
+        if c1 in mana_dict and c1 != 'P':
+            mana_dict[c1] += 1
+        if c2 in mana_dict and c2 != 'P':
+            mana_dict[c2] += 1
+
+    # X costs: {X}
+    x_count = mana_cost.count('{X}')
+    parameters = {}
+    if x_count:
+        parameters["x_cost_count"] = x_count
 
     # Parse types (handle various dash characters and // for split cards)
     types = []
@@ -603,6 +618,10 @@ def parse_card(card_data: Dict[str, Any]) -> CardEncoding:
             power = -1 if power_str in ["*", "X"] else 0
             toughness = -1 if toughness_str in ["*", "X"] else 0
 
+    # Merge mana-parsed parameters with oracle text parameters
+    merged_params = result.parameters.copy()
+    merged_params.update(parameters)
+
     return CardEncoding(
         name=name,
         mana_cost=mana_dict,
@@ -610,7 +629,7 @@ def parse_card(card_data: Dict[str, Any]) -> CardEncoding:
         types=types,
         subtypes=subtypes,
         mechanics=result.mechanics,
-        parameters=result.parameters,
+        parameters=merged_params,
         power=power,
         toughness=toughness,
     )
