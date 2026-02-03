@@ -339,6 +339,60 @@ PATTERNS = [
     (r"exile.+until", [Mechanic.EXILE_TEMPORARY]),
     (r"you may cast.+from exile", [Mechanic.CAST_FROM_EXILE]),
     (r"enters (the battlefield )?tapped", [Mechanic.TO_BATTLEFIELD_TAPPED]),
+
+    # =========================================================================
+    # MODAL / CHOICE
+    # =========================================================================
+    (r"choose one", [Mechanic.MODAL_CHOOSE_ONE]),
+    (r"choose two", [Mechanic.MODAL_CHOOSE_TWO]),
+    (r"choose three", [Mechanic.MODAL_CHOOSE_THREE]),
+    (r"choose (up to )?(one or more|any number|x)", [Mechanic.MODAL_CHOOSE_X]),
+
+    # =========================================================================
+    # RECENT SET MECHANICS
+    # =========================================================================
+    (r"spree\b", [Mechanic.SPREE]),
+    (r"offspring\b", [Mechanic.OFFSPRING]),
+    (r"\beerie\b", [Mechanic.EERIE]),
+    (r"\bsurvival\b", [Mechanic.SURVIVAL]),
+    (r"impending\s+\d+", [Mechanic.IMPENDING]),
+    (r"\bbargain\b", [Mechanic.BARGAIN]),
+    (r"\bcelebrat(e|ion)\b", [Mechanic.CELEBRATION]),
+    (r"\brole\b.+\btoken\b", [Mechanic.ROLE_TOKEN]),
+    (r"\bcase\b", [Mechanic.CASE]),
+    (r"\bsuspect\b", [Mechanic.SUSPECT]),
+    (r"\bcloak\b", [Mechanic.CLOAK]),
+    (r"collect evidence\s+\d+", [Mechanic.COLLECT_EVIDENCE]),
+    (r"commit(ted|s)? a crime", [Mechanic.COMMIT_A_CRIME]),
+    (r"saddle\s+\d+", [Mechanic.SADDLE]),
+    (r"gift a\b", [Mechanic.GIFT]),
+    (r"\bdescend 4\b", [Mechanic.DESCEND_4]),
+    (r"\bdescend 8\b", [Mechanic.DESCEND_8]),
+    (r"fathomless descent", [Mechanic.FATHOMLESS_DESCENT]),
+    (r"\bmap token", [Mechanic.MAP_TOKEN]),
+    (r"\bvaliant\b", [Mechanic.VALIANT]),
+    (r"\boutlaw\b", [Mechanic.OUTLAW]),
+
+    # =========================================================================
+    # TYPE FILTERS
+    # =========================================================================
+    (r"\bnonland\b", [Mechanic.FILTER_NONLAND]),
+    (r"\bnoncreature\b", [Mechanic.FILTER_NONCREATURE]),
+    (r"\bnontoken\b", [Mechanic.FILTER_NONTOKEN]),
+    (r"\bnonartifact\b", [Mechanic.FILTER_NONARTIFACT]),
+
+    # =========================================================================
+    # DURATION MARKERS
+    # =========================================================================
+    (r"until end of turn", [Mechanic.UNTIL_END_OF_TURN]),
+    (r"until your next turn", [Mechanic.UNTIL_YOUR_NEXT_TURN]),
+    (r"as long as", [Mechanic.AS_LONG_AS]),
+
+    # =========================================================================
+    # LIFE GAIN
+    # =========================================================================
+    (r"gains?\s+\d+\s+life", [Mechanic.GAIN_LIFE]),
+    (r"you gain\s+\d+\s+life", [Mechanic.GAIN_LIFE]),
 ]
 
 
