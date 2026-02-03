@@ -176,14 +176,18 @@ def load_bulk_cards(json_path: str, format_filter: Optional[str] = None) -> List
 # =============================================================================
 
 # Maximum number of numeric parameters to store per card
-MAX_PARAMS = 20
+MAX_PARAMS = 30
 
 # Parameter keys we track
 PARAM_KEYS = [
     "draw_count", "damage", "token_count", "scry_count", "mill_count",
     "life_gain", "life_loss", "mana_value", "power", "toughness",
     "loyalty", "tax_amount", "counter_count", "x_value", "life_threshold",
-    "warp_cmc", "kicker_cost", "flashback_cost", "escape_cost", "foretell_cost"
+    "warp_cmc", "kicker_cost", "flashback_cost", "escape_cost", "foretell_cost",
+    # New params (Phase 2/7 additions)
+    "surveil_count", "ward_cost", "toxic_count", "annihilator_count",
+    "power_mod", "toughness_mod", "chapter_count", "x_cost_count",
+    "saddle_power", "offspring_cost",
 ]
 
 
