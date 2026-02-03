@@ -157,6 +157,61 @@ KEYWORD_ABILITIES = {
     "coven": Mechanic.COVEN,
     "hellbent": Mechanic.HELLBENT,
     "party": Mechanic.PARTY,
+
+    # Combat keywords (missing)
+    "shroud": Mechanic.SHROUD,
+    "protection": Mechanic.PROTECTION,
+    "ward": Mechanic.WARD,
+    "banding": Mechanic.BANDING,
+    "absorb": Mechanic.ABSORB,
+    "battle cry": Mechanic.BATTLE_CRY,
+    "melee": Mechanic.MELEE,
+    "split second": Mechanic.SPLIT_SECOND,
+
+    # Temporal keywords (missing)
+    "phasing": Mechanic.PHASING,
+    "vanishing": Mechanic.VANISHING,
+    "fading": Mechanic.FADING,
+    "cumulative upkeep": Mechanic.CUMULATIVE_UPKEEP,
+    "echo": Mechanic.ECHO,
+
+    # Modal/split keywords (missing)
+    "entwine": Mechanic.ENTWINE,
+    "splice": Mechanic.SPLICE,
+    "fuse": Mechanic.FUSE,
+    "aftermath": Mechanic.AFTERMATH,
+    "adventure": Mechanic.ADVENTURE,
+
+    # Partner/companion (missing)
+    "companion": Mechanic.COMPANION,
+    "partner": Mechanic.PARTNER,
+
+    # Aura/equipment keywords (missing)
+    "bestow": Mechanic.BESTOW,
+    "soulbond": Mechanic.SOULBOND,
+
+    # Tribute/choice (missing)
+    "tribute": Mechanic.TRIBUTE,
+
+    # Recent set mechanics (missing)
+    "cleave": Mechanic.CLEAVE,
+    "casualty": Mechanic.CASUALTY,
+    "connive": Mechanic.CONNIVE,
+    "for mirrodin!": Mechanic.FOR_MIRRODIN,
+    "incubate": Mechanic.INCUBATE,
+    "learn": Mechanic.LEARN,
+    "craft": Mechanic.CRAFT,
+    "plot": Mechanic.PLOT,
+    "morph": Mechanic.MORPH,
+    "manifest": Mechanic.MANIFEST,
+    "disguise": Mechanic.DISGUISE,
+    "discover": Mechanic.DISCOVER,
+    "monstrosity": Mechanic.MONSTROSITY,
+    "support": Mechanic.SUPPORT,
+    "bolster": Mechanic.BOLSTER,
+    "transmute": Mechanic.TRANSMUTE,
+    "forecast": Mechanic.FORECAST,
+    "bloodthirst": Mechanic.BLOODTHIRST,
 }
 
 
