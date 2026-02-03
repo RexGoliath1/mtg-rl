@@ -196,7 +196,7 @@ KEYWORD_ABILITIES = {
     # Recent set mechanics (missing)
     "cleave": Mechanic.CLEAVE,
     "casualty": Mechanic.CASUALTY,
-    "connive": Mechanic.CONNIVE,
+    # "connive" handled via PATTERNS to catch verb conjugations (connives, connived)
     "for mirrodin!": Mechanic.FOR_MIRRODIN,
     "incubate": Mechanic.INCUBATE,
     "learn": Mechanic.LEARN,
@@ -248,8 +248,9 @@ PATTERNS = [
     (r"counter target spell", [Mechanic.COUNTER_SPELL]),
     (r"counter (it|that spell)", [Mechanic.COUNTER_SPELL]),
     (r"counter target.+ability", [Mechanic.COUNTER_ABILITY]),
-    (r"deals? \d+ damage", [Mechanic.DEAL_DAMAGE]),
-    (r"loses? \d+ life", [Mechanic.LOSE_LIFE]),
+    (r"deals? (\d+|x) damage", [Mechanic.DEAL_DAMAGE]),
+    (r"loses? (\d+|x) life", [Mechanic.LOSE_LIFE]),
+    (r"you lose life equal to", [Mechanic.LOSE_LIFE]),
 
     # Creation patterns
     (r"create(s)? (a|\d+|an?|two|three|four|five|x) .*(token|treasure|food|clue|blood)", [Mechanic.CREATE_TOKEN]),
@@ -260,17 +261,19 @@ PATTERNS = [
     (r"create(s)?.+blood token", [Mechanic.CREATE_TOKEN, Mechanic.CREATE_BLOOD]),
 
     # Card advantage
-    (r"draw(s)? (a card|\d+ cards?)", [Mechanic.DRAW]),
-    (r"may draw (a card|\d+ cards?)", [Mechanic.DRAW_OPTIONAL]),
+    (r"draw(s)? (a card|two cards|three cards|\d+ cards?)", [Mechanic.DRAW]),
+    (r"may draw (a card|two cards|three cards|\d+ cards?)", [Mechanic.DRAW_OPTIONAL]),
     (r"scry (\d+|x)", [Mechanic.SCRY]),
     (r"surveil (\d+|x)", [Mechanic.SURVEIL]),
     (r"look at the top", [Mechanic.LOOK_AT_TOP]),
+    (r"reveal", [Mechanic.REVEAL]),
     (r"search your library", [Mechanic.TUTOR_TO_HAND]),
     (r"search your library.+put.+onto the battlefield", [Mechanic.TUTOR_TO_BATTLEFIELD]),
     (r"return.+from.+graveyard to the battlefield", [Mechanic.REANIMATE]),
     (r"return.+from.+graveyard to your hand", [Mechanic.REGROWTH]),
-    (r"discard(s)? (a card|\d+ cards?|your hand)", [Mechanic.DISCARD]),
+    (r"discard(s)? (a card|two cards|three cards|\d+ cards?|your hand)", [Mechanic.DISCARD]),
     (r"mill(s)? (\d+|x)", [Mechanic.MILL]),
+    (r"you may cast.+from.+graveyard", [Mechanic.CAST_FROM_GRAVEYARD]),
 
     # Triggers
     (r"when(ever)? .+ enters( the battlefield)?", [Mechanic.ETB_TRIGGER]),
@@ -323,7 +326,7 @@ PATTERNS = [
     (r"gains? protection", [Mechanic.PROTECTION]),
     (r"can't be (countered|blocked)", [Mechanic.UNBLOCKABLE]),
     (r"tap target", [Mechanic.TAP]),
-    (r"untap target", [Mechanic.UNTAP]),
+    (r"untap (target|it|them|\w+)", [Mechanic.UNTAP]),
     (r"fight(s)?", [Mechanic.FIGHT]),
     (r"proliferate", [Mechanic.PROLIFERATE]),
     (r"twice that many", [Mechanic.TOKEN_DOUBLER]),
@@ -362,6 +365,7 @@ PATTERNS = [
     (r"\bcase\b", [Mechanic.CASE]),
     (r"\bsuspect\b", [Mechanic.SUSPECT]),
     (r"\bcloak\b", [Mechanic.CLOAK]),
+    (r"\bconnive[sd]?\b", [Mechanic.CONNIVE]),
     (r"collect evidence\s+\d+", [Mechanic.COLLECT_EVIDENCE]),
     (r"commit(ted|s)? a crime", [Mechanic.COMMIT_A_CRIME]),
     (r"saddle\s+\d+", [Mechanic.SADDLE]),
@@ -476,12 +480,20 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
             matched_spans.append(match.group())
 
             # Extract numeric parameters
+            word_to_num = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3,
+                           "four": 4, "five": 5, "six": 6, "seven": 7,
+                           "x": "x"}
             numbers = re.findall(r'\d+', match.group())
+            # Also check for word numbers in the match
+            for word, val in word_to_num.items():
+                if word in match.group().split() and not numbers:
+                    numbers = [str(val)]
+                    break
             if numbers:
                 if Mechanic.DRAW in mechs or Mechanic.DRAW_OPTIONAL in mechs:
-                    parameters["draw_count"] = int(numbers[0])
+                    parameters["draw_count"] = int(numbers[0]) if numbers[0] != 'x' else 'x'
                 elif Mechanic.DEAL_DAMAGE in mechs:
-                    parameters["damage"] = int(numbers[0])
+                    parameters["damage"] = int(numbers[0]) if numbers[0] != 'x' else 'x'
                 elif Mechanic.CREATE_TOKEN in mechs:
                     parameters["token_count"] = int(numbers[0]) if numbers[0] != 'x' else 'x'
                 elif Mechanic.SCRY in mechs:
@@ -507,7 +519,6 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
                 parameters["toughness_mod"] = t_sign * int(stat_match.group(4))
 
     # Saga chapter parsing (use original text for roman numeral case matching)
-    oracle_lower = oracle_text.lower()
     if "saga" in card_type_lower or re.search(r'^[IV]+\s*[—–\-]', oracle_text, re.MULTILINE):
         if Mechanic.SAGA not in mechanics:
             mechanics.append(Mechanic.SAGA)
