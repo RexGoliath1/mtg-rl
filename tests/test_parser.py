@@ -1515,10 +1515,10 @@ class TestBenchmarkCards:
         enc = parse_card(card)
         assert_has_mechanics(enc, [
             Mechanic.SORCERY_SPEED,
+            Mechanic.DISCARD,
             Mechanic.LOSE_LIFE,
+            Mechanic.REVEAL,
         ], "Thoughtseize")
-        # NOTE: DISCARD not detected — parser pattern expects "discards a card"
-        # but Thoughtseize uses "discards that card". Parser gap to fix later.
 
     def test_mana_drain(self):
         """Mana Drain — counter spell + delayed mana generation."""
@@ -2039,3 +2039,98 @@ class TestPlaneswalkerLoyalty:
             Mechanic.LOYALTY_STATIC,
             Mechanic.LOYALTY_COUNTER,
         ], "Giant Growth")
+
+
+# =============================================================================
+# P0 BUG FIX REGRESSION TESTS
+# =============================================================================
+
+class TestP0BugFixes:
+    """Regression tests for P0 bug fixes: INCREASE_COST, graveyard 'from', discard widening."""
+
+    def test_thalia_increase_cost(self):
+        """Thalia — 'cost {1} more to cast' should be INCREASE_COST, not REDUCE_COST."""
+        card = make_card(
+            "Thalia, Guardian of Thraben", "{1}{W}", 2,
+            "Legendary Creature — Human Soldier",
+            "First strike\nNoncreature spells cost {1} more to cast.",
+            power=2, toughness=1,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.FIRST_STRIKE,
+            Mechanic.INCREASE_COST,
+            Mechanic.FILTER_NONCREATURE,
+        ], "Thalia")
+        assert_lacks_mechanics(enc, [Mechanic.REDUCE_COST], "Thalia")
+
+    def test_reduce_cost_still_works(self):
+        """Goblin Electromancer — 'cost {1} less' should still be REDUCE_COST."""
+        card = make_card(
+            "Goblin Electromancer", "{U}{R}", 2,
+            "Creature — Goblin Wizard",
+            "Instant and sorcery spells you cast cost {1} less to cast.",
+            power=2, toughness=2,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.REDUCE_COST], "Goblin Electromancer")
+        assert_lacks_mechanics(enc, [Mechanic.INCREASE_COST], "Goblin Electromancer")
+
+    def test_keen_eyed_curator_graveyard_from(self):
+        """Keen-Eyed Curator — 'exile target card from a graveyard' should detect graveyard targeting."""
+        card = make_card(
+            "Keen-Eyed Curator", "{2}{G}", 3,
+            "Creature — Raccoon Druid",
+            "Vigilance\nWhen Keen-Eyed Curator enters the battlefield, exile target "
+            "card from a graveyard. If it was a land card, search your library for a "
+            "basic land card, put it onto the battlefield tapped, then shuffle.",
+            power=3, toughness=2,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.VIGILANCE,
+            Mechanic.ETB_TRIGGER,
+            Mechanic.EXILE,
+            Mechanic.TARGET_CARD_IN_GRAVEYARD,
+            Mechanic.TUTOR_TO_BATTLEFIELD,
+        ], "Keen-Eyed Curator")
+
+    def test_graveyard_in_still_works(self):
+        """'target card in a graveyard' should still work."""
+        result = parse_oracle_text(
+            "Exile target card in a graveyard.",
+            "Instant"
+        )
+        assert Mechanic.TARGET_CARD_IN_GRAVEYARD in result.mechanics
+
+    def test_thoughtseize_discard_that_card(self):
+        """Thoughtseize — 'discards that card' should now detect DISCARD."""
+        card = make_card(
+            "Thoughtseize", "{B}", 1, "Sorcery",
+            "Target player reveals their hand. You choose a nonland card from it. "
+            "That player discards that card. You lose 2 life."
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.SORCERY_SPEED,
+            Mechanic.DISCARD,
+            Mechanic.LOSE_LIFE,
+            Mechanic.REVEAL,
+        ], "Thoughtseize")
+
+    def test_liliana_minus2_sacrifice_discard(self):
+        """Liliana +1 'discards a card' should still work."""
+        result = parse_oracle_text(
+            "Each player discards a card.",
+            "Planeswalker"
+        )
+        assert Mechanic.DISCARD in result.mechanics
+
+    def test_discard_it(self):
+        """'discards it' pattern should detect DISCARD."""
+        result = parse_oracle_text(
+            "Target opponent reveals a card at random from their hand. "
+            "That player discards it.",
+            "Sorcery"
+        )
+        assert Mechanic.DISCARD in result.mechanics
