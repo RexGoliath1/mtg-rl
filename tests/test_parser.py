@@ -1643,3 +1643,396 @@ class TestBenchmarkCards:
             Mechanic.REACH,
             Mechanic.UNTIL_END_OF_TURN,
         ], "Tower Defense")
+
+
+# =============================================================================
+# EQUIPMENT TESTS
+# =============================================================================
+
+class TestEquipment:
+    """Test equipment keyword, pattern, and parameter extraction."""
+
+    def test_embercleave(self):
+        """Embercleave — flash, equip, double strike, trample."""
+        card = make_card(
+            "Embercleave", "{4}{R}{R}", 6,
+            "Legendary Artifact — Equipment",
+            "Flash\nThis spell costs {1} less to cast for each attacking creature "
+            "you control.\nWhen Embercleave enters the battlefield, attach it to "
+            "target creature you control.\nEquipped creature gets +1/+1 and has "
+            "double strike and trample.\nEquip {3}",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.FLASH,
+            Mechanic.EQUIP,
+            Mechanic.DOUBLE_STRIKE,
+            Mechanic.TRAMPLE,
+        ], "Embercleave")
+        assert enc.parameters.get("equip_cost") == 3
+
+    def test_sword_of_fire_and_ice(self):
+        """Sword of Fire and Ice — equip, protection, damage, draw."""
+        card = make_card(
+            "Sword of Fire and Ice", "{3}", 3,
+            "Artifact — Equipment",
+            "Equipped creature gets +2/+2 and has protection from red and from blue.\n"
+            "Whenever equipped creature deals combat damage to a player, Sword of "
+            "Fire and Ice deals 2 damage to any target and you draw a card.\nEquip {2}",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.EQUIP,
+            Mechanic.PROTECTION,
+            Mechanic.DEAL_DAMAGE,
+            Mechanic.DRAW,
+        ], "Sword of Fire and Ice")
+        assert enc.parameters.get("equip_cost") == 2
+
+    def test_colossus_hammer(self):
+        """Colossus Hammer — equip + big stat boost."""
+        card = make_card(
+            "Colossus Hammer", "{1}", 1,
+            "Artifact — Equipment",
+            "Equipped creature gets +10/+10 and loses flying.\nEquip {8}",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.EQUIP,
+            Mechanic.PLUS_POWER,
+            Mechanic.PLUS_TOUGHNESS,
+        ], "Colossus Hammer")
+        assert enc.parameters.get("equip_cost") == 8
+
+    def test_lightning_greaves(self):
+        """Lightning Greaves — equip 0, shroud, haste."""
+        card = make_card(
+            "Lightning Greaves", "{2}", 2,
+            "Artifact — Equipment",
+            "Equipped creature has shroud and haste.\nEquip {0}",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.EQUIP,
+            Mechanic.SHROUD,
+            Mechanic.HASTE,
+        ], "Lightning Greaves")
+        assert enc.parameters.get("equip_cost") == 0
+
+    def test_equipment_false_positive(self):
+        """Non-equipment card mentioning 'Equipment' should not get EQUIP."""
+        card = make_card(
+            "Stoneforge Mystic", "{1}{W}", 2,
+            "Creature — Kor Artificer",
+            "When Stoneforge Mystic enters the battlefield, you may search "
+            "your library for an Equipment card, reveal it, put it into your "
+            "hand, then shuffle.",
+            power=1, toughness=2,
+        )
+        enc = parse_card(card)
+        # "Equipment" (capitalized noun) should NOT trigger equip keyword
+        # because the keyword pattern matches \bequip\b (not "equipment")
+        assert_has_mechanics(enc, [
+            Mechanic.ETB_TRIGGER,
+            Mechanic.TUTOR_TO_HAND,
+        ], "Stoneforge Mystic")
+
+
+# =============================================================================
+# COUNTER TYPE TESTS
+# =============================================================================
+
+class TestCounterTypes:
+    """Test counter type detection patterns."""
+
+    def test_experience_counters(self):
+        """Meren — experience counters."""
+        card = make_card(
+            "Meren of Clan Nel Toth", "{2}{B}{G}", 4,
+            "Legendary Creature — Human Shaman",
+            "Whenever another creature you control dies, you get an experience counter.\n"
+            "At the beginning of your end step, choose target creature card in your "
+            "graveyard. If that card's mana value is less than or equal to the number "
+            "of experience counters you have, return it to the battlefield. Otherwise, "
+            "put it into your hand.",
+            power=3, toughness=4,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.EXPERIENCE_COUNTER,
+            Mechanic.DEATH_TRIGGER,
+        ], "Meren")
+
+    def test_energy_counters_symbol(self):
+        """Aetherworks Marvel — energy via {E} symbol."""
+        card = make_card(
+            "Aetherworks Marvel", "{4}", 4,
+            "Legendary Artifact",
+            "Whenever a permanent you control is put into a graveyard, "
+            "you get {E}.\n{T}, Pay {E}{E}{E}{E}{E}{E}: Look at the top six "
+            "cards of your library. You may cast a spell from among them without "
+            "paying its mana cost. Put the rest on the bottom of your library "
+            "in a random order.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.ENERGY_COUNTER,
+        ], "Aetherworks Marvel")
+
+    def test_shield_counters(self):
+        """Shalai and Hallar — shield counters."""
+        card = make_card(
+            "Shalai and Hallar", "{1}{R}{G}{W}", 4,
+            "Legendary Creature — Angel Elf",
+            "Flying\nWhen Shalai and Hallar enters the battlefield, put a shield "
+            "counter on each creature you control.\nWhenever one or more +1/+1 "
+            "counters are put on a creature you control, Shalai and Hallar deals "
+            "that much damage to each opponent.",
+            power=3, toughness=4,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.FLYING,
+            Mechanic.SHIELD_COUNTER,
+            Mechanic.ETB_TRIGGER,
+            Mechanic.DEAL_DAMAGE,
+        ], "Shalai and Hallar")
+
+    def test_keyword_counters(self):
+        """Crystalline Giant — keyword counters (flying counter, etc.)."""
+        card = make_card(
+            "Crystalline Giant", "{3}", 3,
+            "Artifact Creature — Giant",
+            "At the beginning of combat on your turn, choose a kind of counter "
+            "at random that Crystalline Giant doesn't have on it from among "
+            "flying counter, first strike counter, deathtouch counter, hexproof "
+            "counter, lifelink counter, menace counter, reach counter, trample "
+            "counter, vigilance counter, and +1/+1 counter. Put a counter of "
+            "that kind on Crystalline Giant.",
+            power=3, toughness=3,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.KEYWORD_COUNTER,
+            Mechanic.PLUS_ONE_COUNTER,
+        ], "Crystalline Giant")
+
+    def test_oil_counters(self):
+        """Urabrask's Forge — oil counters."""
+        card = make_card(
+            "Urabrask's Forge", "{2}{R}", 3,
+            "Artifact",
+            "At the beginning of combat on your turn, put an oil counter on "
+            "Urabrask's Forge. Then create a 0/0 red Phyrexian Horror creature "
+            "token with trample and haste. Its power and toughness are each equal "
+            "to the number of oil counters on Urabrask's Forge. Exile that token "
+            "at end of combat.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.OIL_COUNTER,
+            Mechanic.CREATE_TOKEN,
+        ], "Urabrask's Forge")
+
+    def test_energy_text_form(self):
+        """Energy counters via 'energy counter' text (not {E} symbol)."""
+        result = parse_oracle_text(
+            "Whenever a creature enters the battlefield under your control, "
+            "you get two energy counters.",
+            "Enchantment"
+        )
+        assert Mechanic.ENERGY_COUNTER in result.mechanics
+
+
+# =============================================================================
+# BECOMES CREATURE (MANLAND) TESTS
+# =============================================================================
+
+class TestBecomeCreature:
+    """Test 'becomes creature' patterns for manlands and similar."""
+
+    def test_restless_cottage(self):
+        """Restless Cottage — manland, becomes 4/4."""
+        card = make_card(
+            "Restless Cottage", "", 0,
+            "Land",
+            "Restless Cottage enters the battlefield tapped.\n"
+            "{T}: Add {B} or {G}.\n"
+            "{1}{B}{G}: Until end of turn, Restless Cottage becomes a 4/4 "
+            "black and green Elemental creature with \"Whenever this creature "
+            "attacks, create a Food token.\" It's still a land.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.BECOMES_CREATURE,
+            Mechanic.TO_BATTLEFIELD_TAPPED,
+            Mechanic.ADD_MANA,
+        ], "Restless Cottage")
+        assert enc.parameters.get("becomes_power") == 4
+        assert enc.parameters.get("becomes_toughness") == 4
+
+    def test_mutavault(self):
+        """Mutavault — becomes 2/2 all creature types."""
+        card = make_card(
+            "Mutavault", "", 0,
+            "Land",
+            "{T}: Add {C}.\n"
+            "{1}: Until end of turn, Mutavault becomes a 2/2 creature with "
+            "all creature types. It's still a land.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.BECOMES_CREATURE,
+            Mechanic.ADD_MANA,
+        ], "Mutavault")
+        assert enc.parameters.get("becomes_power") == 2
+        assert enc.parameters.get("becomes_toughness") == 2
+
+    def test_celestial_colonnade(self):
+        """Celestial Colonnade — becomes 4/4 with flying + vigilance."""
+        card = make_card(
+            "Celestial Colonnade", "", 0,
+            "Land",
+            "Celestial Colonnade enters the battlefield tapped.\n"
+            "{T}: Add {W} or {U}.\n"
+            "{3}{W}{U}: Until end of turn, Celestial Colonnade becomes a 4/4 "
+            "white and blue Elemental creature with flying and vigilance. "
+            "It's still a land.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.BECOMES_CREATURE,
+            Mechanic.TO_BATTLEFIELD_TAPPED,
+            Mechanic.ADD_MANA,
+        ], "Celestial Colonnade")
+        assert enc.parameters.get("becomes_power") == 4
+        assert enc.parameters.get("becomes_toughness") == 4
+
+    def test_gideon_is_creature_as_long_as(self):
+        """Gideon Blackblade — 'is a creature as long as' pattern."""
+        card = make_card(
+            "Gideon Blackblade", "{1}{W}{W}", 3,
+            "Legendary Planeswalker — Gideon",
+            "As long as it's your turn, Gideon Blackblade is a 4/4 Human Soldier "
+            "creature with indestructible that's still a planeswalker.\n"
+            "+1: Up to one other target creature you control gains your choice of "
+            "vigilance, lifelink, or indestructible until end of turn.\n"
+            "\u22126: Exile target nonland permanent.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.LOYALTY_COUNTER,
+            Mechanic.LOYALTY_PLUS,
+            Mechanic.LOYALTY_MINUS,
+        ], "Gideon Blackblade")
+
+
+# =============================================================================
+# PLANESWALKER LOYALTY TESTS
+# =============================================================================
+
+class TestPlaneswalkerLoyalty:
+    """Test planeswalker loyalty ability parsing."""
+
+    def test_liliana_of_the_veil(self):
+        """Liliana of the Veil — +1, −2, −6 abilities."""
+        card = make_card(
+            "Liliana of the Veil", "{1}{B}{B}", 3,
+            "Legendary Planeswalker \u2014 Liliana",
+            "+1: Each player discards a card.\n"
+            "\u22122: Target player sacrifices a creature.\n"
+            "\u22126: Separate all permanents target player controls into two piles. "
+            "That player sacrifices all permanents in the pile of their choice.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.LOYALTY_COUNTER,
+            Mechanic.LOYALTY_PLUS,
+            Mechanic.LOYALTY_MINUS,
+            Mechanic.DISCARD,
+            Mechanic.SACRIFICE,
+        ], "Liliana of the Veil")
+        assert enc.parameters.get("loyalty_ability_count") == 3
+
+    def test_teferi_time_raveler(self):
+        """Teferi, Time Raveler — static + +1 + −3."""
+        card = make_card(
+            "Teferi, Time Raveler", "{1}{W}{U}", 3,
+            "Legendary Planeswalker \u2014 Teferi",
+            "Each opponent can cast spells only any time they could cast a sorcery.\n"
+            "+1: Until your next turn, you may cast sorcery spells as though they "
+            "had flash.\n"
+            "\u22123: Return up to one target artifact, creature, or enchantment to "
+            "its owner's hand. Draw a card.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.LOYALTY_COUNTER,
+            Mechanic.LOYALTY_STATIC,
+            Mechanic.LOYALTY_PLUS,
+            Mechanic.LOYALTY_MINUS,
+            Mechanic.BOUNCE_TO_HAND,
+            Mechanic.DRAW,
+        ], "Teferi, Time Raveler")
+        assert enc.parameters.get("loyalty_ability_count") == 2
+
+    def test_jace_the_mind_sculptor(self):
+        """Jace, the Mind Sculptor — +2, 0, −1, −12 abilities."""
+        card = make_card(
+            "Jace, the Mind Sculptor", "{2}{U}{U}", 4,
+            "Legendary Planeswalker \u2014 Jace",
+            "+2: Look at the top card of target player's library. You may put "
+            "that card on the bottom of that player's library.\n"
+            "0: Draw three cards, then put two cards from your hand on top of "
+            "your library in any order.\n"
+            "\u22121: Return target creature to its owner's hand.\n"
+            "\u221212: Exile all cards from target player's library, then that "
+            "player shuffles their hand into their library.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.LOYALTY_COUNTER,
+            Mechanic.LOYALTY_PLUS,
+            Mechanic.LOYALTY_ZERO,
+            Mechanic.LOYALTY_MINUS,
+            Mechanic.DRAW,
+            Mechanic.BOUNCE_TO_HAND,
+        ], "Jace, the Mind Sculptor")
+        assert enc.parameters.get("loyalty_ability_count") == 4
+
+    def test_kaito_bane_of_nightmares(self):
+        """Kaito — becomes creature + loyalty abilities."""
+        card = make_card(
+            "Kaito, Bane of Nightmares", "{1}{U}{B}", 3,
+            "Legendary Planeswalker \u2014 Kaito",
+            "+2: Until end of turn, Kaito, Bane of Nightmares becomes a 3/4 Ninja "
+            "creature with menace and \"Whenever this creature deals combat damage "
+            "to a player, look at that player's hand and exile a nonland card from "
+            "it face down.\"\n"
+            "+1: You may put a card exiled with Kaito into its owner's graveyard. "
+            "If you do, draw a card.\n"
+            "\u22122: Each opponent loses 2 life and you gain 2 life.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.LOYALTY_COUNTER,
+            Mechanic.LOYALTY_PLUS,
+            Mechanic.LOYALTY_MINUS,
+            Mechanic.BECOMES_CREATURE,
+            Mechanic.MENACE,
+        ], "Kaito, Bane of Nightmares")
+
+    def test_non_planeswalker_no_loyalty(self):
+        """Non-planeswalker with '+2/+2' should NOT get LOYALTY_PLUS."""
+        card = make_card(
+            "Giant Growth", "{G}", 1, "Instant",
+            "Target creature gets +3/+3 until end of turn."
+        )
+        enc = parse_card(card)
+        assert_lacks_mechanics(enc, [
+            Mechanic.LOYALTY_PLUS,
+            Mechanic.LOYALTY_MINUS,
+            Mechanic.LOYALTY_ZERO,
+            Mechanic.LOYALTY_STATIC,
+            Mechanic.LOYALTY_COUNTER,
+        ], "Giant Growth")
