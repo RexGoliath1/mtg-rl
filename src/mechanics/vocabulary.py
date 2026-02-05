@@ -503,6 +503,16 @@ class Mechanic(IntEnum):
     BECOMES_CREATURE = 1330    # "becomes a N/N creature" (manlands, Gideon)
     KEYWORD_COUNTER = 1331     # Flying counter, deathtouch counter, etc. (Ikoria)
 
+    # ==========================================================================
+    # STAX / HATE / RESTRICTION (1332-1337)
+    # ==========================================================================
+    LOSES_ABILITIES = 1332      # "loses all abilities" (Darksteel Mutation, Kenrith's Transformation)
+    CANT_GAIN_LIFE = 1333       # "can't gain life" (Erebos, Sulfuric Vortex)
+    CANT_CAST = 1334            # "can't be cast" / "can't cast" (Gaddock Teeg, Drannith Magistrate)
+    CAST_RESTRICTION = 1335     # "can't cast more than one" (Rule of Law, Arcane Laboratory)
+    DRAW_REPLACEMENT = 1336     # "If would draw...instead" (Notion Thief, Narset)
+    GRAVEYARD_HATE = 1337       # "can't enter the battlefield from" / GY exile (Rest in Peace, Grafdigger's Cage)
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1
