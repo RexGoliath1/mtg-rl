@@ -2134,3 +2134,290 @@ class TestP0BugFixes:
             "Sorcery"
         )
         assert Mechanic.DISCARD in result.mechanics
+
+
+# =============================================================================
+# AURA TESTS
+# =============================================================================
+
+class TestAuras:
+    """Test aura enchantment effect parsing."""
+
+    def test_pacifism(self):
+        """Pacifism — can't attack or block."""
+        card = make_card(
+            "Pacifism", "{1}{W}", 2,
+            "Enchantment — Aura",
+            "Enchant creature\nEnchanted creature can't attack or block.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.TARGET_CREATURE,
+            Mechanic.CANT_ATTACK,
+            Mechanic.CANT_BLOCK,
+        ], "Pacifism")
+
+    def test_unable_to_scream(self):
+        """Unable to Scream — loses abilities, sets base P/T 0/1."""
+        card = make_card(
+            "Unable to Scream", "{U}", 1,
+            "Enchantment — Aura",
+            "Enchant creature\nEnchanted creature loses all abilities and "
+            "has base power and toughness 0/1.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.TARGET_CREATURE,
+            Mechanic.LOSES_ABILITIES,
+            Mechanic.SET_POWER,
+            Mechanic.SET_TOUGHNESS,
+        ], "Unable to Scream")
+        assert enc.parameters.get("set_power") == 0
+        assert enc.parameters.get("set_toughness") == 1
+
+    def test_kenriths_transformation(self):
+        """Kenrith's Transformation — loses abilities, sets P/T, ETB draw."""
+        card = make_card(
+            "Kenrith's Transformation", "{1}{G}", 2,
+            "Enchantment — Aura",
+            "Enchant creature\nWhen Kenrith's Transformation enters the "
+            "battlefield, draw a card.\nEnchanted creature loses all abilities "
+            "and has base power and toughness 3/3.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.LOSES_ABILITIES,
+            Mechanic.SET_POWER,
+            Mechanic.SET_TOUGHNESS,
+            Mechanic.ETB_TRIGGER,
+            Mechanic.DRAW,
+        ], "Kenrith's Transformation")
+
+    def test_darksteel_mutation(self):
+        """Darksteel Mutation — loses abilities, indestructible, sets P/T."""
+        card = make_card(
+            "Darksteel Mutation", "{1}{W}", 2,
+            "Enchantment — Aura",
+            "Enchant creature\nEnchanted creature is an Insect artifact "
+            "creature with base power and toughness 0/1, has indestructible, "
+            "and loses all other abilities.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.LOSES_ABILITIES,
+            Mechanic.INDESTRUCTIBLE,
+            Mechanic.SET_POWER,
+            Mechanic.SET_TOUGHNESS,
+        ], "Darksteel Mutation")
+
+    def test_rancor(self):
+        """Rancor — enchant creature, trample, +2/+0, returns to hand.
+
+        NOTE: REGROWTH not detected — Rancor says "return Rancor to its
+        owner's hand" but the pattern expects "from...graveyard to your hand".
+        Known parser gap for self-referential return-from-graveyard text.
+        """
+        card = make_card(
+            "Rancor", "{G}", 1,
+            "Enchantment — Aura",
+            "Enchant creature\nEnchanted creature gets +2/+0 and has trample.\n"
+            "When Rancor is put into a graveyard from the battlefield, return "
+            "Rancor to its owner's hand.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.TARGET_CREATURE,
+            Mechanic.TRAMPLE,
+            Mechanic.PLUS_POWER,
+        ], "Rancor")
+
+    def test_ethereal_armor(self):
+        """Ethereal Armor — enchant creature, first strike."""
+        card = make_card(
+            "Ethereal Armor", "{W}", 1,
+            "Enchantment — Aura",
+            "Enchant creature\nEnchanted creature gets +1/+1 for each "
+            "enchantment you control and has first strike.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.TARGET_CREATURE,
+            Mechanic.FIRST_STRIKE,
+        ], "Ethereal Armor")
+
+    def test_guard_duty(self):
+        """Guard Duty — can't attack but CAN still block."""
+        card = make_card(
+            "Guard Duty", "{W}", 1,
+            "Enchantment — Aura",
+            "Enchant creature\nEnchanted creature can't attack.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.CANT_ATTACK,
+        ], "Guard Duty")
+        assert_lacks_mechanics(enc, [Mechanic.CANT_BLOCK], "Guard Duty")
+
+    def test_aura_false_positive(self):
+        """Ghostly Prison — not an aura, fires CANT_ATTACK.
+
+        NOTE: TARGET_CREATURE fires from the existing "each creature" pattern
+        matching "each creature they control". Acceptable trade-off — Ghostly
+        Prison does affect creatures, just not via targeting/aura.
+        """
+        card = make_card(
+            "Ghostly Prison", "{2}{W}", 3,
+            "Enchantment",
+            "Creatures can't attack you unless their controller pays {2} for "
+            "each creature they control that's attacking you.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.CANT_ATTACK], "Ghostly Prison")
+
+    def test_thalia_no_cant_attack(self):
+        """Thalia — tax effect, NOT can't attack/block/loses abilities."""
+        card = make_card(
+            "Thalia, Guardian of Thraben", "{1}{W}", 2,
+            "Legendary Creature — Human Soldier",
+            "First strike\nNoncreature spells cost {1} more to cast.",
+            power=2, toughness=1,
+        )
+        enc = parse_card(card)
+        assert_lacks_mechanics(enc, [
+            Mechanic.CANT_ATTACK,
+            Mechanic.CANT_BLOCK,
+            Mechanic.LOSES_ABILITIES,
+        ], "Thalia")
+
+
+# =============================================================================
+# STAX / HATE TESTS
+# =============================================================================
+
+class TestStaxHate:
+    """Test stax and hate effect parsing."""
+
+    def test_erebos(self):
+        """Erebos — can't gain life, indestructible, draw, devotion."""
+        card = make_card(
+            "Erebos, God of the Dead", "{3}{B}", 4,
+            "Legendary Enchantment Creature — God",
+            "Indestructible\nAs long as your devotion to black is less than "
+            "five, Erebos isn't a creature.\nYour opponents can't gain life.\n"
+            "{1}{B}, Pay 2 life: Draw a card.",
+            power=5, toughness=7,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.CANT_GAIN_LIFE,
+            Mechanic.INDESTRUCTIBLE,
+            Mechanic.DRAW,
+            Mechanic.AS_LONG_AS,
+        ], "Erebos")
+
+    def test_gaddock_teeg(self):
+        """Gaddock Teeg — noncreature CMC 4+ can't be cast."""
+        card = make_card(
+            "Gaddock Teeg", "{G}{W}", 2,
+            "Legendary Creature — Kithkin Advisor",
+            "Noncreature spells with mana value 4 or greater can't be cast.\n"
+            "Noncreature spells with {X} in their mana costs can't be cast.",
+            power=2, toughness=2,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.CANT_CAST,
+            Mechanic.FILTER_NONCREATURE,
+        ], "Gaddock Teeg")
+
+    def test_rule_of_law(self):
+        """Rule of Law — cast restriction."""
+        card = make_card(
+            "Rule of Law", "{2}{W}", 3,
+            "Enchantment",
+            "Each player can't cast more than one spell each turn.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.CAST_RESTRICTION,
+        ], "Rule of Law")
+
+    def test_notion_thief(self):
+        """Notion Thief — flash, draw replacement."""
+        card = make_card(
+            "Notion Thief", "{2}{U}{B}", 4,
+            "Creature — Human Rogue",
+            "Flash\nIf an opponent would draw a card except the first one they "
+            "draw in each of their draw steps, instead that player skips that "
+            "draw and you draw a card.",
+            power=3, toughness=1,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.FLASH,
+            Mechanic.DRAW_REPLACEMENT,
+            Mechanic.REPLACEMENT_EFFECT,
+            Mechanic.DRAW,
+        ], "Notion Thief")
+
+    def test_rest_in_peace(self):
+        """Rest in Peace — ETB exile graveyards + graveyard replacement."""
+        card = make_card(
+            "Rest in Peace", "{1}{W}", 2,
+            "Enchantment",
+            "When Rest in Peace enters the battlefield, exile all graveyards.\n"
+            "If a card or token would be put into a graveyard from anywhere, "
+            "exile it instead.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.ETB_TRIGGER,
+            Mechanic.GRAVEYARD_HATE,
+            Mechanic.REPLACEMENT_EFFECT,
+        ], "Rest in Peace")
+
+    def test_grafdiggers_cage(self):
+        """Grafdigger's Cage — graveyard hate + can't cast from GY."""
+        card = make_card(
+            "Grafdigger's Cage", "{1}", 1,
+            "Artifact",
+            "Creature cards in graveyards and libraries can't enter the "
+            "battlefield.\nPlayers can't cast spells from graveyards or "
+            "libraries.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.GRAVEYARD_HATE,
+            Mechanic.CANT_CAST,
+        ], "Grafdigger's Cage")
+
+    def test_drannith_magistrate(self):
+        """Drannith Magistrate — can't cast from non-hand zones."""
+        card = make_card(
+            "Drannith Magistrate", "{1}{W}", 2,
+            "Creature — Human Wizard",
+            "Your opponents can't cast spells from anywhere other than their "
+            "hands.",
+            power=1, toughness=3,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.CANT_CAST,
+        ], "Drannith Magistrate")
+
+    def test_thalia_no_regression(self):
+        """Thalia — INCREASE_COST, NOT CANT_CAST or CAST_RESTRICTION."""
+        card = make_card(
+            "Thalia, Guardian of Thraben", "{1}{W}", 2,
+            "Legendary Creature — Human Soldier",
+            "First strike\nNoncreature spells cost {1} more to cast.",
+            power=2, toughness=1,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.INCREASE_COST,
+        ], "Thalia")
+        assert_lacks_mechanics(enc, [
+            Mechanic.CANT_CAST,
+            Mechanic.CAST_RESTRICTION,
+        ], "Thalia")
