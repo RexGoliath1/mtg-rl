@@ -450,6 +450,32 @@ PATTERNS = [
     (r"is\s+(a|an)\s+.*creature.*as long as", [Mechanic.BECOMES_CREATURE, Mechanic.AS_LONG_AS]),
 
     # =========================================================================
+    # AURA / ENCHANTMENT EFFECTS
+    # =========================================================================
+    (r"enchant creature", [Mechanic.TARGET_CREATURE]),
+    (r"enchant (permanent|artifact|land|player)", []),
+    (r"enchanted creature", []),
+    (r"enchanted permanent", []),
+    (r"can't attack or block", [Mechanic.CANT_ATTACK, Mechanic.CANT_BLOCK]),
+    (r"can't attack\b", [Mechanic.CANT_ATTACK]),
+    (r"can't block\b", [Mechanic.CANT_BLOCK]),
+    (r"base power and toughness (\d+)/(\d+)", [Mechanic.SET_POWER, Mechanic.SET_TOUGHNESS]),
+    (r"loses all (other )?abilities", [Mechanic.LOSES_ABILITIES]),
+
+    # =========================================================================
+    # STAX / HATE EFFECTS
+    # =========================================================================
+    (r"can't gain life", [Mechanic.CANT_GAIN_LIFE]),
+    (r"can't be cast", [Mechanic.CANT_CAST]),
+    (r"can't cast\b", [Mechanic.CANT_CAST]),
+    (r"can't cast more than one", [Mechanic.CAST_RESTRICTION]),
+    (r"can't cast additional", [Mechanic.CAST_RESTRICTION]),
+    (r"can cast only", [Mechanic.CAST_RESTRICTION]),
+    (r"would draw.+instead", [Mechanic.DRAW_REPLACEMENT, Mechanic.REPLACEMENT_EFFECT]),
+    (r"can't enter the battlefield", [Mechanic.GRAVEYARD_HATE]),
+    (r"if a card.+would be put into a graveyard.+exile", [Mechanic.GRAVEYARD_HATE, Mechanic.REPLACEMENT_EFFECT]),
+
+    # =========================================================================
     # WORD-CONSUMING PATTERNS (no mechanics, just improve confidence)
     # =========================================================================
     # These patterns match common MTG phrases that follow variable effects.
@@ -662,6 +688,12 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
     if becomes_match:
         parameters["becomes_power"] = int(becomes_match.group(1))
         parameters["becomes_toughness"] = int(becomes_match.group(2))
+
+    # Base power/toughness (auras like Darksteel Mutation, Unable to Scream)
+    base_pt_match = re.search(r'base power and toughness (\d+)/(\d+)', text)
+    if base_pt_match:
+        parameters["set_power"] = int(base_pt_match.group(1))
+        parameters["set_toughness"] = int(base_pt_match.group(2))
 
     # Planeswalker loyalty ability parsing
     if "planeswalker" in card_type_lower:
