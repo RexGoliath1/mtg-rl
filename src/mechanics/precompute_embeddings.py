@@ -176,7 +176,7 @@ def load_bulk_cards(json_path: str, format_filter: Optional[str] = None) -> List
 # =============================================================================
 
 # Maximum number of numeric parameters to store per card
-MAX_PARAMS = 30
+MAX_PARAMS = 34
 
 # Parameter keys we track
 PARAM_KEYS = [
@@ -188,6 +188,8 @@ PARAM_KEYS = [
     "surveil_count", "ward_cost", "toxic_count", "annihilator_count",
     "power_mod", "toughness_mod", "chapter_count", "x_cost_count",
     "saddle_power", "offspring_cost",
+    # Equipment / Planeswalker / Manland params
+    "equip_cost", "loyalty_ability_count", "becomes_power", "becomes_toughness",
 ]
 
 

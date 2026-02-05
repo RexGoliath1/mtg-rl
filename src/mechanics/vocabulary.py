@@ -492,6 +492,17 @@ class Mechanic(IntEnum):
     # ==========================================================================
     GAIN_LIFE = 1324
 
+    # ==========================================================================
+    # EQUIPMENT / PLANESWALKER / TYPE CHANGE (1325-1331)
+    # ==========================================================================
+    EQUIP = 1325
+    LOYALTY_PLUS = 1326        # Planeswalker "+N:" ability
+    LOYALTY_MINUS = 1327       # Planeswalker "−N:" ability
+    LOYALTY_ZERO = 1328        # Planeswalker "0:" ability
+    LOYALTY_STATIC = 1329      # Planeswalker passive/static ability
+    BECOMES_CREATURE = 1330    # "becomes a N/N creature" (manlands, Gideon)
+    KEYWORD_COUNTER = 1331     # Flying counter, deathtouch counter, etc. (Ikoria)
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1
