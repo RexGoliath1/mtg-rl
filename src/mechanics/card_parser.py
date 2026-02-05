@@ -187,6 +187,7 @@ KEYWORD_ABILITIES = {
     "partner": Mechanic.PARTNER,
 
     # Aura/equipment keywords (missing)
+    "equip": Mechanic.EQUIP,
     "bestow": Mechanic.BESTOW,
     "soulbond": Mechanic.SOULBOND,
 
@@ -428,6 +429,26 @@ PATTERNS = [
     (r"create\s+.*?\s+tokens?\s+for\s+each", [Mechanic.CREATE_TOKEN]),
 
     # =========================================================================
+    # EQUIPMENT
+    # =========================================================================
+    (r"equipped creature", [Mechanic.EQUIP]),
+
+    # =========================================================================
+    # COUNTER TYPES
+    # =========================================================================
+    (r"experience counter", [Mechanic.EXPERIENCE_COUNTER]),
+    (r"\{e\}|energy counter", [Mechanic.ENERGY_COUNTER]),
+    (r"shield counter", [Mechanic.SHIELD_COUNTER]),
+    (r"oil counter", [Mechanic.OIL_COUNTER]),
+    (r"(flying|first strike|double strike|deathtouch|lifelink|vigilance|reach|trample|haste|menace|hexproof|indestructible) counter", [Mechanic.KEYWORD_COUNTER]),
+
+    # =========================================================================
+    # BECOMES CREATURE (manlands, Gideon, etc.)
+    # =========================================================================
+    (r"becomes?\s+a?\s*\d+/\d+.*creature", [Mechanic.BECOMES_CREATURE]),
+    (r"is\s+(a|an)\s+.*creature.*as long as", [Mechanic.BECOMES_CREATURE, Mechanic.AS_LONG_AS]),
+
+    # =========================================================================
     # WORD-CONSUMING PATTERNS (no mechanics, just improve confidence)
     # =========================================================================
     # These patterns match common MTG phrases that follow variable effects.
@@ -624,6 +645,84 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
     impending_match = re.search(r'impending\s+(\d+)', text)
     if impending_match:
         parameters["impending_cost"] = int(impending_match.group(1))
+
+    # Equip cost parameter extraction
+    equip_match = re.search(r'equip\s*\{(\d+)\}', text)
+    if not equip_match:
+        equip_complex = re.search(r'equip\s*(\{[^}]+\})+', text)
+        if equip_complex:
+            symbols = re.findall(r'\{([^}]+)\}', equip_complex.group())
+            parameters["equip_cost"] = sum(int(s) if s.isdigit() else 1 for s in symbols)
+    if equip_match:
+        parameters["equip_cost"] = int(equip_match.group(1))
+
+    # Becomes creature P/T parameter extraction
+    becomes_match = re.search(r'becomes?\s+a?\s*(\d+)/(\d+)', text)
+    if becomes_match:
+        parameters["becomes_power"] = int(becomes_match.group(1))
+        parameters["becomes_toughness"] = int(becomes_match.group(2))
+
+    # Planeswalker loyalty ability parsing
+    if "planeswalker" in card_type_lower:
+        if Mechanic.LOYALTY_COUNTER not in mechanics:
+            mechanics.append(Mechanic.LOYALTY_COUNTER)
+
+        # Match: +N:, −N: (en-dash U+2212), -N: (hyphen), 0:
+        loyalty_pattern = r'^([+\-\u2212])(\d+)\s*:\s*(.+)$'
+        abilities = re.findall(loyalty_pattern, oracle_text, re.MULTILINE)
+
+        loyalty_count = 0
+        for sign, number, ability_text in abilities:
+            loyalty_count += 1
+            n = int(number)
+            if sign == '+':
+                if Mechanic.LOYALTY_PLUS not in mechanics:
+                    mechanics.append(Mechanic.LOYALTY_PLUS)
+            elif n == 0:
+                if Mechanic.LOYALTY_ZERO not in mechanics:
+                    mechanics.append(Mechanic.LOYALTY_ZERO)
+            else:  # minus (hyphen or en-dash)
+                if Mechanic.LOYALTY_MINUS not in mechanics:
+                    mechanics.append(Mechanic.LOYALTY_MINUS)
+
+            # Sub-parse ability text for effects (like saga chapters)
+            ability_text_lower = ability_text.lower()
+            for pattern, mechs in PATTERNS:
+                sub_match = re.search(pattern, ability_text_lower)
+                if sub_match:
+                    for m in mechs:
+                        if m not in mechanics:
+                            mechanics.append(m)
+                    matched_spans.append(sub_match.group())
+
+        # Also handle bare "0:" (no sign prefix)
+        zero_pattern = r'^0\s*:\s*(.+)$'
+        zero_abilities = re.findall(zero_pattern, oracle_text, re.MULTILINE)
+        for ability_text in zero_abilities:
+            loyalty_count += 1
+            if Mechanic.LOYALTY_ZERO not in mechanics:
+                mechanics.append(Mechanic.LOYALTY_ZERO)
+            ability_text_lower = ability_text.lower()
+            for pattern, mechs in PATTERNS:
+                sub_match = re.search(pattern, ability_text_lower)
+                if sub_match:
+                    for m in mechs:
+                        if m not in mechanics:
+                            mechanics.append(m)
+                    matched_spans.append(sub_match.group())
+
+        # Detect static abilities (lines with no +/-/0 prefix, not empty)
+        for line in oracle_text.split('\n'):
+            stripped_line = line.strip()
+            if (stripped_line
+                    and not re.match(r'^[+\-\u2212]\d+\s*:', stripped_line)
+                    and not re.match(r'^0\s*:', stripped_line)):
+                if Mechanic.LOYALTY_STATIC not in mechanics:
+                    mechanics.append(Mechanic.LOYALTY_STATIC)
+                break
+
+        if loyalty_count > 0:
+            parameters["loyalty_ability_count"] = loyalty_count
 
     # Calculate confidence based on how much text we parsed
     # Reminder text was already stripped at the top of this function
