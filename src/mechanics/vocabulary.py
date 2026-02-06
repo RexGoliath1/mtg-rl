@@ -513,6 +513,16 @@ class Mechanic(IntEnum):
     DRAW_REPLACEMENT = 1336     # "If would draw...instead" (Notion Thief, Narset)
     GRAVEYARD_HATE = 1337       # "can't enter the battlefield from" / GY exile (Rest in Peace, Grafdigger's Cage)
 
+    # ==========================================================================
+    # CONTROL / VEHICLES / INTERACTION (1338-1349)
+    # ==========================================================================
+    GAIN_CONTROL = 1338         # "gain control of" (Control Magic, Agent of Treachery)
+    CREW = 1339                 # "crew N" (vehicles: Smuggler's Copter, Esika's Chariot)
+    CANT_BE_COUNTERED = 1340    # "can't be countered" (Cavern of Souls, Loxodon Smiter)
+    EXTRA_TURN = 1341           # "take an extra turn" (Time Warp, Alrund's Epiphany)
+    WIN_GAME = 1342             # "you win the game" (Thassa's Oracle, Lab Maniac)
+    LOSE_GAME = 1343            # "loses the game" / "you lose the game"
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1

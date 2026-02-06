@@ -326,7 +326,8 @@ PATTERNS = [
 
     # Special effects
     (r"gains? protection", [Mechanic.PROTECTION]),
-    (r"can't be (countered|blocked)", [Mechanic.UNBLOCKABLE]),
+    (r"can't be blocked\b", [Mechanic.UNBLOCKABLE]),
+    (r"can't be countered", [Mechanic.CANT_BE_COUNTERED]),
     (r"tap target", [Mechanic.TAP]),
     (r"untap (target|it|them|\w+)", [Mechanic.UNTAP]),
     (r"fight(s)?", [Mechanic.FIGHT]),
@@ -334,6 +335,23 @@ PATTERNS = [
     (r"twice that many", [Mechanic.TOKEN_DOUBLER]),
     (r"trigger(s)? an additional time", [Mechanic.DOUBLE_TRIGGER]),
     (r"instead", [Mechanic.REPLACEMENT_EFFECT]),
+    (r"prevent(s)? (all )?(the next )?\d* ?damage", [Mechanic.PREVENT_DAMAGE]),
+    (r"prevent(s)? all (combat )?damage", [Mechanic.PREVENT_DAMAGE]),
+    (r"damage.+(be )?prevented", [Mechanic.PREVENT_DAMAGE]),
+    (r"gain control of", [Mechanic.GAIN_CONTROL]),
+    (r"gains? control of", [Mechanic.GAIN_CONTROL]),
+    (r"exchange control", [Mechanic.GAIN_CONTROL]),
+    (r"crew\s+\d+", [Mechanic.CREW]),
+    (r"exile the top.+you may (play|cast)", [Mechanic.IMPULSE_DRAW]),
+    (r"exile.+from the top.+you may (play|cast)", [Mechanic.IMPULSE_DRAW]),
+    (r"exile the top.+until end of turn", [Mechanic.IMPULSE_DRAW]),
+    (r"phases? out", [Mechanic.PHASE_OUT]),
+    (r"take an extra turn", [Mechanic.EXTRA_TURN]),
+    (r"extra turn after this one", [Mechanic.EXTRA_TURN]),
+    (r"you win the game", [Mechanic.WIN_GAME]),
+    (r"(target player|that player|opponent) loses the game", [Mechanic.LOSE_GAME]),
+    (r"you lose the game", [Mechanic.LOSE_GAME]),
+    (r"as an additional cost.+sacrifice", [Mechanic.ADDITIONAL_COST, Mechanic.SACRIFICE]),
 
     # Zones
     (r"from your hand", [Mechanic.FROM_HAND]),
@@ -694,6 +712,11 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
     if base_pt_match:
         parameters["set_power"] = int(base_pt_match.group(1))
         parameters["set_toughness"] = int(base_pt_match.group(2))
+
+    # Crew power parameter extraction
+    crew_match = re.search(r'crew\s+(\d+)', text)
+    if crew_match:
+        parameters["crew_power"] = int(crew_match.group(1))
 
     # Planeswalker loyalty ability parsing
     if "planeswalker" in card_type_lower:
