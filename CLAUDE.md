@@ -54,7 +54,7 @@ python training_pipeline.py --mode play --num-games 3
 
 | File | Purpose | Params |
 |------|---------|--------|
-| `src/mechanics/vocabulary.py` | Mechanics primitives (VOCAB_SIZE=1354) | - |
+| `src/mechanics/vocabulary.py` | Mechanics primitives (VOCAB_SIZE=1363) | - |
 | `src/mechanics/card_parser.py` | Oracle text → mechanics | - |
 | `src/mechanics/precompute_embeddings.py` | Pre-compute HDF5 embeddings | - |
 | `src/forge/game_state_encoder.py` | Forge JSON → tensor | 5.8M |
@@ -523,7 +523,7 @@ When W&B is configured:
 - [x] Forge daemon integrated with observation mode (-o flag)
 - [x] AWS cost controls configured ($100/month limit)
 - [x] v2 hybrid encoder architecture implemented (hybrid_card_encoder.py)
-- [x] Mechanics vocabulary defined (VOCAB_SIZE=1354) - src/mechanics/vocabulary.py
+- [x] Mechanics vocabulary defined (VOCAB_SIZE=1363) - src/mechanics/vocabulary.py
 - [x] Card text parser implemented - src/mechanics/card_parser.py
 - [x] Pre-embed all MTG cards to HDF5 format (data/card_mechanics_commander.h5)
 - [x] Forge game state encoder (src/forge/game_state_encoder.py, 5.8M params)

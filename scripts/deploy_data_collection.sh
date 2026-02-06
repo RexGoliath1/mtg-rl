@@ -109,14 +109,17 @@ echo "  Package: $PACKAGE_NAME ($PACKAGE_SIZE)"
 
 # Package Forge JAR if available
 FORGE_JAR_PACKAGE=""
-if [ -d "$PROJECT_DIR/forge-repo/forge-gui-desktop/target" ]; then
-    echo "Packaging Forge JAR..."
+FORGE_JAR_LOCAL=$(find "$PROJECT_DIR/forge-repo/forge-gui-desktop/target" -name "*jar-with-dependencies.jar" 2>/dev/null | head -1)
+if [ -n "$FORGE_JAR_LOCAL" ]; then
+    FORGE_JAR_REL="${FORGE_JAR_LOCAL#$PROJECT_DIR/forge-repo/}"
+    echo "Packaging Forge JAR ($FORGE_JAR_REL)..."
     tar -czf "/tmp/forge_jar_${TIMESTAMP}.tar.gz" \
         -C "$PROJECT_DIR/forge-repo" \
-        forge-gui-desktop/target/forge-gui-desktop-*-SNAPSHOT-jar-with-dependencies.jar \
-        forge-gui/res 2>/dev/null || true
+        "$FORGE_JAR_REL" \
+        forge-gui/res
+    FORGE_JAR_SIZE=$(ls -lh "/tmp/forge_jar_${TIMESTAMP}.tar.gz" | awk '{print $5}')
     FORGE_JAR_PACKAGE="/tmp/forge_jar_${TIMESTAMP}.tar.gz"
-    echo "  Forge JAR packaged"
+    echo "  Forge JAR packaged ($FORGE_JAR_SIZE)"
 else
     echo "  Forge JAR not found locally — will build on instance"
 fi
