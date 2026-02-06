@@ -2421,3 +2421,255 @@ class TestStaxHate:
             Mechanic.CANT_CAST,
             Mechanic.CAST_RESTRICTION,
         ], "Thalia")
+
+
+# =============================================================================
+# GAIN CONTROL
+# =============================================================================
+
+class TestGainControl:
+    """Test gain control / steal effects."""
+
+    def test_control_magic(self):
+        """Control Magic — classic enchant + gain control."""
+        card = make_card(
+            "Control Magic", "{2}{U}{U}", 4,
+            "Enchantment — Aura",
+            "Enchant creature\nYou control enchanted creature.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.TARGET_CREATURE], "Control Magic")
+
+    def test_agent_of_treachery(self):
+        """Agent of Treachery — ETB gain control."""
+        card = make_card(
+            "Agent of Treachery", "{5}{U}{U}", 7,
+            "Creature — Human Rogue",
+            "When Agent of Treachery enters the battlefield, gain control of target permanent.\nAt the beginning of your end step, if you control three or more permanents you don't own, draw three cards.",
+            power=2, toughness=3,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.ETB_TRIGGER,
+            Mechanic.GAIN_CONTROL,
+            Mechanic.TARGET_PERMANENT,
+            Mechanic.DRAW,
+        ], "Agent of Treachery")
+
+    def test_threaten_effect(self):
+        """Act of Treason — temporary gain control."""
+        card = make_card(
+            "Act of Treason", "{2}{R}", 3,
+            "Sorcery",
+            "Gain control of target creature until end of turn. Untap that creature. It gains haste until end of turn.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.GAIN_CONTROL,
+            Mechanic.TARGET_CREATURE,
+            Mechanic.UNTIL_END_OF_TURN,
+        ], "Act of Treason")
+
+    def test_gilded_drake(self):
+        """Gilded Drake — exchange control."""
+        card = make_card(
+            "Gilded Drake", "{1}{U}", 2,
+            "Creature — Drake",
+            "Flying\nWhen Gilded Drake enters the battlefield, exchange control of Gilded Drake and up to one target creature an opponent controls. If you don't make an exchange, sacrifice Gilded Drake.",
+            power=3, toughness=3,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.GAIN_CONTROL,
+            Mechanic.ETB_TRIGGER,
+        ], "Gilded Drake")
+
+
+# =============================================================================
+# VEHICLES / CREW
+# =============================================================================
+
+class TestVehicles:
+    """Test vehicle crew mechanics."""
+
+    def test_smugglers_copter(self):
+        """Smuggler's Copter — crew 1, looting on attack/block."""
+        card = make_card(
+            "Smuggler's Copter", "{2}", 2,
+            "Artifact — Vehicle",
+            "Flying\nWhenever Smuggler's Copter attacks or blocks, you may draw a card. If you do, discard a card.\nCrew 1",
+            power=3, toughness=3,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.CREW,
+            Mechanic.DRAW,
+        ], "Smuggler's Copter")
+        assert enc.parameters.get("crew_power") == 1
+
+    def test_esika_chariot(self):
+        """Esika's Chariot — crew 4, creates tokens."""
+        card = make_card(
+            "Esika's Chariot", "{3}{G}", 4,
+            "Legendary Artifact — Vehicle",
+            "When Esika's Chariot enters the battlefield, create two 2/2 green Cat creature tokens.\nWhenever Esika's Chariot attacks, create a token that's a copy of target token you control.\nCrew 4",
+            power=4, toughness=4,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.CREW,
+            Mechanic.ETB_TRIGGER,
+            Mechanic.CREATE_TOKEN,
+            Mechanic.CREATE_TOKEN_COPY,
+        ], "Esika's Chariot")
+        assert enc.parameters.get("crew_power") == 4
+
+    def test_heart_of_kiran(self):
+        """Heart of Kiran — crew 3, vehicle with vigilance."""
+        card = make_card(
+            "Heart of Kiran", "{2}", 2,
+            "Legendary Artifact — Vehicle",
+            "Flying, vigilance\nCrew 3",
+            power=4, toughness=4,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.CREW], "Heart of Kiran")
+        assert enc.parameters.get("crew_power") == 3
+
+
+# =============================================================================
+# CAN'T BE COUNTERED (regression)
+# =============================================================================
+
+class TestCantBeCountered:
+    """Test can't-be-countered vs can't-be-blocked disambiguation."""
+
+    def test_loxodon_smiter(self):
+        """Loxodon Smiter — can't be countered."""
+        card = make_card(
+            "Loxodon Smiter", "{1}{G}{W}", 3,
+            "Creature — Elephant Soldier",
+            "This spell can't be countered.\nIf a spell or ability an opponent controls causes you to discard Loxodon Smiter, put it onto the battlefield instead of putting it into your graveyard.",
+            power=4, toughness=4,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.CANT_BE_COUNTERED], "Loxodon Smiter")
+        assert_lacks_mechanics(enc, [Mechanic.UNBLOCKABLE], "Loxodon Smiter")
+
+    def test_carnage_tyrant(self):
+        """Carnage Tyrant — can't be countered + hexproof."""
+        card = make_card(
+            "Carnage Tyrant", "{4}{G}{G}", 6,
+            "Creature — Dinosaur",
+            "This spell can't be countered.\nTrample, hexproof",
+            power=7, toughness=6,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.CANT_BE_COUNTERED,
+            Mechanic.TRAMPLE,
+            Mechanic.HEXPROOF,
+        ], "Carnage Tyrant")
+        assert_lacks_mechanics(enc, [Mechanic.UNBLOCKABLE], "Carnage Tyrant")
+
+    def test_unblockable_still_works(self):
+        """Invisible Stalker — can't be blocked (not countered)."""
+        card = make_card(
+            "Invisible Stalker", "{1}{U}", 2,
+            "Creature — Human Rogue",
+            "Hexproof\nInvisible Stalker can't be blocked.",
+            power=1, toughness=1,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.UNBLOCKABLE, Mechanic.HEXPROOF], "Invisible Stalker")
+        assert_lacks_mechanics(enc, [Mechanic.CANT_BE_COUNTERED], "Invisible Stalker")
+
+
+# =============================================================================
+# PREVENT DAMAGE / IMPULSE DRAW / PHASE OUT / EXTRA TURN / WIN-LOSE
+# =============================================================================
+
+class TestNewPatterns:
+    """Test newly-added pattern matchers."""
+
+    def test_fog(self):
+        """Fog — prevent all combat damage."""
+        result = parse_oracle_text("Prevent all combat damage that would be dealt this turn.", "Instant")
+        assert Mechanic.PREVENT_DAMAGE in result.mechanics
+
+    def test_teferi_protection(self):
+        """Teferi's Protection — phase out + prevent damage."""
+        result = parse_oracle_text(
+            "Until your next turn, your life total can't change and you gain protection from everything. All permanents you control phase out.",
+            "Instant",
+        )
+        assert Mechanic.PHASE_OUT in result.mechanics
+        assert Mechanic.PROTECTION in result.mechanics
+
+    def test_light_up_the_stage(self):
+        """Light Up the Stage — impulse draw."""
+        result = parse_oracle_text(
+            "Exile the top two cards of your library. Until the end of your next turn, you may play those cards.",
+            "Sorcery",
+        )
+        assert Mechanic.IMPULSE_DRAW in result.mechanics
+
+    def test_reckless_impulse(self):
+        """Reckless Impulse — exile top + may play."""
+        result = parse_oracle_text(
+            "Exile the top two cards of your library. Until the end of your next turn, you may play those cards.",
+            "Sorcery",
+        )
+        assert Mechanic.IMPULSE_DRAW in result.mechanics
+
+    def test_time_warp(self):
+        """Time Warp — extra turn."""
+        result = parse_oracle_text(
+            "Target player takes an extra turn after this one.",
+            "Sorcery",
+        )
+        assert Mechanic.EXTRA_TURN in result.mechanics
+
+    def test_thassas_oracle(self):
+        """Thassa's Oracle — win the game."""
+        result = parse_oracle_text(
+            "When Thassa's Oracle enters the battlefield, look at the top X cards of your library, where X is your devotion to blue. Put up to one of them on top of your library and the rest on the bottom of your library in a random order. If X is greater than or equal to the number of cards in your library, you win the game.",
+            "Creature",
+        )
+        assert Mechanic.WIN_GAME in result.mechanics
+
+    def test_demonic_pact_lose(self):
+        """Demonic Pact — you lose the game."""
+        result = parse_oracle_text(
+            "At the beginning of your upkeep, choose one that hasn't been chosen —\n• Demonic Pact deals 4 damage to any target and you gain 4 life.\n• Target opponent discards two cards.\n• Draw two cards.\n• You lose the game.",
+            "Enchantment",
+        )
+        assert Mechanic.LOSE_GAME in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+
+    def test_prevent_next_damage(self):
+        """Healing Salve — prevent the next 3 damage."""
+        result = parse_oracle_text(
+            "Choose one —\n• Target player gains 3 life.\n• Prevent the next 3 damage that would be dealt to any target this turn.",
+            "Instant",
+        )
+        assert Mechanic.PREVENT_DAMAGE in result.mechanics
+
+    def test_village_rites_additional_cost(self):
+        """Village Rites — as an additional cost, sacrifice."""
+        result = parse_oracle_text(
+            "As an additional cost to cast this spell, sacrifice a creature.\nDraw two cards.",
+            "Instant",
+        )
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+
+    def test_damage_cant_be_prevented(self):
+        """Stomp — damage can't be prevented."""
+        result = parse_oracle_text(
+            "Damage can't be prevented this turn. Stomp deals 2 damage to any target.",
+            "Instant — Adventure",
+        )
+        assert Mechanic.PREVENT_DAMAGE in result.mechanics
+        assert Mechanic.DEAL_DAMAGE in result.mechanics
