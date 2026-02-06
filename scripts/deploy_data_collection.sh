@@ -205,7 +205,7 @@ cd /home/ubuntu
 
 # Install dependencies
 apt-get update -qq
-apt-get install -y -qq openjdk-17-jdk maven python3-pip python3-venv unzip > /dev/null
+apt-get install -y -qq openjdk-17-jdk maven python3-pip python3-venv unzip xvfb > /dev/null
 
 # Install AWS CLI v2
 curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -239,20 +239,48 @@ fi
 
 echo "Forge JAR: $FORGE_JAR"
 
+# Start virtual display (Forge GUI needs X11 even in daemon mode)
+echo "Starting Xvfb..."
+Xvfb :99 -screen 0 1024x768x24 &
+export DISPLAY=:99
+
+# Convert to absolute path
+FORGE_JAR="$(pwd)/$FORGE_JAR"
+
+# Verify Forge JAR is valid
+if [ ! -f "$FORGE_JAR" ]; then
+    echo "ERROR: Forge JAR not found at: $FORGE_JAR"
+    exit 1
+fi
+echo "JAR size: $(du -h "$FORGE_JAR" | cut -f1)"
+
+# Forge looks for res/ relative to CWD
+FORGE_WORKDIR="$(pwd)/forge-repo"
+echo "Forge working dir: $FORGE_WORKDIR"
+ls "$FORGE_WORKDIR/forge-gui/res/" | head -5 && echo "  (res directory found)"
+
 # Start Forge daemon
 echo "Starting Forge daemon..."
 export JAVA_OPTS="-Xmx6g"
-java -jar "$FORGE_JAR" --daemon --port 17171 &
+cd "$FORGE_WORKDIR"
+java -jar "$FORGE_JAR" --daemon --port 17171 > /var/log/forge-daemon.log 2>&1 &
 FORGE_PID=$!
+cd /home/ubuntu/mtg
 
-# Wait for daemon to start
+# Wait for daemon to start (cold JVM + loading card data)
 echo "Waiting for Forge daemon to initialize..."
-sleep 30
-
-if ! kill -0 $FORGE_PID 2>/dev/null; then
-    echo "ERROR: Forge daemon failed to start"
-    exit 1
-fi
+for i in $(seq 1 12); do
+    sleep 10
+    if ! kill -0 $FORGE_PID 2>/dev/null; then
+        echo "ERROR: Forge daemon crashed. Last 30 lines of log:"
+        tail -30 /var/log/forge-daemon.log
+        # Upload log for debugging
+        aws s3 cp /var/log/forge-daemon.log \
+            s3://BUCKET_PLACEHOLDER/imitation_data/collection_TIMESTAMP_PLACEHOLDER/forge_crash.log || true
+        exit 1
+    fi
+    echo "  Still starting... ($((i*10))s)"
+done
 echo "Forge daemon running (PID: $FORGE_PID)"
 
 # Run data collection
@@ -284,9 +312,11 @@ aws s3 sync /home/ubuntu/training_data/ \
     s3://BUCKET_PLACEHOLDER/imitation_data/collection_TIMESTAMP_PLACEHOLDER/ \
     --exclude "*.tex"
 
-# Upload log
+# Upload logs
 aws s3 cp /var/log/data-collection.log \
     s3://BUCKET_PLACEHOLDER/imitation_data/collection_TIMESTAMP_PLACEHOLDER/collection_log.txt
+aws s3 cp /var/log/forge-daemon.log \
+    s3://BUCKET_PLACEHOLDER/imitation_data/collection_TIMESTAMP_PLACEHOLDER/forge_daemon.log 2>/dev/null || true
 
 echo "Results uploaded to s3://BUCKET_PLACEHOLDER/imitation_data/collection_TIMESTAMP_PLACEHOLDER/"
 
