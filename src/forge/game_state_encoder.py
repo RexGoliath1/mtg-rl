@@ -49,7 +49,7 @@ class GameStateConfig:
 
     # Card mechanics embedding
     mechanics_h5_path: str = "data/card_mechanics_commander.h5"
-    vocab_size: int = 1354  # From vocabulary.py
+    vocab_size: int = 1357  # From vocabulary.py
     max_params: int = 37    # From precompute_embeddings.py
 
     # Zone capacities (max cards per zone to encode)

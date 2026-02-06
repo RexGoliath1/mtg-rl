@@ -3061,3 +3061,155 @@ class TestQuizFeedbackFixes:
         assert Mechanic.REGROWTH in result.mechanics
         assert Mechanic.BOUNCE_TO_HAND not in result.mechanics
         assert Mechanic.ETB_TRIGGER in result.mechanics
+
+
+class TestQuizRound2Fixes:
+    """Fixes from embedding quiz round 2 (2026-02-05)."""
+
+    # --- Mill word numbers ---
+
+    def test_mill_three_cards(self):
+        """Aftermath Analyst — 'mill three cards' with word number."""
+        result = parse_oracle_text(
+            "When this creature enters, mill three cards.\n"
+            "{3}{G}, Sacrifice this creature: Return all land cards "
+            "from your graveyard to the battlefield tapped.",
+            "Creature — Elf Detective",
+        )
+        assert Mechanic.MILL in result.mechanics
+        assert Mechanic.ETB_TRIGGER in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+
+    def test_mills_two_cards(self):
+        """Scrabbling Skullcrab — 'mills two cards' with word number."""
+        result = parse_oracle_text(
+            "Eerie — Whenever an enchantment you control enters and "
+            "whenever you fully unlock a Room, target player mills two cards.",
+            "Creature — Crab Skeleton",
+        )
+        assert Mechanic.MILL in result.mechanics
+        assert Mechanic.EERIE in result.mechanics
+        assert Mechanic.TARGET_PLAYER in result.mechanics
+
+    def test_mill_digit_still_works(self):
+        """Ensure 'mill 3' with digit still works."""
+        result = parse_oracle_text(
+            "When this creature enters, target player mills 3 cards.",
+            "Creature",
+        )
+        assert Mechanic.MILL in result.mechanics
+
+    # --- Attack trigger plural ---
+
+    def test_attack_trigger_plural(self):
+        """Poetic Ingenuity — 'Dinosaurs you control attack' (no trailing s)."""
+        result = parse_oracle_text(
+            "Whenever one or more Dinosaurs you control attack, "
+            "create that many Treasure tokens.\n"
+            "Whenever you cast an artifact spell, create a 3/1 red "
+            "Dinosaur creature token.",
+            "Enchantment",
+        )
+        assert Mechanic.ATTACK_TRIGGER in result.mechanics
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+        assert Mechanic.CREATE_TREASURE in result.mechanics
+        assert Mechanic.CAST_TRIGGER in result.mechanics
+
+    def test_attack_trigger_singular_still_works(self):
+        """Ensure 'whenever X attacks' (singular) still works."""
+        result = parse_oracle_text(
+            "Whenever this creature attacks, target creature gains "
+            "trample until end of turn.",
+            "Creature",
+        )
+        assert Mechanic.ATTACK_TRIGGER in result.mechanics
+
+    # --- Token count P/T fix ---
+
+    def test_token_count_not_confused_by_pt(self):
+        """Token with P/T like '3/1' should not set token_count=3."""
+        result = parse_oracle_text(
+            "Create a 3/1 red Dinosaur creature token.",
+            "Enchantment",
+        )
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+        # token_count should be 1 (from "a"), not 3 (from P/T)
+        assert result.parameters.get("token_count") == 1
+
+    def test_token_count_two_tokens(self):
+        """'Create two 1/1 tokens' should get token_count=2."""
+        result = parse_oracle_text(
+            "Create two 1/1 white Soldier creature tokens.",
+            "Sorcery",
+        )
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+        assert result.parameters.get("token_count") == 2
+
+    def test_token_count_digit(self):
+        """'Create 3 tokens' with digit should still work."""
+        result = parse_oracle_text(
+            "Create 3 1/1 green Saproling creature tokens.",
+            "Sorcery",
+        )
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+        assert result.parameters.get("token_count") == 3
+
+    # --- Cycling ---
+
+    def test_cycling(self):
+        """Basri — cycling keyword detected."""
+        result = parse_oracle_text(
+            "{W}, {T}, Exert Basri: Create a 1/1 white Cat creature "
+            "token with lifelink.\n"
+            "Cycling {2}{W}\n"
+            "When you cycle this card, Cats you control gain hexproof "
+            "and indestructible until end of turn.",
+            "Legendary Creature — Human Knight",
+        )
+        assert Mechanic.CYCLING in result.mechanics
+        assert Mechanic.EXERT in result.mechanics
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+        assert Mechanic.LIFELINK in result.mechanics
+
+    def test_cycling_basic(self):
+        """Simple cycling card."""
+        result = parse_oracle_text(
+            "Cycling {2}",
+            "Enchantment",
+        )
+        assert Mechanic.CYCLING in result.mechanics
+
+    # --- Exert ---
+
+    def test_exert(self):
+        """Glorybringer — exert keyword."""
+        result = parse_oracle_text(
+            "Flying, haste\n"
+            "You may exert Glorybringer as it attacks. When you do, "
+            "it deals 4 damage to target non-Dragon creature an "
+            "opponent controls.",
+            "Creature — Dragon",
+        )
+        assert Mechanic.EXERT in result.mechanics
+        assert Mechanic.FLYING in result.mechanics
+        assert Mechanic.HASTE in result.mechanics
+        assert Mechanic.DEAL_DAMAGE in result.mechanics
+
+    # --- Extra land play ---
+
+    def test_extra_land_play(self):
+        """Prismatic Undercurrents — 'play an additional land'."""
+        result = parse_oracle_text(
+            "You may play an additional land on each of your turns.",
+            "Enchantment",
+        )
+        assert Mechanic.EXTRA_LAND_PLAY in result.mechanics
+
+    def test_explore_extra_land(self):
+        """Explore — classic extra land spell."""
+        result = parse_oracle_text(
+            "You may play an additional land this turn.\nDraw a card.",
+            "Sorcery",
+        )
+        assert Mechanic.EXTRA_LAND_PLAY in result.mechanics
+        assert Mechanic.DRAW in result.mechanics

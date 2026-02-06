@@ -279,7 +279,7 @@ PATTERNS = [
     (r"return.+from.+graveyard to the battlefield", [Mechanic.REANIMATE]),
     (r"return.+from.+graveyard to your hand", [Mechanic.REGROWTH]),
     (r"discard(s)? (a card|two cards|three cards|\d+ cards?|your hand|that card|it|them)", [Mechanic.DISCARD]),
-    (r"mill(s)? (\d+|x)", [Mechanic.MILL]),
+    (r"mills?\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|x)\s+cards?", [Mechanic.MILL]),
     (r"you may cast.+from.+graveyard", [Mechanic.CAST_FROM_GRAVEYARD]),
 
     # Loot / Rummage (draw+discard combo)
@@ -290,7 +290,7 @@ PATTERNS = [
     (r"when(ever)? .+ enters( the battlefield)?", [Mechanic.ETB_TRIGGER]),
     (r"when(ever)? .+ leaves( the battlefield)?", [Mechanic.LTB_TRIGGER]),
     (r"when(ever)? .+ dies", [Mechanic.DEATH_TRIGGER]),
-    (r"when(ever)? .+ attacks", [Mechanic.ATTACK_TRIGGER]),
+    (r"when(ever)? .+ attacks?", [Mechanic.ATTACK_TRIGGER]),
     (r"when(ever)? .+ blocks", [Mechanic.BLOCK_TRIGGER]),
     (r"when(ever)? .+ becomes? blocked", [Mechanic.BLOCK_TRIGGER]),
     (r"when(ever)? .+ deals (combat )?damage", [Mechanic.DAMAGE_TRIGGER]),
@@ -423,6 +423,9 @@ PATTERNS = [
     (r"\boutlaw\b", [Mechanic.OUTLAW]),
     (r"\bescalate\b", [Mechanic.ESCALATE]),
     (r"\btiered\b", [Mechanic.ESCALATE]),
+    (r"\bcycling\b", [Mechanic.CYCLING]),
+    (r"\bexert\b", [Mechanic.EXERT]),
+    (r"play an additional land", [Mechanic.EXTRA_LAND_PLAY]),
 
     # =========================================================================
     # TYPE FILTERS
@@ -694,7 +697,17 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
                 elif Mechanic.DEAL_DAMAGE in mechs:
                     parameters["damage"] = int(numbers[0]) if numbers[0] != 'x' else 'x'
                 elif Mechanic.CREATE_TOKEN in mechs:
-                    parameters["token_count"] = int(numbers[0]) if numbers[0] != 'x' else 'x'
+                    # Strip P/T patterns (e.g., "3/1") to avoid confusing P/T with token count
+                    match_text_no_pt = re.sub(r'\d+/\d+', '', match.group())
+                    token_nums = re.findall(r'\d+', match_text_no_pt)
+                    if token_nums:
+                        parameters["token_count"] = int(token_nums[0]) if token_nums[0] != 'x' else 'x'
+                    else:
+                        # Word number like "a" or "two" — use word_to_num
+                        for w, v in word_to_num.items():
+                            if w in match_text_no_pt.split():
+                                parameters["token_count"] = v if v != 'x' else 'x'
+                                break
                 elif Mechanic.SCRY in mechs:
                     parameters["scry_count"] = int(numbers[0]) if numbers[0] != 'x' else 'x'
                 elif Mechanic.MILL in mechs:

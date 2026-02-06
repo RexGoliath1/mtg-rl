@@ -544,6 +544,9 @@ class Mechanic(IntEnum):
     # ==========================================================================
     LOOT = 1352                 # "draw, then discard" / "discard, then draw" (Merfolk Looter, Faithless Looting)
     ESCALATE = 1353             # "escalate" / "tiered" — pay more for additional modes (Collective Brutality)
+    CYCLING = 1354              # "cycling {cost}" (Decree of Justice, Shark Typhoon)
+    EXERT = 1355                # "exert" (Glorybringer, Combat Celebrant)
+    EXTRA_LAND_PLAY = 1356      # "play an additional land" (Explore, Oracle of Mul Daya)
 
 
 # Total vocabulary size
