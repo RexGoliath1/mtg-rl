@@ -254,10 +254,11 @@ if [ ! -f "$FORGE_JAR" ]; then
 fi
 echo "JAR size: $(du -h "$FORGE_JAR" | cut -f1)"
 
-# Forge looks for res/ relative to CWD
-FORGE_WORKDIR="$(pwd)/forge-repo"
+# Forge GuiHeadless expects CWD=forge-gui-desktop/ so ../forge-gui/res/ resolves correctly
+FORGE_WORKDIR="$(pwd)/forge-repo/forge-gui-desktop"
 echo "Forge working dir: $FORGE_WORKDIR"
-ls "$FORGE_WORKDIR/forge-gui/res/" | head -5 && echo "  (res directory found)"
+echo "Assets check (../forge-gui/res/languages):"
+ls "$FORGE_WORKDIR/../forge-gui/res/languages/" | head -3 && echo "  (language files found)"
 
 # Start Forge daemon
 echo "Starting Forge daemon..."
