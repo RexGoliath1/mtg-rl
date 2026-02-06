@@ -148,6 +148,7 @@ KEYWORD_ABILITIES = {
 
     # Dinosaur/Ixalan
     "enrage": Mechanic.DAMAGE_RECEIVED_TRIGGER,
+    "explore": Mechanic.EXPLORE,
 
     # Conditions
     "threshold": Mechanic.THRESHOLD,
@@ -544,6 +545,37 @@ PATTERNS = [
     (r"(its|their)\s+owner's\s+hand", []),
     (r"any\s+(number|combination)\s+of", []),
     (r"whenever\s+you\s+tap\s+a\s+\w+\s+for\s+mana", [Mechanic.MANA_DOUBLER]),
+
+    # Explore (LCI, BLB, etc.)
+    (r"it\s+explores", [Mechanic.EXPLORE]),
+    (r"explores?\b", [Mechanic.EXPLORE]),
+
+    # Leylines
+    (r"if this card is in your opening hand.+begin the game with it on the battlefield", [Mechanic.LEYLINE]),
+
+    # DSK Rooms
+    (r"(fully )?unlock(s|ed)?\s+(a|this)\s+room", [Mechanic.UNLOCK_ROOM]),
+
+    # Shockland / painland entry
+    (r"as\s+this\s+land\s+enters,?\s+you\s+may\s+pay\s+\d+\s+life", []),
+    (r"if\s+you\s+don't,?\s+it\s+enters\s+tapped", [Mechanic.TO_BATTLEFIELD_TAPPED]),
+
+    # Common "gains [keyword]" confidence booster
+    (r"gains?\s+(flying|trample|first strike|double strike|deathtouch|lifelink|vigilance|reach|haste|menace|hexproof|indestructible)", []),
+    (r"(it|that creature|this creature)\s+gains?\s+", []),
+
+    # Fetch land patterns
+    (r"sacrifice\s+this\s+(land|artifact|creature|enchantment|permanent)", [Mechanic.SACRIFICE]),
+    (r"for\s+a\s+basic\s+land\s+card", []),
+    (r"put\s+it\s+onto\s+the\s+battlefield\s+tapped", [Mechanic.TO_BATTLEFIELD_TAPPED]),
+    (r"then\s+shuffle", []),
+
+    # Common text fragments
+    (r"at\s+the\s+beginning\s+of\s+(your|the)\s+(first|second|next)\s+main\s+phase", []),
+    (r"return\s+.+?\s+to\s+(its|their)\s+owner's\s+hand", [Mechanic.BOUNCE_TO_HAND]),
+    (r"you\s+may\s+(cast|play)\s+it", []),
+    (r"if\s+you\s+do,?\s+", []),
+    (r"attach\s+it\s+to\s+", []),
 ]
 
 

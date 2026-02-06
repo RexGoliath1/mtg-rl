@@ -532,6 +532,13 @@ class Mechanic(IntEnum):
     COIN_FLIP = 1347            # "flip a coin" (Game of Chaos, Krark's Thumb)
     REGENERATE = 1348           # "regenerate" (Thrun, Ezuri)
 
+    # ==========================================================================
+    # STANDARD COVERAGE REPORT FIXES (1349-1351)
+    # ==========================================================================
+    EXPLORE = 1349              # "explores" (Jadelight Ranger, Merfolk Branchwalker)
+    LEYLINE = 1350              # "in your opening hand...begin the game with it" (Leyline cycle)
+    UNLOCK_ROOM = 1351          # "unlock a room" / "fully unlock" (DSK rooms)
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1
