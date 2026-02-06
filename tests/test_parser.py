@@ -2813,3 +2813,68 @@ class TestScryfallGapsRound1:
         )
         assert Mechanic.STUN_COUNTER in result.mechanics
         assert Mechanic.TAP in result.mechanics
+
+
+# =============================================================================
+# SCRYFALL SAMPLE ROUND 2 — Pattern refinement
+# =============================================================================
+
+class TestScryfallGapsRound2:
+    """Test fixes from second 100-card Scryfall sample."""
+
+    def test_investigate(self):
+        """Investigate — creates a Clue token."""
+        result = parse_oracle_text(
+            "When Alquist Proft enters, investigate.",
+            "Creature",
+        )
+        assert Mechanic.CREATE_CLUE in result.mechanics
+
+    def test_investigate_twice(self):
+        """Investigate twice — should still detect."""
+        result = parse_oracle_text(
+            "When this enchantment enters, investigate twice.",
+            "Artifact",
+        )
+        assert Mechanic.CREATE_CLUE in result.mechanics
+
+    def test_enrage_damage_received(self):
+        """Ripjaw Raptor — enrage / damage received trigger."""
+        card = make_card(
+            "Ripjaw Raptor", "{2}{G}{G}", 4,
+            "Creature — Dinosaur",
+            "Enrage — Whenever this creature is dealt damage, draw a card.",
+            power=4, toughness=5,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.DAMAGE_RECEIVED_TRIGGER,
+            Mechanic.DRAW,
+        ], "Ripjaw Raptor")
+
+    def test_becomes_blocked_trigger(self):
+        """Somberwald Vigilante — becomes blocked trigger."""
+        result = parse_oracle_text(
+            "Whenever this creature becomes blocked by a creature, this creature deals 1 damage to that creature.",
+            "Creature",
+        )
+        assert Mechanic.BLOCK_TRIGGER in result.mechanics
+        assert Mechanic.DEAL_DAMAGE in result.mechanics
+
+    def test_plague_drone_life_replacement(self):
+        """Plague Drone — opponent gaining life loses life instead."""
+        result = parse_oracle_text(
+            "If an opponent would gain life, that player loses that much life instead.",
+            "Creature",
+        )
+        assert Mechanic.CANT_GAIN_LIFE in result.mechanics
+        assert Mechanic.REPLACEMENT_EFFECT in result.mechanics
+
+    def test_mana_dork_tap_add(self):
+        """Arcane Sanctum — {T}: Add {W}, {U}, or {B} still detected."""
+        result = parse_oracle_text(
+            "This land enters tapped.\n{T}: Add {W}, {U}, or {B}.",
+            "Land",
+        )
+        assert Mechanic.ADD_MANA in result.mechanics
+        assert Mechanic.TO_BATTLEFIELD_TAPPED in result.mechanics

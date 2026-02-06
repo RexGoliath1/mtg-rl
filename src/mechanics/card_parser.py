@@ -146,6 +146,9 @@ KEYWORD_ABILITIES = {
     "monarch": Mechanic.MONARCH,
     "initiative": Mechanic.INITIATIVE,
 
+    # Dinosaur/Ixalan
+    "enrage": Mechanic.DAMAGE_RECEIVED_TRIGGER,
+
     # Conditions
     "threshold": Mechanic.THRESHOLD,
     "delirium": Mechanic.DELIRIUM,
@@ -261,6 +264,7 @@ PATTERNS = [
     (r"create(s)?.+food token", [Mechanic.CREATE_TOKEN, Mechanic.CREATE_FOOD]),
     (r"create(s)?.+clue token", [Mechanic.CREATE_TOKEN, Mechanic.CREATE_CLUE]),
     (r"create(s)?.+blood token", [Mechanic.CREATE_TOKEN, Mechanic.CREATE_BLOOD]),
+    (r"\binvestigate\b", [Mechanic.CREATE_CLUE]),
 
     # Card advantage
     (r"draw(s)? (a card|two cards|three cards|\d+ cards?)", [Mechanic.DRAW]),
@@ -283,7 +287,9 @@ PATTERNS = [
     (r"when(ever)? .+ dies", [Mechanic.DEATH_TRIGGER]),
     (r"when(ever)? .+ attacks", [Mechanic.ATTACK_TRIGGER]),
     (r"when(ever)? .+ blocks", [Mechanic.BLOCK_TRIGGER]),
+    (r"when(ever)? .+ becomes? blocked", [Mechanic.BLOCK_TRIGGER]),
     (r"when(ever)? .+ deals (combat )?damage", [Mechanic.DAMAGE_TRIGGER]),
+    (r"when(ever)? .+ is dealt damage", [Mechanic.DAMAGE_RECEIVED_TRIGGER]),
     (r"when(ever)? you cast", [Mechanic.CAST_TRIGGER]),
     (r"when(ever)? an opponent casts", [Mechanic.OPPONENT_CASTS]),
     (r"at the beginning of your upkeep", [Mechanic.UPKEEP_TRIGGER]),
@@ -523,6 +529,13 @@ PATTERNS = [
     (r"in\s+(your|the)\s+(graveyard|hand|library|exile)", []),
     (r"that\s+(died|entered|left)\s+this\s+turn", []),
     (r"among\s+(creatures|permanents|cards)", []),
+    (r"(any|another|each|a|that)\s+target", []),
+    (r"in\s+addition\s+to\s+its\s+other\s+types?", []),
+    (r"put\s+a\s+\+1/\+1\s+counter\s+on", []),
+    (r"activate\s+(this\s+ability\s+)?only", []),
+    (r"this\s+(creature|spell|card|permanent)\s+(enters|costs?)", []),
+    (r"\{t\}:\s+add\s+\{?[wubrgc]\}?", []),
+    (r"would\s+gain\s+life.+loses\s+that\s+much\s+life", [Mechanic.CANT_GAIN_LIFE, Mechanic.REPLACEMENT_EFFECT]),
 ]
 
 
