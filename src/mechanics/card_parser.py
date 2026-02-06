@@ -237,7 +237,7 @@ PATTERNS = [
     (r"target enchantment", [Mechanic.TARGET_ENCHANTMENT]),
     (r"target land", [Mechanic.TARGET_LAND]),
     (r"target (spell or ability|ability)", [Mechanic.TARGET_SPELL_OR_ABILITY]),
-    (r"target card (in|from) (a |your )?graveyard", [Mechanic.TARGET_CARD_IN_GRAVEYARD]),
+    (r"target card (in|from) .{0,25}graveyard", [Mechanic.TARGET_CARD_IN_GRAVEYARD]),
     (r"each creature", [Mechanic.TARGETS_EACH, Mechanic.TARGET_CREATURE]),
     (r"each opponent", [Mechanic.TARGETS_EACH, Mechanic.TARGET_OPPONENT]),
     (r"all creatures", [Mechanic.TARGETS_ALL, Mechanic.TARGET_CREATURE]),
@@ -281,6 +281,10 @@ PATTERNS = [
     (r"discard(s)? (a card|two cards|three cards|\d+ cards?|your hand|that card|it|them)", [Mechanic.DISCARD]),
     (r"mill(s)? (\d+|x)", [Mechanic.MILL]),
     (r"you may cast.+from.+graveyard", [Mechanic.CAST_FROM_GRAVEYARD]),
+
+    # Loot / Rummage (draw+discard combo)
+    (r"draw.{1,20}then.{1,10}discard", [Mechanic.LOOT]),
+    (r"discard.{1,20}then.{1,10}draw", [Mechanic.LOOT]),
 
     # Triggers
     (r"when(ever)? .+ enters( the battlefield)?", [Mechanic.ETB_TRIGGER]),
@@ -417,6 +421,8 @@ PATTERNS = [
     (r"\bmap token", [Mechanic.MAP_TOKEN]),
     (r"\bvaliant\b", [Mechanic.VALIANT]),
     (r"\boutlaw\b", [Mechanic.OUTLAW]),
+    (r"\bescalate\b", [Mechanic.ESCALATE]),
+    (r"\btiered\b", [Mechanic.ESCALATE]),
 
     # =========================================================================
     # TYPE FILTERS
@@ -638,7 +644,7 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
     # Check for keyword abilities
     for keyword, mechanic in KEYWORD_ABILITIES.items():
         # Match whole word
-        pattern = r'(?<!with )(?<!without )\b' + re.escape(keyword) + r'\b'
+        pattern = r'(?<!without )\b' + re.escape(keyword) + r'\b'
         if re.search(pattern, text):
             mechanics.append(mechanic)
             matched_spans.append(keyword)

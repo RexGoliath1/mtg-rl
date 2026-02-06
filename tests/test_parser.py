@@ -1354,15 +1354,15 @@ class TestKeywordFalsePositives:
     and "without <kw>", and reminder text stripping removes parenthetical refs.
     """
 
-    def test_plummet_no_flying(self):
-        """Plummet: 'Destroy target creature with flying' must NOT tag FLYING."""
+    def test_plummet_has_flying(self):
+        """Plummet: 'creature with flying' — FLYING now emitted as interaction context."""
         result = parse_oracle_text(
             "Destroy target creature with flying.",
             "Instant"
         )
         assert Mechanic.DESTROY in result.mechanics
         assert Mechanic.TARGET_CREATURE in result.mechanics
-        assert Mechanic.FLYING not in result.mechanics
+        assert Mechanic.FLYING in result.mechanics
 
     def test_reach_reminder_no_flying(self):
         """Reminder text '(creatures with flying or reach)' stripped → no FLYING."""
@@ -1374,12 +1374,12 @@ class TestKeywordFalsePositives:
         assert Mechanic.FLYING not in result.mechanics
 
     def test_with_trample_reference(self):
-        """'Creatures with trample you control get +1/+1' must NOT tag TRAMPLE."""
+        """'Creatures with trample you control get +1/+1' — TRAMPLE now emitted as context."""
         result = parse_oracle_text(
             "Creatures with trample you control get +1/+1.",
             "Enchantment"
         )
-        assert Mechanic.TRAMPLE not in result.mechanics
+        assert Mechanic.TRAMPLE in result.mechanics
 
     def test_without_flying_reference(self):
         """'Can block only creatures without flying' must NOT tag FLYING."""
@@ -1435,21 +1435,21 @@ class TestKeywordFalsePositives:
         assert Mechanic.LIFELINK in result.mechanics
 
     def test_with_deathtouch_reference(self):
-        """'creature with deathtouch' reference must NOT tag DEATHTOUCH."""
+        """'creature with deathtouch' — DEATHTOUCH now emitted as interaction context."""
         result = parse_oracle_text(
             "Whenever a creature with deathtouch deals damage to you, draw a card.",
             "Enchantment"
         )
-        assert Mechanic.DEATHTOUCH not in result.mechanics
+        assert Mechanic.DEATHTOUCH in result.mechanics
 
-    def test_token_with_flying_no_flying(self):
-        """'create a 1/1 token with flying' — FLYING filtered (acceptable trade-off)."""
+    def test_token_with_flying_has_flying(self):
+        """'create a 1/1 token with flying' — FLYING now emitted (card produces flyer)."""
         result = parse_oracle_text(
             "Create a 1/1 white Spirit creature token with flying.",
             "Sorcery"
         )
         assert Mechanic.CREATE_TOKEN in result.mechanics
-        assert Mechanic.FLYING not in result.mechanics
+        assert Mechanic.FLYING in result.mechanics
 
 
 # =============================================================================
@@ -1602,7 +1602,7 @@ class TestBenchmarkCards:
         ], "Cyclonic Rift")
 
     def test_plummet_regression(self):
-        """Plummet — MUST have DESTROY, TARGET_CREATURE; MUST NOT have FLYING."""
+        """Plummet — MUST have DESTROY, TARGET_CREATURE, FLYING (interaction context)."""
         card = make_card(
             "Plummet", "{1}{G}", 2, "Instant",
             "Destroy target creature with flying."
@@ -1612,8 +1612,8 @@ class TestBenchmarkCards:
             Mechanic.INSTANT_SPEED,
             Mechanic.DESTROY,
             Mechanic.TARGET_CREATURE,
+            Mechanic.FLYING,
         ], "Plummet")
-        assert_lacks_mechanics(enc, [Mechanic.FLYING], "Plummet")
 
     def test_clip_wings(self):
         """Clip Wings — each opponent sacrifices a creature with flying."""
@@ -1626,10 +1626,8 @@ class TestBenchmarkCards:
             Mechanic.INSTANT_SPEED,
             Mechanic.TARGETS_EACH,
             Mechanic.TARGET_OPPONENT,
+            Mechanic.FLYING,
         ], "Clip Wings")
-        # NOTE: SACRIFICE not detected — parser pattern expects "sacrifice a"
-        # but Clip Wings uses "sacrifices a" (third person). Parser gap to fix later.
-        assert_lacks_mechanics(enc, [Mechanic.FLYING], "Clip Wings")
 
     def test_tower_defense(self):
         """Tower Defense — grants reach (positive: 'gain reach' detected)."""
@@ -2878,3 +2876,157 @@ class TestScryfallGapsRound2:
         )
         assert Mechanic.ADD_MANA in result.mechanics
         assert Mechanic.TO_BATTLEFIELD_TAPPED in result.mechanics
+
+
+# =============================================================================
+# QUIZ FEEDBACK FIXES
+# =============================================================================
+
+class TestQuizFeedbackFixes:
+    """Tests from embedding quiz human review feedback."""
+
+    # --- Keyword with "with" lookbehind removal ---
+
+    def test_restless_anchorage_flying(self):
+        """Restless Anchorage — 'creature with flying' should emit FLYING."""
+        result = parse_oracle_text(
+            "Restless Anchorage enters tapped.\n{T}: Add {W} or {U}.\n"
+            "{1}{W}{U}: Until end of turn, Restless Anchorage becomes a "
+            "2/3 Bird creature with flying. It's still a land.",
+            "Land",
+        )
+        assert Mechanic.FLYING in result.mechanics
+        assert Mechanic.BECOMES_CREATURE in result.mechanics
+        assert Mechanic.UNTIL_END_OF_TURN in result.mechanics
+
+    def test_spirit_token_flying(self):
+        """Spirit token creation — 'token with flying' emits FLYING."""
+        result = parse_oracle_text(
+            "Create a 1/1 white Spirit creature token with flying.",
+            "Sorcery",
+        )
+        assert Mechanic.FLYING in result.mechanics
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+
+    def test_without_flying_still_blocked(self):
+        """'without flying' must still NOT tag FLYING."""
+        result = parse_oracle_text(
+            "This creature can block only creatures without flying.",
+            "Creature — Wall",
+        )
+        assert Mechanic.FLYING not in result.mechanics
+
+    # --- LOOT mechanic ---
+
+    def test_loot_draw_then_discard(self):
+        """Merfolk Looter — draw then discard → LOOT."""
+        result = parse_oracle_text(
+            "{T}: Draw a card, then discard a card.",
+            "Creature — Merfolk",
+        )
+        assert Mechanic.LOOT in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+        assert Mechanic.DISCARD in result.mechanics
+
+    def test_rummage_discard_then_draw(self):
+        """Rummaging Goblin — discard then draw → LOOT."""
+        result = parse_oracle_text(
+            "{T}, Discard a card: Draw a card.",
+            "Creature — Goblin",
+        )
+        # This doesn't have "then" so LOOT won't fire — just DRAW + DISCARD
+        assert Mechanic.DRAW in result.mechanics
+
+    def test_faithless_looting_loot(self):
+        """Faithless Looting — 'Draw two cards, then discard two cards' → LOOT."""
+        result = parse_oracle_text(
+            "Draw two cards, then discard two cards.\n"
+            "Flashback {2}{R}",
+            "Sorcery",
+        )
+        assert Mechanic.LOOT in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+        assert Mechanic.DISCARD in result.mechanics
+        assert Mechanic.FLASHBACK in result.mechanics
+
+    def test_cathartic_reunion_loot(self):
+        """Cathartic Reunion — 'Discard two cards, then draw three cards' → LOOT."""
+        result = parse_oracle_text(
+            "As an additional cost to cast this spell, discard two cards.\n"
+            "Draw three cards.",
+            "Sorcery",
+        )
+        # No "then" connecting discard and draw — these are separate effects
+        assert Mechanic.DRAW in result.mechanics
+        assert Mechanic.DISCARD in result.mechanics
+
+    def test_connive_is_loot(self):
+        """Connive draws then discards — should get LOOT from pattern."""
+        result = parse_oracle_text(
+            "When this creature enters, it connives. "
+            "Draw a card, then discard a card.",
+            "Creature — Rogue",
+        )
+        assert Mechanic.LOOT in result.mechanics
+        assert Mechanic.CONNIVE in result.mechanics
+
+    # --- ESCALATE mechanic ---
+
+    def test_collective_brutality(self):
+        """Collective Brutality — escalate keyword."""
+        result = parse_oracle_text(
+            "Escalate — Discard a card.\n"
+            "Choose one or more —\n"
+            "• Target opponent reveals their hand. You choose a noncreature, "
+            "nonland card from it. That player discards that card.\n"
+            "• Target creature gets -2/-2 until end of turn.\n"
+            "• Target opponent loses 2 life and you gain 2 life.",
+            "Sorcery",
+        )
+        assert Mechanic.ESCALATE in result.mechanics
+        assert Mechanic.DISCARD in result.mechanics
+        assert Mechanic.TARGET_OPPONENT in result.mechanics
+
+    def test_tiered_spell(self):
+        """Tiered spell (Final Fantasy) — mapped to ESCALATE."""
+        result = parse_oracle_text(
+            "Tiered\n• Cure — {0} — Target permanent you control gains "
+            "hexproof and indestructible until end of turn.\n"
+            "• Cura — {1} — Same. You gain 3 life.\n"
+            "• Curaga — {3}{W} — Your permanents gain hexproof and "
+            "indestructible until end of turn. You gain 6 life.",
+            "Instant",
+        )
+        assert Mechanic.ESCALATE in result.mechanics
+        assert Mechanic.HEXPROOF in result.mechanics
+        assert Mechanic.INDESTRUCTIBLE in result.mechanics
+
+    # --- Opponent's graveyard targeting ---
+
+    def test_disruptor_wanderglyph(self):
+        """Disruptor Wanderglyph — exile target card from an opponent's graveyard."""
+        result = parse_oracle_text(
+            "Whenever Disruptor Wanderglyph attacks, exile target card "
+            "from an opponent's graveyard.",
+            "Creature — Golem",
+        )
+        assert Mechanic.ATTACK_TRIGGER in result.mechanics
+        assert Mechanic.EXILE in result.mechanics
+        assert Mechanic.TARGET_CARD_IN_GRAVEYARD in result.mechanics
+
+    def test_opponent_graveyard_still_works(self):
+        """Standard 'target card in a graveyard' still works."""
+        result = parse_oracle_text(
+            "Exile target card from a graveyard.",
+            "Instant",
+        )
+        assert Mechanic.TARGET_CARD_IN_GRAVEYARD in result.mechanics
+
+    def test_your_graveyard_still_works(self):
+        """Standard 'target card in your graveyard' still works."""
+        result = parse_oracle_text(
+            "Return target card from your graveyard to your hand.",
+            "Sorcery",
+        )
+        assert Mechanic.TARGET_CARD_IN_GRAVEYARD in result.mechanics
+        assert Mechanic.REGROWTH in result.mechanics

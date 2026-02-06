@@ -539,6 +539,12 @@ class Mechanic(IntEnum):
     LEYLINE = 1350              # "in your opening hand...begin the game with it" (Leyline cycle)
     UNLOCK_ROOM = 1351          # "unlock a room" / "fully unlock" (DSK rooms)
 
+    # ==========================================================================
+    # QUIZ FEEDBACK FIXES (1352-1353)
+    # ==========================================================================
+    LOOT = 1352                 # "draw, then discard" / "discard, then draw" (Merfolk Looter, Faithless Looting)
+    ESCALATE = 1353             # "escalate" / "tiered" — pay more for additional modes (Collective Brutality)
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1
