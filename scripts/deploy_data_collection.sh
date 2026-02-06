@@ -263,7 +263,7 @@ ls "$FORGE_WORKDIR/forge-gui/res/" | head -5 && echo "  (res directory found)"
 echo "Starting Forge daemon..."
 export JAVA_OPTS="-Xmx6g"
 cd "$FORGE_WORKDIR"
-java -jar "$FORGE_JAR" --daemon --port 17171 > /var/log/forge-daemon.log 2>&1 &
+java -jar "$FORGE_JAR" daemon -p 17171 > /var/log/forge-daemon.log 2>&1 &
 FORGE_PID=$!
 cd /home/ubuntu/mtg
 

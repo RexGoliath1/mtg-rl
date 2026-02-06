@@ -75,7 +75,7 @@ Phase 1: Behavioral Cloning (17lands data)
 └── Output: checkpoints/bc_best.pt
 
 Phase 2: RL Fine-tuning (Forge self-play)
-├── Start Forge daemon: java -jar forge.jar --daemon
+├── Start Forge daemon: java -jar forge.jar daemon
 ├── Train: python training_pipeline.py --mode rl --episodes 10000
 └── Output: checkpoints/rl_best.pt
 
@@ -106,7 +106,7 @@ git remote add upstream https://github.com/Card-Forge/forge.git
 mvn package -DskipTests
 
 # Run draft daemon
-java -jar forge-gui-desktop/target/forge.jar --daemon --port 17220
+java -jar forge-gui-desktop/target/forge.jar daemon -p 17220
 ```
 
 **Merging New Forge Updates (for new MTG mechanics)**:
@@ -627,7 +627,7 @@ The Forge daemon is now integrated via `src/forge/forge_client.py`.
 cd forge-repo && mvn package -DskipTests -pl forge-gui-desktop -am
 
 # Start daemon (port 17171)
-java -jar forge-gui-desktop/target/forge-gui-desktop-*-jar-with-dependencies.jar --daemon
+java -jar forge-gui-desktop/target/forge-gui-desktop-*-jar-with-dependencies.jar daemon
 
 # Test connection
 python -c "from src.forge import ForgeClient; c=ForgeClient(); c.connect(); print(c.get_status())"
