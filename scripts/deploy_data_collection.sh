@@ -89,7 +89,7 @@ echo "Packaging code..."
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 PACKAGE_NAME="data_collection_${TIMESTAMP}.tar.gz"
 
-tar -czf "/tmp/${PACKAGE_NAME}" \
+COPYFILE_DISABLE=1 tar -czf "/tmp/${PACKAGE_NAME}" \
     --exclude='*.pyc' \
     --exclude='__pycache__' \
     --exclude='.git' \
@@ -113,7 +113,7 @@ FORGE_JAR_LOCAL=$(find "$PROJECT_DIR/forge-repo/forge-gui-desktop/target" -name 
 if [ -n "$FORGE_JAR_LOCAL" ]; then
     FORGE_JAR_REL="${FORGE_JAR_LOCAL#$PROJECT_DIR/forge-repo/}"
     echo "Packaging Forge JAR ($FORGE_JAR_REL)..."
-    tar -czf "/tmp/forge_jar_${TIMESTAMP}.tar.gz" \
+    COPYFILE_DISABLE=1 tar -czf "/tmp/forge_jar_${TIMESTAMP}.tar.gz" \
         -C "$PROJECT_DIR/forge-repo" \
         "$FORGE_JAR_REL" \
         forge-gui/res
@@ -227,14 +227,14 @@ if aws s3 ls s3://BUCKET_PLACEHOLDER/test_packages/forge_jar_TIMESTAMP_PLACEHOLD
     aws s3 cp s3://BUCKET_PLACEHOLDER/test_packages/forge_jar_TIMESTAMP_PLACEHOLDER.tar.gz forge_jar.tar.gz
     mkdir -p forge-repo
     tar -xzf forge_jar.tar.gz -C forge-repo
-    FORGE_JAR=$(find forge-repo -name "*jar-with-dependencies.jar" | head -1)
+    FORGE_JAR=$(find forge-repo -name "*jar-with-dependencies.jar" ! -name "._*" | head -1)
 else
     echo "Building Forge from source..."
     git clone --depth 1 -b feature/rl-daemon-mode https://github.com/RexGoliath1/forge.git forge-repo
     cd forge-repo
     mvn package -DskipTests -pl forge-gui-desktop -am -q
     cd ..
-    FORGE_JAR=$(find forge-repo -name "*jar-with-dependencies.jar" | head -1)
+    FORGE_JAR=$(find forge-repo -name "*jar-with-dependencies.jar" ! -name "._*" | head -1)
 fi
 
 echo "Forge JAR: $FORGE_JAR"
