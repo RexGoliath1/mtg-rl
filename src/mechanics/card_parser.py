@@ -190,6 +190,7 @@ KEYWORD_ABILITIES = {
     "equip": Mechanic.EQUIP,
     "bestow": Mechanic.BESTOW,
     "soulbond": Mechanic.SOULBOND,
+    "regenerate": Mechanic.REGENERATE,
 
     # Tribute/choice (missing)
     "tribute": Mechanic.TRIBUTE,
@@ -352,6 +353,19 @@ PATTERNS = [
     (r"(target player|that player|opponent) loses the game", [Mechanic.LOSE_GAME]),
     (r"you lose the game", [Mechanic.LOSE_GAME]),
     (r"as an additional cost.+sacrifice", [Mechanic.ADDITIONAL_COST, Mechanic.SACRIFICE]),
+
+    # Gain control variants
+    (r"(forestwalk|islandwalk|swampwalk|mountainwalk|plainswalk)", [Mechanic.LANDWALK]),
+    (r"no more than (one|two|\d+) creatures? can (attack|block)", [Mechanic.COMBAT_RESTRICTION]),
+    (r"only one creature can (attack|block)", [Mechanic.COMBAT_RESTRICTION]),
+    (r"enters? (the battlefield )?with (\w+ ){0,3}\+1/\+1 counter", [Mechanic.ENTERS_WITH_COUNTERS, Mechanic.PLUS_ONE_COUNTER]),
+    (r"enters? (the battlefield )?with (\w+ ){0,3}-1/-1 counter", [Mechanic.ENTERS_WITH_COUNTERS, Mechanic.MINUS_ONE_COUNTER]),
+    (r"enters? (the battlefield )?with (\w+ ){0,3}counter", [Mechanic.ENTERS_WITH_COUNTERS]),
+    (r"flip a coin", [Mechanic.COIN_FLIP]),
+    (r"regenerate", [Mechanic.REGENERATE]),
+    (r"enters? as a copy", [Mechanic.COPY_PERMANENT]),
+    (r"becomes? a copy", [Mechanic.COPY_PERMANENT]),
+    (r"stun counter", [Mechanic.STUN_COUNTER]),
 
     # Zones
     (r"from your hand", [Mechanic.FROM_HAND]),

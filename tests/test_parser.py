@@ -2673,3 +2673,143 @@ class TestNewPatterns:
         )
         assert Mechanic.PREVENT_DAMAGE in result.mechanics
         assert Mechanic.DEAL_DAMAGE in result.mechanics
+
+
+# =============================================================================
+# SCRYFALL SAMPLE ROUND 1 — Gaps discovered from 100-card sampling
+# =============================================================================
+
+class TestScryfallGapsRound1:
+    """Test fixes for gaps discovered from 100-card Scryfall sample."""
+
+    def test_landwalk_forestwalk(self):
+        """Lynx — forestwalk."""
+        card = make_card(
+            "Lynx", "{1}{G}", 2,
+            "Creature — Cat",
+            "Forestwalk",
+            power=2, toughness=1,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.LANDWALK], "Lynx")
+
+    def test_landwalk_islandwalk(self):
+        """Phantom Warrior — islandwalk."""
+        result = parse_oracle_text("Islandwalk", "Creature")
+        assert Mechanic.LANDWALK in result.mechanics
+
+    def test_landwalk_swampwalk(self):
+        """Bog Wraith — swampwalk."""
+        result = parse_oracle_text("Swampwalk", "Creature")
+        assert Mechanic.LANDWALK in result.mechanics
+
+    def test_silent_arbiter_combat_restriction(self):
+        """Silent Arbiter — no more than one creature can attack/block."""
+        card = make_card(
+            "Silent Arbiter", "{4}", 4,
+            "Artifact Creature — Construct",
+            "No more than one creature can attack each combat.\nNo more than one creature can block each combat.",
+            power=1, toughness=5,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.COMBAT_RESTRICTION], "Silent Arbiter")
+
+    def test_dueling_grounds(self):
+        """Dueling Grounds — only one creature can attack/block."""
+        result = parse_oracle_text(
+            "No more than one creature can attack each combat.\nNo more than one creature can block each combat.",
+            "Enchantment",
+        )
+        assert Mechanic.COMBAT_RESTRICTION in result.mechanics
+
+    def test_enters_with_plus_counters(self):
+        """Hagra Constrictor — enters with two +1/+1 counters."""
+        card = make_card(
+            "Hagra Constrictor", "{2}{B}", 3,
+            "Creature — Snake",
+            "This creature enters with two +1/+1 counters on it.\nEach creature you control with a +1/+1 counter on it has menace.",
+            power=0, toughness=0,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.ENTERS_WITH_COUNTERS,
+            Mechanic.PLUS_ONE_COUNTER,
+            Mechanic.MENACE,
+        ], "Hagra Constrictor")
+
+    def test_walking_ballista_enters_counters(self):
+        """Walking Ballista — enters with X +1/+1 counters."""
+        result = parse_oracle_text(
+            "Walking Ballista enters with X +1/+1 counters on it.\n{4}, {T}: Put a +1/+1 counter on Walking Ballista.\nRemove a +1/+1 counter from Walking Ballista: It deals 1 damage to any target.",
+            "Artifact Creature",
+        )
+        assert Mechanic.ENTERS_WITH_COUNTERS in result.mechanics
+        assert Mechanic.PLUS_ONE_COUNTER in result.mechanics
+
+    def test_coin_flip(self):
+        """Game of Chaos — flip a coin."""
+        result = parse_oracle_text(
+            "Flip a coin. If you win the flip, you gain 1 life and target opponent loses 1 life.",
+            "Sorcery",
+        )
+        assert Mechanic.COIN_FLIP in result.mechanics
+
+    def test_krark_thumb(self):
+        """Krark's Thumb — coin flip reference."""
+        result = parse_oracle_text(
+            "If you would flip a coin, instead flip two coins and ignore one.",
+            "Legendary Artifact",
+        )
+        assert Mechanic.COIN_FLIP in result.mechanics
+
+    def test_regenerate(self):
+        """Rakshasa Deathdealer — regenerate ability."""
+        card = make_card(
+            "Rakshasa Deathdealer", "{B}{G}", 2,
+            "Creature — Demon",
+            "{B}{G}: This creature gets +2/+2 until end of turn.\n{B}{G}: Regenerate this creature.",
+            power=2, toughness=2,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.REGENERATE], "Rakshasa Deathdealer")
+
+    def test_thrun_regenerate(self):
+        """Thrun, the Last Troll — regenerate + can't be countered."""
+        card = make_card(
+            "Thrun, the Last Troll", "{2}{G}{G}", 4,
+            "Legendary Creature — Troll Shaman",
+            "This spell can't be countered.\nHexproof\n{1}{G}: Regenerate Thrun, the Last Troll.",
+            power=4, toughness=4,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.CANT_BE_COUNTERED,
+            Mechanic.HEXPROOF,
+            Mechanic.REGENERATE,
+        ], "Thrun")
+
+    def test_clone_enters_as_copy(self):
+        """Clone — enters as a copy of a creature."""
+        result = parse_oracle_text(
+            "You may have Clone enter as a copy of any creature on the battlefield.",
+            "Creature",
+        )
+        assert Mechanic.COPY_PERMANENT in result.mechanics
+
+    def test_spark_double_becomes_copy(self):
+        """Spark Double — enters as a copy + enters with counter."""
+        result = parse_oracle_text(
+            "You may have Spark Double enter as a copy of a creature or planeswalker you control, except it enters with an additional +1/+1 counter on it if it's a creature, it enters with an additional loyalty counter on it if it's a planeswalker, and it isn't legendary.",
+            "Creature",
+        )
+        assert Mechanic.COPY_PERMANENT in result.mechanics
+        assert Mechanic.ENTERS_WITH_COUNTERS in result.mechanics
+
+    def test_stun_counter(self):
+        """Referee Squad — put a stun counter on it."""
+        result = parse_oracle_text(
+            "When Referee Squad enters the battlefield, tap target creature an opponent controls and put a stun counter on it.",
+            "Creature",
+        )
+        assert Mechanic.STUN_COUNTER in result.mechanics
+        assert Mechanic.TAP in result.mechanics

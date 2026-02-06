@@ -523,6 +523,15 @@ class Mechanic(IntEnum):
     WIN_GAME = 1342             # "you win the game" (Thassa's Oracle, Lab Maniac)
     LOSE_GAME = 1343            # "loses the game" / "you lose the game"
 
+    # ==========================================================================
+    # SCRYFALL SAMPLE ROUND 1 FIXES (1344-1349)
+    # ==========================================================================
+    LANDWALK = 1344             # forestwalk, islandwalk, etc. (Lynx, Bog Wraith)
+    COMBAT_RESTRICTION = 1345   # "no more than one creature can attack" (Silent Arbiter, Dueling Grounds)
+    ENTERS_WITH_COUNTERS = 1346 # "enters with N +1/+1 counters" (Hagra Constrictor, Walking Ballista)
+    COIN_FLIP = 1347            # "flip a coin" (Game of Chaos, Krark's Thumb)
+    REGENERATE = 1348           # "regenerate" (Thrun, Ezuri)
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1
