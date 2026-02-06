@@ -3030,3 +3030,34 @@ class TestQuizFeedbackFixes:
         )
         assert Mechanic.TARGET_CARD_IN_GRAVEYARD in result.mechanics
         assert Mechanic.REGROWTH in result.mechanics
+
+    # --- BOUNCE_TO_HAND vs REGROWTH fix ---
+
+    def test_regrowth_no_bounce(self):
+        """Regrowth — graveyard→hand is REGROWTH, NOT BOUNCE_TO_HAND."""
+        result = parse_oracle_text(
+            "Return target card from your graveyard to your hand.",
+            "Sorcery",
+        )
+        assert Mechanic.REGROWTH in result.mechanics
+        assert Mechanic.BOUNCE_TO_HAND not in result.mechanics
+
+    def test_unsummon_bounce_no_regrowth(self):
+        """Unsummon — battlefield→hand is BOUNCE_TO_HAND, NOT REGROWTH."""
+        result = parse_oracle_text(
+            "Return target creature to its owner's hand.",
+            "Instant",
+        )
+        assert Mechanic.BOUNCE_TO_HAND in result.mechanics
+        assert Mechanic.REGROWTH not in result.mechanics
+
+    def test_coati_scavenger_no_bounce(self):
+        """Coati Scavenger — graveyard return should not trigger BOUNCE_TO_HAND."""
+        result = parse_oracle_text(
+            "When Coati Scavenger enters the battlefield, return target "
+            "permanent card from your graveyard to your hand.",
+            "Creature — Coati",
+        )
+        assert Mechanic.REGROWTH in result.mechanics
+        assert Mechanic.BOUNCE_TO_HAND not in result.mechanics
+        assert Mechanic.ETB_TRIGGER in result.mechanics

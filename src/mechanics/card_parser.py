@@ -249,7 +249,7 @@ PATTERNS = [
     (r"exile target", [Mechanic.EXILE]),
     (r"exiles? (it|that|this|target)", [Mechanic.EXILE]),
     (r"sacrifice (a|an|target)", [Mechanic.SACRIFICE]),
-    (r"return (it|that|target).+to (its|their|your|owner's) (hand|owner's hand)", [Mechanic.BOUNCE_TO_HAND]),
+    (r"return (it|that|target)(?!.*from .*(graveyard|exile)).+to (its|their|your|owner's) (hand|owner's hand)", [Mechanic.BOUNCE_TO_HAND]),
     (r"put.+on (the bottom|top) of.+library", [Mechanic.BOUNCE_TO_LIBRARY]),
     (r"counter target spell", [Mechanic.COUNTER_SPELL]),
     (r"counter (it|that spell)", [Mechanic.COUNTER_SPELL]),
@@ -578,7 +578,7 @@ PATTERNS = [
 
     # Common text fragments
     (r"at\s+the\s+beginning\s+of\s+(your|the)\s+(first|second|next)\s+main\s+phase", []),
-    (r"return\s+.+?\s+to\s+(its|their)\s+owner's\s+hand", [Mechanic.BOUNCE_TO_HAND]),
+    (r"return\s+(?!.*from .*(graveyard|exile)).+?\s+to\s+(its|their)\s+owner's\s+hand", [Mechanic.BOUNCE_TO_HAND]),
     (r"you\s+may\s+(cast|play)\s+it", []),
     (r"if\s+you\s+do,?\s+", []),
     (r"attach\s+it\s+to\s+", []),
