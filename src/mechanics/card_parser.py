@@ -536,6 +536,14 @@ PATTERNS = [
     (r"this\s+(creature|spell|card|permanent)\s+(enters|costs?)", []),
     (r"\{t\}:\s+add\s+\{?[wubrgc]\}?", []),
     (r"would\s+gain\s+life.+loses\s+that\s+much\s+life", [Mechanic.CANT_GAIN_LIFE, Mechanic.REPLACEMENT_EFFECT]),
+    (r"cycling\s+(\{[^}]+\})+", []),
+    (r"whenever\s+you\s+cycle", [Mechanic.DISCARD_TRIGGER]),
+    (r"destroy\s+all\s+(creatures|permanents|artifacts|enchantments)", [Mechanic.DESTROY, Mechanic.TARGETS_ALL]),
+    (r"(tap|untap)\s+all\s+", []),
+    (r"under\s+(your|its\s+owner's)\s+control", []),
+    (r"(its|their)\s+owner's\s+hand", []),
+    (r"any\s+(number|combination)\s+of", []),
+    (r"whenever\s+you\s+tap\s+a\s+\w+\s+for\s+mana", [Mechanic.MANA_DOUBLER]),
 ]
 
 
