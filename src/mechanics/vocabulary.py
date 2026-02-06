@@ -548,6 +548,16 @@ class Mechanic(IntEnum):
     EXERT = 1355                # "exert" (Glorybringer, Combat Celebrant)
     EXTRA_LAND_PLAY = 1356      # "play an additional land" (Explore, Oracle of Mul Daya)
 
+    # ==========================================================================
+    # QUIZ ROUND 2 DESIGN DECISIONS (1357-1363)
+    # ==========================================================================
+    TARGET_OPPONENT_CREATURE = 1357  # "target creature an opponent controls" (explicit ownership)
+    CREATURE_TYPE_MATTERS = 1358    # Tribal synergy — card cares about specific creature type
+    DIES_TO_BATTLEFIELD = 1359      # "when dies, return to battlefield" (self-recurring)
+    ONCE_PER_TURN = 1360            # "this ability triggers only once each turn"
+    PAY_LIFE = 1361                 # "pay N life" as cost or condition
+    POWER_TOUGHNESS_CONDITION = 1362  # "power 4 or greater" / "toughness 3 or less" stat gate
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1

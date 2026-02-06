@@ -3213,3 +3213,201 @@ class TestQuizRound2Fixes:
         )
         assert Mechanic.EXTRA_LAND_PLAY in result.mechanics
         assert Mechanic.DRAW in result.mechanics
+
+
+class TestQuizRound2DesignDecisions:
+    """Design decision patterns from quiz round 2 analysis."""
+
+    # --- TARGET_OPPONENT_CREATURE ---
+
+    def test_target_opponent_creature(self):
+        """Explosive Prodigy — 'target creature an opponent controls'."""
+        result = parse_oracle_text(
+            "When this creature enters, it deals X damage to target "
+            "creature an opponent controls.",
+            "Creature",
+        )
+        assert Mechanic.TARGET_OPPONENT_CREATURE in result.mechanics
+        assert Mechanic.TARGET_CREATURE in result.mechanics
+
+    def test_creature_opponent_controls_no_target(self):
+        """'creature an opponent controls' without 'target' prefix."""
+        result = parse_oracle_text(
+            "Destroy target creature you don't control.",
+            "Instant",
+        )
+        assert Mechanic.TARGET_OPPONENT_CREATURE in result.mechanics
+
+    def test_target_your_creature_no_opponent_tag(self):
+        """'target creature you control' should NOT get opponent tag."""
+        result = parse_oracle_text(
+            "Target creature you control gains hexproof until end of turn.",
+            "Instant",
+        )
+        assert Mechanic.TARGET_CREATURE in result.mechanics
+        assert Mechanic.TARGET_OPPONENT_CREATURE not in result.mechanics
+
+    # --- CREATURE_TYPE_MATTERS ---
+
+    def test_tribal_dinosaurs(self):
+        """Poetic Ingenuity — 'Dinosaurs you control attack'."""
+        result = parse_oracle_text(
+            "Whenever one or more Dinosaurs you control attack, "
+            "create that many Treasure tokens.",
+            "Enchantment",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+
+    def test_tribal_if_control_rabbit(self):
+        """Rabbit Response — 'If you control a Rabbit'."""
+        result = parse_oracle_text(
+            "Creatures you control get +2/+1 until end of turn. "
+            "If you control a Rabbit, scry 2.",
+            "Instant",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+
+    def test_tribal_cats_you_control(self):
+        """Basri — 'Cats you control gain hexproof'."""
+        result = parse_oracle_text(
+            "When you cycle this card, Cats you control gain hexproof "
+            "and indestructible until end of turn.",
+            "Creature",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+
+    def test_no_tribal_creatures_you_control(self):
+        """Generic 'creatures you control' is NOT creature type matters."""
+        result = parse_oracle_text(
+            "Creatures you control get +1/+1.",
+            "Enchantment",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS not in result.mechanics
+
+    def test_no_tribal_permanents_you_control(self):
+        """Generic 'permanents you control' is NOT creature type matters."""
+        result = parse_oracle_text(
+            "Permanents you control have hexproof.",
+            "Enchantment",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS not in result.mechanics
+
+    # --- DIES_TO_BATTLEFIELD ---
+
+    def test_dies_return_to_battlefield(self):
+        """Vincent's Limit Break — 'when dies, return to battlefield'."""
+        result = parse_oracle_text(
+            "Until end of turn, target creature you control gains "
+            "\"When this creature dies, return it to the battlefield "
+            "tapped under its owner's control\".",
+            "Instant",
+        )
+        assert Mechanic.DIES_TO_BATTLEFIELD in result.mechanics
+
+    def test_dies_put_onto_battlefield(self):
+        """Alternate wording — 'when dies, put onto the battlefield'."""
+        result = parse_oracle_text(
+            "When this creature dies, put it onto the battlefield "
+            "under its owner's control.",
+            "Creature",
+        )
+        assert Mechanic.DIES_TO_BATTLEFIELD in result.mechanics
+
+    # --- FINALITY_COUNTER ---
+
+    def test_finality_counter(self):
+        """Hundred-Battle Veteran — finality counter on entry."""
+        result = parse_oracle_text(
+            "You may cast this card from your graveyard. If you do, "
+            "it enters with a finality counter on it.",
+            "Creature",
+        )
+        assert Mechanic.FINALITY_COUNTER in result.mechanics
+
+    # --- ONCE_PER_TURN ---
+
+    def test_once_per_turn_trigger(self):
+        """Poetic Ingenuity — 'triggers only once each turn'."""
+        result = parse_oracle_text(
+            "Whenever you cast an artifact spell, create a 3/1 red "
+            "Dinosaur creature token. This ability triggers only once "
+            "each turn.",
+            "Enchantment",
+        )
+        assert Mechanic.ONCE_PER_TURN in result.mechanics
+
+    def test_once_per_turn_activate(self):
+        """Exhaust-style — 'activate only once each turn'."""
+        result = parse_oracle_text(
+            "{2}: Draw a card. Activate this ability only once each turn.",
+            "Creature",
+        )
+        assert Mechanic.ONCE_PER_TURN in result.mechanics
+
+    # --- PAY_LIFE ---
+
+    def test_pay_life(self):
+        """Meathook Massacre II — 'may pay 3 life'."""
+        result = parse_oracle_text(
+            "Whenever a creature you control dies, you may pay 3 life. "
+            "If you do, return that card under your control.",
+            "Enchantment",
+        )
+        assert Mechanic.PAY_LIFE in result.mechanics
+
+    def test_pay_life_opponent(self):
+        """Opponent pays life."""
+        result = parse_oracle_text(
+            "Whenever a creature an opponent controls dies, they may "
+            "pay 3 life. If they don't, return that card under your control.",
+            "Enchantment",
+        )
+        assert Mechanic.PAY_LIFE in result.mechanics
+
+    # --- GAIN_CONTROL (theft via 'under your control') ---
+
+    def test_theft_under_your_control(self):
+        """Meathook — 'return under your control' = theft."""
+        result = parse_oracle_text(
+            "Return that card under your control with a finality "
+            "counter on it.",
+            "Enchantment",
+        )
+        assert Mechanic.GAIN_CONTROL in result.mechanics
+        assert Mechanic.FINALITY_COUNTER in result.mechanics
+
+    # --- POWER_TOUGHNESS_CONDITION ---
+
+    def test_power_condition(self):
+        """Exorcise — 'power 4 or greater'."""
+        result = parse_oracle_text(
+            "Exile target artifact, enchantment, or creature with "
+            "power 4 or greater.",
+            "Sorcery",
+        )
+        assert Mechanic.POWER_TOUGHNESS_CONDITION in result.mechanics
+
+    def test_toughness_condition(self):
+        """'toughness 3 or less'."""
+        result = parse_oracle_text(
+            "Destroy target creature with toughness 3 or less.",
+            "Instant",
+        )
+        assert Mechanic.POWER_TOUGHNESS_CONDITION in result.mechanics
+
+    def test_power_equal_to(self):
+        """'power equal to' variable condition."""
+        result = parse_oracle_text(
+            "This creature deals damage equal to its power to target creature.",
+            "Creature",
+        )
+        assert Mechanic.POWER_TOUGHNESS_CONDITION not in result.mechanics
+        # "equal to its power" is referencing own P/T, not a condition gate
+
+    def test_power_greater_than(self):
+        """'power greater than' for conditional."""
+        result = parse_oracle_text(
+            "Destroy target creature with power greater than its toughness.",
+            "Sorcery",
+        )
+        assert Mechanic.POWER_TOUGHNESS_CONDITION in result.mechanics

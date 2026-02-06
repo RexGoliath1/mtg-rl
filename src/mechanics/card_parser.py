@@ -227,7 +227,10 @@ KEYWORD_ABILITIES = {
 
 # Patterns for common text structures
 PATTERNS = [
-    # Targeting patterns
+    # Targeting patterns (opponent-specific BEFORE generic)
+    (r"target creature an opponent controls", [Mechanic.TARGET_CREATURE, Mechanic.TARGET_OPPONENT_CREATURE]),
+    (r"creature an opponent controls", [Mechanic.TARGET_OPPONENT_CREATURE]),
+    (r"target creature you don't control", [Mechanic.TARGET_CREATURE, Mechanic.TARGET_OPPONENT_CREATURE]),
     (r"target creature", [Mechanic.TARGET_CREATURE]),
     (r"target player", [Mechanic.TARGET_PLAYER]),
     (r"target opponent", [Mechanic.TARGET_OPPONENT]),
@@ -353,6 +356,7 @@ PATTERNS = [
     (r"gain control of", [Mechanic.GAIN_CONTROL]),
     (r"gains? control of", [Mechanic.GAIN_CONTROL]),
     (r"exchange control", [Mechanic.GAIN_CONTROL]),
+    (r"under your control", [Mechanic.GAIN_CONTROL]),  # "return under your control" = theft
     (r"crew\s+\d+", [Mechanic.CREW]),
     (r"exile the top.+you may (play|cast)", [Mechanic.IMPULSE_DRAW]),
     (r"exile.+from the top.+you may (play|cast)", [Mechanic.IMPULSE_DRAW]),
@@ -426,6 +430,34 @@ PATTERNS = [
     (r"\bcycling\b", [Mechanic.CYCLING]),
     (r"\bexert\b", [Mechanic.EXERT]),
     (r"play an additional land", [Mechanic.EXTRA_LAND_PLAY]),
+
+    # =========================================================================
+    # QUIZ ROUND 2 DESIGN DECISIONS
+    # =========================================================================
+
+    # Creature type matters / tribal synergy — "[type]s you control" where [type] is not generic
+    (r"\b(?:other )?(?!creatures?\b|permanents?\b|artifacts?\b|enchantments?\b|lands?\b|spells?\b|cards?\b|tokens?\b|players?\b|nonland|noncreature|nontoken|legendary|it\b|they\b|them\b|that\b|this\b|those\b|each\b|all\b|target\b)\w+s? you control", [Mechanic.CREATURE_TYPE_MATTERS]),
+    (r"if you control (?:a|an) (?!creature|permanent|artifact|enchantment|land|spell|card|token|player|nonland|noncreature)\w+", [Mechanic.CREATURE_TYPE_MATTERS]),
+
+    # Dies → return to battlefield (self-recurring, NOT persist/undying keyword)
+    (r"when .{1,30} dies, return .{1,30} to the battlefield", [Mechanic.DIES_TO_BATTLEFIELD]),
+    (r"when .{1,30} dies, put .{1,30} onto the battlefield", [Mechanic.DIES_TO_BATTLEFIELD]),
+
+    # Finality counter
+    (r"finality counter", [Mechanic.FINALITY_COUNTER]),
+
+    # Once per turn restriction
+    (r"this ability triggers only once each turn", [Mechanic.ONCE_PER_TURN]),
+    (r"activate .{0,20}only once each turn", [Mechanic.ONCE_PER_TURN]),
+
+    # Pay life as cost/condition
+    (r"pay (\d+|x) life", [Mechanic.PAY_LIFE]),
+    (r"pays? (\d+|x) life", [Mechanic.PAY_LIFE]),
+
+    # Power/toughness condition (stat gate)
+    (r"(?:power|toughness) \d+ or (?:greater|more|less)", [Mechanic.POWER_TOUGHNESS_CONDITION]),
+    (r"with (?:power|toughness) \d+ or (?:greater|more|less)", [Mechanic.POWER_TOUGHNESS_CONDITION]),
+    (r"(?:power|toughness) (?:equal to|less than|greater than)", [Mechanic.POWER_TOUGHNESS_CONDITION]),
 
     # =========================================================================
     # TYPE FILTERS
