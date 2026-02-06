@@ -146,6 +146,8 @@ def fetch_random_cards(n: int = 9, fmt: str = "standard",
         back_image_uri = ""
 
         # Handle DFCs
+        back_oracle = ""
+        back_type_line = ""
         if "card_faces" in card and card["card_faces"]:
             front = card["card_faces"][0]
             oracle = front.get("oracle_text", oracle)
@@ -154,6 +156,8 @@ def fetch_random_cards(n: int = 9, fmt: str = "standard",
             if len(card["card_faces"]) > 1:
                 back = card["card_faces"][1]
                 back_image_uri = back.get("image_uris", {}).get("normal", "")
+                back_oracle = back.get("oracle_text", "")
+                back_type_line = back.get("type_line", "")
 
         if not image_uri:
             image_uri = card.get("image_uris", {}).get("normal", "")
@@ -162,7 +166,7 @@ def fetch_random_cards(n: int = 9, fmt: str = "standard",
             time.sleep(REQUEST_DELAY)
             continue
 
-        # Parse through our parser
+        # Parse front face
         try:
             result = parse_oracle_text(oracle, type_line)
             mechanics = [m.name for m in result.mechanics]
@@ -175,6 +179,21 @@ def fetch_random_cards(n: int = 9, fmt: str = "standard",
             confidence = 0.0
             unparsed = str(e)
 
+        # Parse back face if present
+        back_mechanics = []
+        back_params = {}
+        back_confidence = None
+        back_unparsed = ""
+        if back_oracle.strip():
+            try:
+                back_result = parse_oracle_text(back_oracle, back_type_line)
+                back_mechanics = [m.name for m in back_result.mechanics]
+                back_params = back_result.parameters
+                back_confidence = round(back_result.confidence, 3)
+                back_unparsed = back_result.unparsed_text
+            except Exception:
+                pass
+
         suggestions = compute_suggestions(oracle, mechanics, unparsed)
 
         cards.append({
@@ -184,6 +203,12 @@ def fetch_random_cards(n: int = 9, fmt: str = "standard",
             "oracle_text": oracle,
             "image_uri": image_uri,
             "back_image_uri": back_image_uri,
+            "back_oracle_text": back_oracle,
+            "back_type_line": back_type_line,
+            "back_mechanics": back_mechanics,
+            "back_params": back_params,
+            "back_confidence": back_confidence,
+            "back_unparsed": back_unparsed,
             "scryfall_uri": card.get("scryfall_uri", ""),
             "mechanics": mechanics,
             "parameters": params,
@@ -605,6 +630,36 @@ function renderGrid(cards) {
       ? `<div class="unparsed">Unparsed: ${esc(c.unparsed_text.substring(0, 120))}</div>`
       : '';
 
+    // Back face section (DFCs, MDFCs, Transform)
+    let backFaceHtml = '';
+    if (c.back_oracle_text) {
+      const bConfPct = c.back_confidence != null ? Math.round(c.back_confidence * 100) : 0;
+      const bMechTags = (c.back_mechanics || []).map(m =>
+        `<span class="mech-tag">${esc(m)}</span>`
+      ).join('');
+      const bParamTags = Object.entries(c.back_params || {}).map(([k,v]) =>
+        `<span class="mech-tag param-tag">${esc(k)}=${esc(String(v))}</span>`
+      ).join('');
+      const bUnparsed = c.back_unparsed
+        ? `<div class="unparsed">Unparsed: ${esc(c.back_unparsed.substring(0, 80))}</div>`
+        : '';
+      backFaceHtml = `
+        <div style="border-top:1px solid #2d3a5a;margin-top:6px;padding-top:6px">
+          <div style="font-size:0.65rem;color:var(--text-muted);margin-bottom:3px">
+            BACK FACE: ${esc(c.back_type_line)}
+          </div>
+          <div class="card-oracle" style="max-height:40px;margin-bottom:4px">${esc(c.back_oracle_text)}</div>
+          <div class="conf-row">
+            <div class="conf-bar-track">
+              <div class="conf-bar-fill" style="width:${bConfPct}%;background:${confColor(c.back_confidence || 0)}"></div>
+            </div>
+            <div class="conf-label" style="color:${confColor(c.back_confidence || 0)}">${bConfPct}%</div>
+          </div>
+          <div class="mechanics-list">${bMechTags}${bParamTags}</div>
+          ${bUnparsed}
+        </div>`;
+    }
+
     // Suggestion chips
     const sugChips = (c.suggestions || []).map((s, si) =>
       `<span class="sug-chip" data-card="${i}" data-idx="${si}" onclick="toggleSuggestion(${i},${si})">${esc(s)}</span>`
@@ -644,6 +699,7 @@ function renderGrid(cards) {
         </div>
         <div class="mechanics-list">${mechTags}${paramTags}</div>
         ${unparsed}
+        ${backFaceHtml}
         <div class="vote-row">
           <button class="vote-btn btn-good" onclick="vote(${i},'good')">Good</button>
           <button class="vote-btn btn-bad" onclick="vote(${i},'bad')">Bad</button>
