@@ -385,6 +385,10 @@ HTML_PAGE = r"""<!DOCTYPE html>
     border-radius: 4px;
     white-space: nowrap;
   }
+  .type-tag {
+    background: #1b3d2e;
+    color: #7dcea0;
+  }
   .param-tag {
     background: #2d1b4e;
     color: #c4a7e7;
@@ -626,6 +630,13 @@ function renderGrid(cards) {
     const paramTags = Object.entries(c.parameters || {}).map(([k,v]) =>
       `<span class="mech-tag param-tag">${esc(k)}=${esc(String(v))}</span>`
     ).join('');
+    // Type tags from type_line (show what the encoding sees)
+    const typeParts = (c.type_line || '').toLowerCase().replace(/—/g, '').split(/\s+/).filter(Boolean);
+    const strategicTypes = ['creature','artifact','enchantment','instant','sorcery','land','planeswalker',
+      'aura','equipment','vehicle','saga','legendary','tribal','snow','basic'];
+    const typeTags = [...new Set(typeParts.filter(t => strategicTypes.includes(t)))].map(t =>
+      `<span class="mech-tag type-tag">${esc(t.toUpperCase())}</span>`
+    ).join('');
     const unparsed = c.unparsed_text
       ? `<div class="unparsed">Unparsed: ${esc(c.unparsed_text.substring(0, 120))}</div>`
       : '';
@@ -697,7 +708,7 @@ function renderGrid(cards) {
           </div>
           <div class="conf-label" style="color:${confColor(c.confidence)}">${confPct}%</div>
         </div>
-        <div class="mechanics-list">${mechTags}${paramTags}</div>
+        <div class="mechanics-list">${typeTags}${mechTags}${paramTags}</div>
         ${unparsed}
         ${backFaceHtml}
         <div class="vote-row">
