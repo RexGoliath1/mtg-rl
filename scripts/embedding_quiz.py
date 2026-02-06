@@ -16,13 +16,14 @@ Then open http://localhost:8787 in your browser.
 """
 
 import argparse
-import html
 import json
 import os
+import re
 import sys
 import time
 import urllib.request
 import urllib.parse
+from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -30,13 +31,81 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.mechanics.card_parser import parse_oracle_text
 from src.mechanics.vocabulary import Mechanic
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPORTS_DIR = os.path.join(PROJECT_ROOT, "data", "quiz_reports")
+
 # ---------------------------------------------------------------------------
 # Scryfall helpers
 # ---------------------------------------------------------------------------
 
 SCRYFALL_RANDOM = "https://api.scryfall.com/cards/random"
-SCRYFALL_SEARCH = "https://api.scryfall.com/cards/search"
 REQUEST_DELAY = 0.105
+
+# Suggestion patterns: regex on oracle text -> suggested issue label
+# These fire when the mechanic ISN'T already detected
+SUGGESTION_RULES = [
+    (r"\bflying\b", "FLYING", "Missing flying keyword"),
+    (r"\btrample\b", "TRAMPLE", "Missing trample keyword"),
+    (r"\bvigilance\b", "VIGILANCE", "Missing vigilance keyword"),
+    (r"\blifelink\b", "LIFELINK", "Missing lifelink keyword"),
+    (r"\bdeathtouch\b", "DEATHTOUCH", "Missing deathtouch keyword"),
+    (r"\bfirst strike\b", "FIRST_STRIKE", "Missing first strike keyword"),
+    (r"\bhaste\b", "HASTE", "Missing haste keyword"),
+    (r"\breach\b", "REACH", "Missing reach keyword"),
+    (r"\bgains?\s+(flying|trample|haste|lifelink|vigilance)", None, "Granted keyword not captured"),
+    (r"power\s+\d+\s+or\s+(greater|more)", None, "Missing power condition"),
+    (r"toughness\s+\d+\s+or\s+(greater|more)", None, "Missing toughness condition"),
+    (r"you\s+may\s+pay", None, "Optional cost not captured"),
+    (r"can't\s+cast", "CANT_CAST", "Missing can't cast restriction"),
+    (r"draw\s+(a|two|three)\s+card", "DRAW", "Missing draw effect"),
+    (r"(create|put)\s+a\s+\d+/\d+", "CREATE_TOKEN", "Missing token creation"),
+    (r"each\s+(creature|opponent|player)", None, "Each/all targeting not specific enough"),
+    (r"you\s+control", None, "Missing 'you control' specificity"),
+    (r"an?\s+opponent\s+controls?", None, "Missing 'opponent controls' specificity"),
+    (r"\bdouble\b", None, "Doubling effect not captured"),
+    (r"station\s+\d+", None, "Missing station mechanic"),
+    (r"\bcrew\s+\d+", "CREW", "Missing crew mechanic"),
+    (r"\bsaddle\s+\d+", "SADDLE", "Missing saddle mechanic"),
+    (r"transform", None, "Transform/DFC not captured"),
+    (r"(top|bottom)\s+of\s+(your|their|a)\s+library", None, "Library position not captured"),
+    (r"second\s+spell", None, "Spell-count trigger not captured"),
+    (r"beginning\s+of\s+(your|each)", None, "Upkeep/phase trigger not captured"),
+    (r"mana\s+value", None, "Mana value condition not captured"),
+    (r"(counter|counters)\s+on", None, "Counter interaction not captured"),
+    (r"attached\s+to", None, "Attachment relationship not captured"),
+    (r"enchanted\s+(creature|permanent)", None, "Enchanted target not captured"),
+    (r"\bloot\b|draw.+then.+discard|discard.+then.+draw", None, "Loot/rummage effect"),
+    (r"(exile|return).+(graveyard|battlefield)", None, "Zone-change effect may be incomplete"),
+]
+
+
+def compute_suggestions(oracle_text: str, mechanics: list[str],
+                        unparsed: str) -> list[str]:
+    """Generate smart suggestions for why an embedding might be wrong."""
+    suggestions = []
+    text_lower = oracle_text.lower()
+
+    for pattern, mech_name, label in SUGGESTION_RULES:
+        if re.search(pattern, text_lower):
+            # If we check for a specific mechanic, only suggest if it's missing
+            if mech_name and mech_name in mechanics:
+                continue
+            suggestions.append(label)
+
+    # Generic suggestions always available
+    if unparsed and len(unparsed) > 20:
+        suggestions.append("Significant unparsed text remains")
+    if not suggestions:
+        suggestions.append("Mechanics seem incomplete")
+
+    # Deduplicate and cap
+    seen = set()
+    unique = []
+    for s in suggestions:
+        if s not in seen:
+            seen.add(s)
+            unique.append(s)
+    return unique[:8]
 
 
 def fetch_random_cards(n: int = 9, fmt: str = "standard",
@@ -74,6 +143,7 @@ def fetch_random_cards(n: int = 9, fmt: str = "standard",
         oracle = card.get("oracle_text", "")
         type_line = card.get("type_line", "")
         image_uri = ""
+        back_image_uri = ""
 
         # Handle DFCs
         if "card_faces" in card and card["card_faces"]:
@@ -81,6 +151,9 @@ def fetch_random_cards(n: int = 9, fmt: str = "standard",
             oracle = front.get("oracle_text", oracle)
             type_line = front.get("type_line", type_line)
             image_uri = front.get("image_uris", {}).get("normal", "")
+            if len(card["card_faces"]) > 1:
+                back = card["card_faces"][1]
+                back_image_uri = back.get("image_uris", {}).get("normal", "")
 
         if not image_uri:
             image_uri = card.get("image_uris", {}).get("normal", "")
@@ -102,17 +175,21 @@ def fetch_random_cards(n: int = 9, fmt: str = "standard",
             confidence = 0.0
             unparsed = str(e)
 
+        suggestions = compute_suggestions(oracle, mechanics, unparsed)
+
         cards.append({
             "name": name,
             "set": card.get("set", "???").upper(),
             "type_line": type_line,
             "oracle_text": oracle,
             "image_uri": image_uri,
+            "back_image_uri": back_image_uri,
             "scryfall_uri": card.get("scryfall_uri", ""),
             "mechanics": mechanics,
             "parameters": params,
             "confidence": round(confidence, 3),
             "unparsed_text": unparsed,
+            "suggestions": suggestions,
         })
         time.sleep(REQUEST_DELAY)
 
@@ -194,14 +271,31 @@ HTML_PAGE = r"""<!DOCTYPE html>
     padding: 12px;
     align-items: flex-start;
   }
-  .card-img {
+  .card-img-wrap {
+    position: relative;
     width: 130px;
     min-width: 130px;
+  }
+  .card-img {
+    width: 130px;
     border-radius: 8px;
     cursor: pointer;
     transition: transform 0.2s;
   }
   .card-img:hover { transform: scale(1.05); }
+  .flip-btn {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    padding: 2px 5px;
+    cursor: pointer;
+  }
+  .flip-btn:hover { background: rgba(0,0,0,0.9); }
   .card-info { flex: 1; min-width: 0; }
   .card-name {
     font-weight: 700;
@@ -255,8 +349,6 @@ HTML_PAGE = r"""<!DOCTYPE html>
     flex-wrap: wrap;
     gap: 4px;
     margin-bottom: 8px;
-    max-height: 72px;
-    overflow-y: auto;
   }
   .mech-tag {
     display: inline-block;
@@ -305,18 +397,48 @@ HTML_PAGE = r"""<!DOCTYPE html>
   .btn-bad { border-color: var(--bad); }
   .btn-bad:hover, .btn-bad.active { background: var(--bad); color: #fff; }
 
+  /* Suggestions panel */
+  .suggestions {
+    display: none;
+    margin-top: 6px;
+  }
+  .suggestions.visible { display: block; }
+  .suggestions-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .suggestion-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .sug-chip {
+    display: inline-block;
+    background: #2d1b2a;
+    color: var(--bad);
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 12px;
+    border: 1px solid #5a2d3a;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sug-chip:hover { background: #5a2d3a; }
+  .sug-chip.selected { background: var(--bad); color: #fff; border-color: var(--bad); }
+
   .note-input {
     width: 100%;
-    margin-top: 6px;
+    margin-top: 4px;
     padding: 6px 8px;
     border-radius: 6px;
     border: 1px solid #2d3a5a;
     background: #0d1b2a;
     color: var(--text);
     font-size: 0.75rem;
-    display: none;
   }
-  .note-input.visible { display: block; }
   .note-input::placeholder { color: #555; }
 
   .actions {
@@ -337,6 +459,13 @@ HTML_PAGE = r"""<!DOCTYPE html>
   .action-btn:hover { transform: scale(1.04); }
   .btn-next { background: var(--accent); color: #fff; }
   .btn-report { background: #0f3460; color: var(--text); }
+  .btn-save { background: var(--good); color: #fff; }
+  .save-status {
+    font-size: 0.8rem;
+    color: var(--good);
+    align-self: center;
+    display: none;
+  }
 
   /* Report overlay */
   .overlay {
@@ -379,7 +508,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
     font-weight: 700;
     cursor: pointer;
   }
-  .report-box .btn-row { display: flex; gap: 10px; }
+  .report-box .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
 
   .loading {
     text-align: center;
@@ -410,7 +539,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <div>Reviewed: <span id="stat-total">0</span></div>
   <div>Approved: <span id="stat-good" style="color:var(--good)">0</span></div>
   <div>Rejected: <span id="stat-bad" style="color:var(--bad)">0</span></div>
-  <div>Approval rate: <span id="stat-rate">—</span></div>
+  <div>Approval rate: <span id="stat-rate">---</span></div>
 </div>
 
 <div id="content">
@@ -423,6 +552,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <div class="actions" id="actions" style="display:none">
   <button class="action-btn btn-next" onclick="loadBatch()">Next 9 Cards</button>
   <button class="action-btn btn-report" onclick="showReport()">View Report</button>
+  <button class="action-btn btn-save" onclick="saveToServer()">Save Report</button>
+  <span class="save-status" id="save-status"></span>
 </div>
 
 <div class="overlay" id="overlay">
@@ -431,13 +562,14 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <pre id="report-text"></pre>
     <div class="btn-row">
       <button onclick="closeReport()">Close</button>
+      <button onclick="saveToServer()" style="background:var(--good)">Save to Project</button>
       <button onclick="downloadReport()" style="background:#0f3460">Download JSON</button>
     </div>
   </div>
 </div>
 
 <script>
-const votes = [];       // {name, set, vote, confidence, mechanics, note, oracle_text}
+const votes = [];
 let currentCards = [];
 let batchNum = 0;
 
@@ -445,6 +577,12 @@ function confColor(c) {
   if (c >= 0.8) return 'var(--good)';
   if (c >= 0.5) return '#fdcb6e';
   return 'var(--bad)';
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
 }
 
 function renderGrid(cards) {
@@ -467,12 +605,27 @@ function renderGrid(cards) {
       ? `<div class="unparsed">Unparsed: ${esc(c.unparsed_text.substring(0, 120))}</div>`
       : '';
 
+    // Suggestion chips
+    const sugChips = (c.suggestions || []).map((s, si) =>
+      `<span class="sug-chip" data-card="${i}" data-idx="${si}" onclick="toggleSuggestion(${i},${si})">${esc(s)}</span>`
+    ).join('');
+
+    // DFC flip button
+    const flipBtn = c.back_image_uri
+      ? `<button class="flip-btn" onclick="flipCard(event,${i})">Flip</button>`
+      : '';
+
     html += `
     <div class="card" id="card-${i}">
       <div class="card-top">
-        <img class="card-img" src="${esc(c.image_uri)}" alt="${esc(c.name)}"
-             onclick="window.open('${esc(c.scryfall_uri)}','_blank')"
-             loading="lazy">
+        <div class="card-img-wrap">
+          <img class="card-img" id="img-${i}" src="${esc(c.image_uri)}" alt="${esc(c.name)}"
+               onclick="window.open('${esc(c.scryfall_uri)}','_blank')"
+               data-front="${esc(c.image_uri)}" data-back="${esc(c.back_image_uri || '')}"
+               data-showing="front"
+               loading="lazy">
+          ${flipBtn}
+        </div>
         <div class="card-info">
           <div class="card-name" title="${esc(c.name)}">
             <a href="${esc(c.scryfall_uri)}" target="_blank">${esc(c.name)}</a>
@@ -492,11 +645,15 @@ function renderGrid(cards) {
         <div class="mechanics-list">${mechTags}${paramTags}</div>
         ${unparsed}
         <div class="vote-row">
-          <button class="vote-btn btn-good" onclick="vote(${i},'good')">&#x1F44D; Good</button>
-          <button class="vote-btn btn-bad" onclick="vote(${i},'bad')">&#x1F44E; Bad</button>
+          <button class="vote-btn btn-good" onclick="vote(${i},'good')">Good</button>
+          <button class="vote-btn btn-bad" onclick="vote(${i},'bad')">Bad</button>
         </div>
-        <input class="note-input" id="note-${i}" placeholder="What's wrong? (optional)"
-               onchange="updateNote(${i})">
+        <div class="suggestions" id="sug-${i}">
+          <div class="suggestions-label">What's off? Click any that apply:</div>
+          <div class="suggestion-chips">${sugChips}</div>
+          <input class="note-input" id="note-${i}" placeholder="Additional notes (optional)"
+                 oninput="updateNote(${i})">
+        </div>
       </div>
     </div>`;
   });
@@ -505,16 +662,39 @@ function renderGrid(cards) {
   document.getElementById('actions').style.display = 'flex';
 }
 
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
+function flipCard(event, idx) {
+  event.stopPropagation();
+  const img = document.getElementById(`img-${idx}`);
+  if (img.dataset.showing === 'front' && img.dataset.back) {
+    img.src = img.dataset.back;
+    img.dataset.showing = 'back';
+  } else {
+    img.src = img.dataset.front;
+    img.dataset.showing = 'front';
+  }
+}
+
+function toggleSuggestion(cardIdx, sugIdx) {
+  const chip = document.querySelector(`.sug-chip[data-card="${cardIdx}"][data-idx="${sugIdx}"]`);
+  chip.classList.toggle('selected');
+  syncSuggestions(cardIdx);
+}
+
+function syncSuggestions(cardIdx) {
+  const card = currentCards[cardIdx];
+  const entry = votes.find(x => x.name === card.name && x._batch === batchNum);
+  if (!entry) return;
+  const selected = [];
+  document.querySelectorAll(`.sug-chip[data-card="${cardIdx}"].selected`).forEach(el => {
+    selected.push(el.textContent);
+  });
+  entry.selected_suggestions = selected;
 }
 
 function vote(idx, v) {
   const card = currentCards[idx];
   const el = document.getElementById(`card-${idx}`);
-  const noteEl = document.getElementById(`note-${idx}`);
+  const sugEl = document.getElementById(`sug-${idx}`);
 
   // Remove previous vote for this card in this batch
   const existingIdx = votes.findIndex(x => x.name === card.name && x._batch === batchNum);
@@ -523,16 +703,14 @@ function vote(idx, v) {
   el.classList.remove('voted-good', 'voted-bad');
   el.classList.add(v === 'good' ? 'voted-good' : 'voted-bad');
 
-  // Toggle button active states
   el.querySelectorAll('.btn-good, .btn-bad').forEach(b => b.classList.remove('active'));
   el.querySelector(v === 'good' ? '.btn-good' : '.btn-bad').classList.add('active');
 
-  // Show note field for bad votes
+  // Show suggestions panel for bad votes
   if (v === 'bad') {
-    noteEl.classList.add('visible');
-    noteEl.focus();
+    sugEl.classList.add('visible');
   } else {
-    noteEl.classList.remove('visible');
+    sugEl.classList.remove('visible');
   }
 
   votes.push({
@@ -545,6 +723,8 @@ function vote(idx, v) {
     mechanics: card.mechanics,
     parameters: card.parameters || {},
     unparsed_text: card.unparsed_text || '',
+    suggestions: card.suggestions || [],
+    selected_suggestions: [],
     note: '',
     _batch: batchNum,
   });
@@ -565,7 +745,7 @@ function updateStats() {
   document.getElementById('stat-total').textContent = total;
   document.getElementById('stat-good').textContent = good;
   document.getElementById('stat-bad').textContent = bad;
-  document.getElementById('stat-rate').textContent = total ? Math.round(good / total * 100) + '%' : '—';
+  document.getElementById('stat-rate').textContent = total ? Math.round(good / total * 100) + '%' : '---';
 }
 
 async function loadBatch() {
@@ -587,22 +767,24 @@ function buildReportData() {
   const good = votes.filter(v => v.vote === 'good');
   const bad = votes.filter(v => v.vote === 'bad');
 
-  // Mechanic miss frequency (from bad votes)
   const mechMiss = {};
   bad.forEach(v => {
     v.mechanics.forEach(m => { mechMiss[m] = (mechMiss[m] || 0) + 1; });
   });
-  // Mechanic hit frequency (from good votes)
-  const mechHit = {};
-  good.forEach(v => {
-    v.mechanics.forEach(m => { mechHit[m] = (mechHit[m] || 0) + 1; });
+
+  // Suggestion frequency (what issues came up most)
+  const sugFreq = {};
+  bad.forEach(v => {
+    (v.selected_suggestions || []).forEach(s => {
+      sugFreq[s] = (sugFreq[s] || 0) + 1;
+    });
   });
 
-  // Confidence comparison
   const avgConfGood = good.length ? good.reduce((s, v) => s + v.confidence, 0) / good.length : 0;
   const avgConfBad = bad.length ? bad.reduce((s, v) => s + v.confidence, 0) / bad.length : 0;
 
   return {
+    timestamp: new Date().toISOString(),
     total_reviewed: votes.length,
     approved: good.length,
     rejected: bad.length,
@@ -612,11 +794,24 @@ function buildReportData() {
     rejected_cards: bad.map(v => ({
       name: v.name,
       set: v.set,
+      type_line: v.type_line,
+      oracle_text: v.oracle_text,
       confidence: v.confidence,
       mechanics: v.mechanics,
-      unparsed: v.unparsed_text.substring(0, 100),
+      parameters: v.parameters,
+      unparsed: v.unparsed_text.substring(0, 200),
+      selected_suggestions: v.selected_suggestions || [],
       note: v.note,
     })),
+    approved_cards: good.map(v => ({
+      name: v.name,
+      set: v.set,
+      confidence: v.confidence,
+      mechanics: v.mechanics,
+    })),
+    top_issues: Object.entries(sugFreq)
+      .sort((a, b) => b[1] - a[1])
+      .map(([s, c]) => ({issue: s, count: c})),
     mechanics_on_rejected: Object.entries(mechMiss)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 20)
@@ -635,20 +830,22 @@ function showReport() {
   text += `Avg confidence (approved): ${(data.avg_confidence_approved * 100).toFixed(1)}%\n`;
   text += `Avg confidence (rejected): ${(data.avg_confidence_rejected * 100).toFixed(1)}%\n`;
 
-  if (data.rejected_cards.length) {
-    text += `\nREJECTED CARDS\n${'-'.repeat(50)}\n`;
-    data.rejected_cards.forEach(c => {
-      text += `  ${c.name} (${c.set}) — ${Math.round(c.confidence * 100)}% conf\n`;
-      if (c.note) text += `    Note: ${c.note}\n`;
-      if (c.unparsed) text += `    Unparsed: ${c.unparsed}\n`;
-      text += `    Mechanics: ${c.mechanics.slice(0, 6).join(', ')}\n`;
+  if (data.top_issues.length) {
+    text += `\nTOP ISSUES (selected suggestions)\n${'-'.repeat(50)}\n`;
+    data.top_issues.forEach(({issue, count}) => {
+      text += `  [${count}x] ${issue}\n`;
     });
   }
 
-  if (data.mechanics_on_rejected.length) {
-    text += `\nMECHANICS APPEARING ON REJECTED CARDS\n${'-'.repeat(50)}\n`;
-    data.mechanics_on_rejected.forEach(({mechanic, count}) => {
-      text += `  [${count}x] ${mechanic}\n`;
+  if (data.rejected_cards.length) {
+    text += `\nREJECTED CARDS\n${'-'.repeat(50)}\n`;
+    data.rejected_cards.forEach(c => {
+      text += `\n  ${c.name} (${c.set}) --- ${Math.round(c.confidence * 100)}% conf\n`;
+      if (c.selected_suggestions.length)
+        text += `    Issues: ${c.selected_suggestions.join(', ')}\n`;
+      if (c.note) text += `    Note: ${c.note}\n`;
+      if (c.unparsed) text += `    Unparsed: ${c.unparsed}\n`;
+      text += `    Mechanics: ${c.mechanics.slice(0, 8).join(', ')}\n`;
     });
   }
 
@@ -658,6 +855,34 @@ function showReport() {
 
 function closeReport() {
   document.getElementById('overlay').classList.remove('visible');
+}
+
+async function saveToServer() {
+  if (!votes.length) { alert('Vote on some cards first!'); return; }
+  const data = buildReportData();
+  const statusEl = document.getElementById('save-status');
+  statusEl.style.display = 'inline';
+  statusEl.textContent = 'Saving...';
+  statusEl.style.color = 'var(--text-muted)';
+  try {
+    const resp = await fetch('/api/save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data),
+    });
+    const result = await resp.json();
+    if (result.ok) {
+      statusEl.textContent = `Saved: ${result.filename}`;
+      statusEl.style.color = 'var(--good)';
+    } else {
+      statusEl.textContent = `Error: ${result.error}`;
+      statusEl.style.color = 'var(--bad)';
+    }
+  } catch (e) {
+    statusEl.textContent = `Error: ${e.message}`;
+    statusEl.style.color = 'var(--bad)';
+  }
+  setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
 }
 
 function downloadReport() {
@@ -697,6 +922,12 @@ class QuizHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(404)
 
+    def do_POST(self):
+        if self.path == "/api/save":
+            self._save_report()
+        else:
+            self.send_error(404)
+
     def _serve_html(self):
         body = HTML_PAGE.encode("utf-8")
         self.send_response(200)
@@ -714,8 +945,30 @@ class QuizHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _save_report(self):
+        length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(length)
+        try:
+            data = json.loads(raw)
+            os.makedirs(REPORTS_DIR, exist_ok=True)
+            ts = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+            filename = f"quiz_{ts}.json"
+            filepath = os.path.join(REPORTS_DIR, filename)
+            with open(filepath, "w") as f:
+                json.dump(data, f, indent=2)
+            resp = {"ok": True, "filename": filename, "path": filepath}
+            print(f"  Report saved: {filepath}")
+        except Exception as e:
+            resp = {"ok": False, "error": str(e)}
+
+        body = json.dumps(resp).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def log_message(self, format, *args):
-        # Suppress request logging noise
         pass
 
 
@@ -735,6 +988,7 @@ def main():
     label = f"set:{args.set}" if args.set else f"format:{args.format}"
     print(f"Embedding Quiz running at http://localhost:{args.port}")
     print(f"Sampling from: {label}")
+    print(f"Reports save to: {REPORTS_DIR}")
     print(f"Press Ctrl+C to stop.\n")
     try:
         server.serve_forever()
