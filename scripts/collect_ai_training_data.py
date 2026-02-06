@@ -37,18 +37,21 @@ ROOT_DECKS_DIR = Path(__file__).parent.parent / "decks"
 
 
 def load_deck_pool() -> List[str]:
-    """Load all available decks from decks/modern/ directory."""
+    """Load all available decks from decks/modern/ directory.
+
+    Returns absolute paths so Forge daemon can find decks regardless of CWD.
+    """
     decks = []
 
     # Load Modern decks (primary source - 60 decks, 564 unique cards)
     if MODERN_DECKS_DIR.exists():
         for dck in MODERN_DECKS_DIR.glob("*.dck"):
-            decks.append(f"modern/{dck.name}")
+            decks.append(str(dck.resolve()))
 
     # Also load root-level decks for additional coverage
     if ROOT_DECKS_DIR.exists():
         for dck in ROOT_DECKS_DIR.glob("*.dck"):
-            decks.append(dck.name)
+            decks.append(str(dck.resolve()))
 
     if not decks:
         # Fallback if no decks found
@@ -625,7 +628,10 @@ def collect_training_batch(
     print(f"{'='*60}")
     print(f"\nHDF5 data saved to {hdf5_file}")
     print(f"  States shape: ({stats.total_decisions:,}, 17)")
-    print(f"  Compressed size: {hdf5_file.stat().st_size / (1024*1024):.2f} MB")
+    if hdf5_file.exists():
+        print(f"  Compressed size: {hdf5_file.stat().st_size / (1024*1024):.2f} MB")
+    else:
+        print(f"  WARNING: No data collected (0 decisions). File not created.")
 
     # Generate report
     report_path = generate_report(stats, output_path, timestamp)
