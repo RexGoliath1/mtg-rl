@@ -202,7 +202,13 @@ cd /home/ubuntu
 
 # Install dependencies
 apt-get update -qq
-apt-get install -y -qq openjdk-17-jdk maven python3-pip python3-venv > /dev/null
+apt-get install -y -qq openjdk-17-jdk maven python3-pip python3-venv unzip > /dev/null
+
+# Install AWS CLI v2
+curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip -q awscliv2.zip
+./aws/install --update
+rm -rf aws awscliv2.zip
 
 # Download code package
 aws s3 cp s3://BUCKET_PLACEHOLDER/test_packages/PACKAGE_PLACEHOLDER code.tar.gz
