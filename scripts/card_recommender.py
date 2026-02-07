@@ -82,6 +82,23 @@ else:
 
 print(f"Loaded {len(CARD_INDEX):,} cards (vocab={DB_VOCAB_SIZE}, DFCs={len(FRONT_FACE_INDEX)})")
 
+# Load recommender metadata sidecar (creature subtypes, tribal types, is_land)
+METADATA_PATH = os.path.join(PROJECT_ROOT, "data", "card_recommender_metadata.json")
+METADATA: dict[str, dict] = {}
+IS_LAND = np.zeros(len(CARD_INDEX), dtype=bool)
+if os.path.exists(METADATA_PATH):
+    with open(METADATA_PATH) as f:
+        METADATA = json.load(f)
+    for name, idx in CARD_INDEX.items():
+        if METADATA.get(name, {}).get("is_land", False):
+            IS_LAND[idx] = True
+    print(f"Loaded metadata sidecar ({len(METADATA):,} cards, {IS_LAND.sum()} lands)")
+else:
+    print(f"Warning: {METADATA_PATH} not found, run scripts/generate_recommender_sidecar.py")
+
+# Pre-compute CREATURE_TYPE_MATTERS index for tribal filtering
+CTM_IDX = Mechanic.CREATURE_TYPE_MATTERS.value if Mechanic.CREATURE_TYPE_MATTERS.value < len(MECHANICS[0]) else None
+
 # Pre-compute mechanics counts per card (used for filtering)
 MECH_COUNTS = MECHANICS.sum(axis=1)
 
@@ -269,6 +286,13 @@ def analyze_deck(card_names: list[str]) -> dict:
 
     themes = _kmeans_themes(vecs, resolved, k)
 
+    # Extract deck creature types from metadata
+    deck_creature_types: set[str] = set()
+    for name in resolved:
+        meta = METADATA.get(name, {})
+        deck_creature_types.update(meta.get("creature_subtypes", []))
+        deck_creature_types.update(meta.get("tribal_types", []))
+
     return {
         "found": found,
         "missing": missing,
@@ -277,6 +301,7 @@ def analyze_deck(card_names: list[str]) -> dict:
         "mechanics_profile": dict(mech_freq.most_common(15)),
         "themes": themes,
         "vecs": vecs,
+        "creature_types": deck_creature_types,
     }
 
 
@@ -397,6 +422,21 @@ def _color_filter_mask(deck_colors: set[str]) -> np.ndarray:
     return mask
 
 
+def _apply_tribal_and_land_penalties(scores: np.ndarray, deck_creature_types: set[str]) -> None:
+    """Apply in-place penalties: wrong-tribe CREATURE_TYPE_MATTERS and lands."""
+    # Land penalty — deprioritize lands (they rarely help with deck synergy)
+    scores[IS_LAND] *= 0.5
+
+    # Wrong-tribe penalty for CREATURE_TYPE_MATTERS cards
+    if CTM_IDX is not None and deck_creature_types and METADATA:
+        for idx in range(len(MECHANICS)):
+            if MECHANICS[idx, CTM_IDX]:
+                card_name = IDX_TO_NAME.get(idx, "")
+                card_tribal = set(METADATA.get(card_name, {}).get("tribal_types", []))
+                if card_tribal and not card_tribal & deck_creature_types:
+                    scores[idx] *= 0.1
+
+
 def recommend_by_themes(
     analysis: dict,
     cards_per_theme: int = 3,
@@ -433,6 +473,9 @@ def recommend_by_themes(
 
         # Penalize sparse cards
         scores[MECH_COUNTS < 3] *= 0.3
+
+        # Tribal and land penalties
+        _apply_tribal_and_land_penalties(scores, analysis.get("creature_types", set()))
 
         # Apply masks
         scores[~eligible] = 0
@@ -1033,6 +1076,7 @@ Example:
             dots = mech_float @ centroid
             scores = dots / (card_norms * centroid_norm + 1e-8)
             scores[MECH_COUNTS < 3] *= 0.3
+            _apply_tribal_and_land_penalties(scores, analysis.get("creature_types", set()))
             scores[~eligible] = 0
 
             top_idx = np.argsort(-scores)[:9]
