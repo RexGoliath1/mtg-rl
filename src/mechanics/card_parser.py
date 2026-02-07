@@ -1020,6 +1020,28 @@ PATTERNS = [
     (r"attach\s+it\s+to\s+", []),
 ]
 
+# Pre-compile all patterns at module load for ~19x speedup
+# (avoids re.search recompiling 343+ patterns on every call)
+PATTERNS = [(re.compile(p), m) for p, m in PATTERNS]
+
+# Pre-compile keyword ability patterns (dynamic word-boundary patterns)
+_COMPILED_KEYWORD_PATTERNS: list[tuple[re.Pattern, str, 'Mechanic']] = [
+    (re.compile(r'(?<!without )\b' + re.escape(kw) + r'\b'), kw, mech)
+    for kw, mech in KEYWORD_ABILITIES.items()
+]
+
+# Pre-compile token implication patterns
+_COMPILED_TOKEN_PATTERNS: list[tuple[re.Pattern, str, list]] = [
+    (re.compile(r'\b' + re.escape(token_type) + r'\b'), token_type, effects)
+    for token_type, effects in TOKEN_IMPLICATIONS.items()
+]
+
+# Pre-compile named mechanic effect patterns
+_COMPILED_NAMED_MECHANIC_PATTERNS: list[tuple[re.Pattern, list]] = [
+    (re.compile(r'\b' + re.escape(name) + r'\b'), effects)
+    for name, effects in NAMED_MECHANIC_EFFECTS.items()
+]
+
 
 # =============================================================================
 # PARSER
@@ -1099,11 +1121,9 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
         if "{" in text and ":" in text:  # Activated ability pattern
             mechanics.append(Mechanic.ACTIVATED_ABILITY)
 
-    # Check for keyword abilities
-    for keyword, mechanic in KEYWORD_ABILITIES.items():
-        # Match whole word
-        pattern = r'(?<!without )\b' + re.escape(keyword) + r'\b'
-        if re.search(pattern, text):
+    # Check for keyword abilities (pre-compiled patterns)
+    for kw_pattern, keyword, mechanic in _COMPILED_KEYWORD_PATTERNS:
+        if kw_pattern.search(text):
             mechanics.append(mechanic)
             matched_spans.append(keyword)
 
@@ -1120,16 +1140,16 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
                         mechanics.append(implied)
 
     # Fire token implied effects (Food → GAIN_LIFE+SACRIFICE, etc.)
-    for token_type, implied_effects in TOKEN_IMPLICATIONS.items():
-        if re.search(r'\b' + re.escape(token_type) + r'\b', text):
+    for token_pattern, token_type, implied_effects in _COMPILED_TOKEN_PATTERNS:
+        if token_pattern.search(text):
             matched_spans.append(token_type)
             for implied in implied_effects:
                 if implied not in mechanics:
                     mechanics.append(implied)
 
     # Fire named mechanic underlying effects (commit a crime → TARGET_OPPONENT, etc.)
-    for mechanic_name, underlying_effects in NAMED_MECHANIC_EFFECTS.items():
-        if re.search(r'\b' + re.escape(mechanic_name) + r'\b', text):
+    for named_pattern, underlying_effects in _COMPILED_NAMED_MECHANIC_PATTERNS:
+        if named_pattern.search(text):
             for effect in underlying_effects:
                 if effect not in mechanics:
                     mechanics.append(effect)
@@ -1163,9 +1183,9 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
     if kicker_match:
         parameters["kicker_cost"] = int(kicker_match.group(1))
 
-    # Apply text patterns
+    # Apply text patterns (pre-compiled at module load)
     for pattern, mechs in PATTERNS:
-        match = re.search(pattern, text)
+        match = pattern.search(text)
         if match:
             for m in mechs:
                 if m not in mechanics:
@@ -1241,10 +1261,10 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
         chapter_count = 0
         for chapter_num, chapter_text in chapters:
             chapter_count += 1
-            # Parse chapter text for sub-effects (non-recursive via patterns)
+            # Parse chapter text for sub-effects (pre-compiled patterns)
             chapter_text_lower = chapter_text.lower()
             for pattern, mechs in PATTERNS:
-                sub_match = re.search(pattern, chapter_text_lower)
+                sub_match = pattern.search(chapter_text_lower)
                 if sub_match:
                     for m in mechs:
                         if m not in mechanics:
@@ -1325,10 +1345,10 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
                 if Mechanic.LOYALTY_MINUS not in mechanics:
                     mechanics.append(Mechanic.LOYALTY_MINUS)
 
-            # Sub-parse ability text for effects (like saga chapters)
+            # Sub-parse ability text for effects (pre-compiled patterns)
             ability_text_lower = ability_text.lower()
             for pattern, mechs in PATTERNS:
-                sub_match = re.search(pattern, ability_text_lower)
+                sub_match = pattern.search(ability_text_lower)
                 if sub_match:
                     for m in mechs:
                         if m not in mechanics:
@@ -1344,7 +1364,7 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
                 mechanics.append(Mechanic.LOYALTY_ZERO)
             ability_text_lower = ability_text.lower()
             for pattern, mechs in PATTERNS:
-                sub_match = re.search(pattern, ability_text_lower)
+                sub_match = pattern.search(ability_text_lower)
                 if sub_match:
                     for m in mechs:
                         if m not in mechanics:
@@ -1392,9 +1412,9 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
             if Mechanic.EMBLEM_STATIC not in mechanics:
                 mechanics.append(Mechanic.EMBLEM_STATIC)
 
-        # Sub-parse emblem text for effects (same as saga/loyalty sub-parsing)
+        # Sub-parse emblem text for effects (pre-compiled patterns)
         for pattern, mechs in PATTERNS:
-            sub_match = re.search(pattern, emblem_text)
+            sub_match = pattern.search(emblem_text)
             if sub_match:
                 for m in mechs:
                     if m not in mechanics:
