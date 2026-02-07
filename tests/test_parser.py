@@ -3563,3 +3563,69 @@ class TestQuizRound3Fixes:
         )
         assert Mechanic.TARGET_OPPONENT_PERMANENT in result.mechanics
         assert Mechanic.TARGET_PERMANENT in result.mechanics
+
+
+class TestQuizRound3DesignDecisions:
+    """Design decisions from quiz round 3."""
+
+    # --- Broadened DEATH_TRIGGER ---
+
+    def test_enchantment_dies(self):
+        """Neva — 'enchantment is put into a graveyard from the battlefield'."""
+        result = parse_oracle_text(
+            "Whenever an enchantment you control is put into a "
+            "graveyard from the battlefield, put a +1/+1 counter "
+            "on Neva, then scry 1.",
+            "Creature",
+        )
+        assert Mechanic.DEATH_TRIGGER in result.mechanics
+        assert Mechanic.PLUS_ONE_COUNTER in result.mechanics
+        assert Mechanic.SCRY in result.mechanics
+
+    def test_artifact_dies(self):
+        """'artifact is put into a graveyard from the battlefield'."""
+        result = parse_oracle_text(
+            "Whenever an artifact is put into a graveyard from "
+            "the battlefield, you may draw a card.",
+            "Enchantment",
+        )
+        assert Mechanic.DEATH_TRIGGER in result.mechanics
+        assert Mechanic.DRAW_OPTIONAL in result.mechanics
+
+    def test_creature_dies_unchanged(self):
+        """Regular 'when creature dies' still works."""
+        result = parse_oracle_text(
+            "When this creature dies, draw a card.",
+            "Creature",
+        )
+        assert Mechanic.DEATH_TRIGGER in result.mechanics
+
+    # --- CAST_FROM_GRAVEYARD broadened ---
+
+    def test_muldrotha_cast_from_graveyard(self):
+        """Muldrotha — 'cast a permanent spell...from your graveyard'."""
+        result = parse_oracle_text(
+            "During each of your turns, you may play a land and "
+            "cast a permanent spell of each permanent type from "
+            "your graveyard.",
+            "Creature",
+        )
+        assert Mechanic.CAST_FROM_GRAVEYARD in result.mechanics
+        assert Mechanic.FROM_GRAVEYARD in result.mechanics
+
+    def test_flashback_still_works(self):
+        """Existing 'you may cast from graveyard' pattern unchanged."""
+        result = parse_oracle_text(
+            "You may cast this spell from your graveyard by paying "
+            "its flashback cost.",
+            "Instant",
+        )
+        assert Mechanic.CAST_FROM_GRAVEYARD in result.mechanics
+
+    def test_play_from_graveyard(self):
+        """'play cards from graveyard' also fires CAST_FROM_GRAVEYARD."""
+        result = parse_oracle_text(
+            "You may play lands from your graveyard.",
+            "Enchantment",
+        )
+        assert Mechanic.CAST_FROM_GRAVEYARD in result.mechanics

@@ -286,6 +286,8 @@ PATTERNS = [
     (r"discard(s)? (a card|two cards|three cards|\d+ cards?|your hand|that card|it|them)", [Mechanic.DISCARD]),
     (r"mills?\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|x)\s+cards?", [Mechanic.MILL]),
     (r"you may cast.+from.+graveyard", [Mechanic.CAST_FROM_GRAVEYARD]),
+    (r"cast .+from (your|a|the) graveyard", [Mechanic.CAST_FROM_GRAVEYARD]),
+    (r"play .+from (your|a|the) graveyard", [Mechanic.CAST_FROM_GRAVEYARD]),
 
     # Loot / Rummage (draw+discard combo)
     (r"draw.{1,20}then.{1,10}discard", [Mechanic.LOOT]),
@@ -295,6 +297,7 @@ PATTERNS = [
     (r"when(ever)? .+ enters( the battlefield)?", [Mechanic.ETB_TRIGGER]),
     (r"when(ever)? .+ leaves( the battlefield)?", [Mechanic.LTB_TRIGGER]),
     (r"when(ever)? .+ dies", [Mechanic.DEATH_TRIGGER]),
+    (r"is put into a graveyard from the battlefield", [Mechanic.DEATH_TRIGGER]),
     (r"when(ever)? .+ attacks?", [Mechanic.ATTACK_TRIGGER]),
     (r"when(ever)? .+ blocks", [Mechanic.BLOCK_TRIGGER]),
     (r"when(ever)? .+ becomes? blocked", [Mechanic.BLOCK_TRIGGER]),
