@@ -244,7 +244,7 @@ class StateMapper:
             (action_mask, legal_indices, descriptions)
         """
         # Default action space size
-        num_actions = 153  # From our ActionConfig default
+        num_actions = 203  # From ActionConfig default (3+15+50*3+20+5+10)
 
         mask = torch.zeros(num_actions)
         legal_indices = []

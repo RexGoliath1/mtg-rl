@@ -658,7 +658,7 @@ def test_mcts():
     def mock_policy_value(state_tensor):
         """Mock network that returns uniform policy and neutral value."""
         batch_size = state_tensor.shape[0] if len(state_tensor.shape) > 1 else 1
-        policy = torch.softmax(torch.randn(batch_size, 153), dim=-1)
+        policy = torch.softmax(torch.randn(batch_size, 203), dim=-1)
         value = torch.zeros(batch_size, 1)
         return policy, value
 

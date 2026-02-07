@@ -86,7 +86,7 @@ class ActionConfig:
         return (
             self.num_special +        # pass, mulligan, concede
             self.max_hand_size +      # cast from hand
-            self.max_battlefield * 2 + # activate or attack/block
+            self.max_battlefield * 3 + # activate + attack + block
             self.max_targets +         # choose target
             self.max_modes +           # choose mode
             self.max_costs             # pay cost

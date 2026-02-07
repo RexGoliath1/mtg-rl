@@ -77,7 +77,7 @@ class ParallelConfig:
 
     # Network
     state_dim: int = 512
-    num_actions: int = 153
+    num_actions: int = 203
 
     # Checkpointing
     checkpoint_dir: str = "checkpoints/parallel"
@@ -454,7 +454,7 @@ class ParallelSelfPlayTrainer:
 
         # Configure network dimensions
         encoder_config = GameStateConfig(output_dim=self.config.state_dim)
-        action_config = ActionConfig()  # Uses default 153 actions
+        action_config = ActionConfig()  # Default 203 actions
         head_config = PolicyValueConfig(
             state_dim=self.config.state_dim,
             action_config=action_config,

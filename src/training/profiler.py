@@ -474,7 +474,7 @@ def profile_training_step(
     network: torch.nn.Module,
     batch_size: int = 32,
     state_dim: int = 512,
-    num_actions: int = 153,
+    num_actions: int = 203,
     device: str = "cuda",
     num_iterations: int = 100,
 ) -> Dict[str, Any]:
