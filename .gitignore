@@ -117,6 +117,9 @@ replays/
 *.onnx
 *.safetensors
 
+# Claude Code local settings / memory (contains personal preferences)
+.claude/
+
 # Data files (17lands, training data)
 /data/
 *.csv
