@@ -592,6 +592,12 @@ class Mechanic(IntEnum):
     EMBLEM_ACTIVATED = 1378              # Emblem with activated ability (Karn, Living Legacy) — very rare
     EMBLEM_OPPONENT = 1379               # "each opponent gets an emblem" (Chandra, Awakened Inferno)
 
+    # ==========================================================================
+    # FACE / TOUGHNESS MECHANICS (1380-1381)
+    # ==========================================================================
+    FACE_DOWN_MATTERS = 1380             # "face down"/"face up"/"turned face up" — morph/manifest/disguise/cloak
+    TOUGHNESS_MATTERS = 1381             # "equal to toughness"/"total toughness"/"greatest toughness"
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1
