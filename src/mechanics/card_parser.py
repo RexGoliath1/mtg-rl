@@ -579,6 +579,11 @@ PATTERNS = [
     (r"counter (it|that spell)", [Mechanic.COUNTER_SPELL]),
     (r"counter target.+ability", [Mechanic.COUNTER_ABILITY]),
     (r"deals? (\d+|x) damage", [Mechanic.DEAL_DAMAGE]),
+    # Damage doublers/triplers (Gratuitous Violence, Fiery Emancipation)
+    (r"would deal damage.+deals? double that damage", [Mechanic.DAMAGE_DOUBLER, Mechanic.REPLACEMENT_EFFECT]),
+    (r"would deal damage.+deals? triple that damage", [Mechanic.DAMAGE_DOUBLER, Mechanic.REPLACEMENT_EFFECT]),
+    (r"deals? double.{0,20}damage instead", [Mechanic.DAMAGE_DOUBLER, Mechanic.REPLACEMENT_EFFECT]),
+    (r"deals? triple.{0,20}damage instead", [Mechanic.DAMAGE_DOUBLER, Mechanic.REPLACEMENT_EFFECT]),
     (r"loses? (\d+|x) life", [Mechanic.LOSE_LIFE]),
     (r"you lose life equal to", [Mechanic.LOSE_LIFE]),
 
@@ -663,7 +668,7 @@ PATTERNS = [
     # Mana
     (r"add \{", [Mechanic.ADD_MANA]),
     (r"add (one|two|three|\d+) mana", [Mechanic.ADD_MANA]),
-    (r"mana of any color", [Mechanic.MANA_OF_ANY_COLOR]),
+    (r"mana of any (color|type)", [Mechanic.MANA_OF_ANY_COLOR, Mechanic.MANA_FIXING]),
     (r"costs? \{?\d+\}? less to cast", [Mechanic.REDUCE_COST]),
     (r"costs? \{?\d+\}? more to cast", [Mechanic.INCREASE_COST]),
     (r"without paying (its|their) mana cost", [Mechanic.FREE_CAST_CONDITION]),
@@ -953,6 +958,7 @@ PATTERNS = [
     (r"would draw.+instead", [Mechanic.DRAW_REPLACEMENT, Mechanic.REPLACEMENT_EFFECT]),
     (r"can't enter the battlefield", [Mechanic.GRAVEYARD_HATE]),
     (r"if a card.+would be put into a graveyard.+exile", [Mechanic.GRAVEYARD_HATE, Mechanic.REPLACEMENT_EFFECT]),
+    (r"shuffles?.{0,30}graveyard into.{0,15}library", [Mechanic.GRAVEYARD_SHUFFLE, Mechanic.GRAVEYARD_HATE]),
 
     # =========================================================================
     # WORD-CONSUMING PATTERNS (no mechanics, just improve confidence)

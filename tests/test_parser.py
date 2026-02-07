@@ -5217,3 +5217,116 @@ class TestZeroStatFix:
         )
         assert Mechanic.MINUS_POWER in result.mechanics
         assert Mechanic.MINUS_TOUGHNESS not in result.mechanics
+
+
+# =============================================================================
+# DAMAGE DOUBLER PATTERNS
+# =============================================================================
+
+class TestDamageDoubler:
+    """Cards that double or triple damage output."""
+
+    def test_gratuitous_violence(self):
+        """Gratuitous Violence — 'deals double that damage instead'."""
+        result = parse_oracle_text(
+            "If a creature you control would deal damage to a permanent or player, "
+            "it deals double that damage to that permanent or player instead.",
+            "Enchantment",
+        )
+        assert_has_mechanics(result, [Mechanic.DAMAGE_DOUBLER, Mechanic.REPLACEMENT_EFFECT],
+                             "Gratuitous Violence")
+
+    def test_fiery_emancipation(self):
+        """Fiery Emancipation — 'deals triple that damage instead'."""
+        result = parse_oracle_text(
+            "If a source you control would deal damage to a permanent or player, "
+            "it deals triple that damage to that permanent or player instead.",
+            "Enchantment",
+        )
+        assert_has_mechanics(result, [Mechanic.DAMAGE_DOUBLER, Mechanic.REPLACEMENT_EFFECT],
+                             "Fiery Emancipation")
+
+    def test_dictate_of_the_twin_gods(self):
+        """Dictate of the Twin Gods — 'deals double that damage instead'."""
+        result = parse_oracle_text(
+            "If a source would deal damage to a permanent or player, "
+            "it deals double that damage to that permanent or player instead.",
+            "Enchantment",
+        )
+        assert_has_mechanics(result, [Mechanic.DAMAGE_DOUBLER, Mechanic.REPLACEMENT_EFFECT],
+                             "Dictate of the Twin Gods")
+
+    def test_angraths_marauders(self):
+        """Angrath's Marauders — 'deals double that damage instead'."""
+        result = parse_oracle_text(
+            "If a source you control would deal damage to a permanent or player, "
+            "it deals double that damage to that permanent or player instead.",
+            "Creature — Human Pirate",
+        )
+        assert_has_mechanics(result, [Mechanic.DAMAGE_DOUBLER, Mechanic.REPLACEMENT_EFFECT],
+                             "Angrath's Marauders")
+
+
+# =============================================================================
+# GRAVEYARD SHUFFLE PATTERNS
+# =============================================================================
+
+class TestGraveyardShuffle:
+    """Cards that shuffle graveyards into libraries (graveyard hate)."""
+
+    def test_blessed_respite(self):
+        """Blessed Respite — 'target player shuffles their graveyard into their library'."""
+        result = parse_oracle_text(
+            "Target player shuffles their graveyard into their library. "
+            "Prevent all combat damage that would be dealt this turn.",
+            "Instant",
+        )
+        assert_has_mechanics(result, [Mechanic.GRAVEYARD_SHUFFLE, Mechanic.GRAVEYARD_HATE],
+                             "Blessed Respite")
+
+    def test_ulamog_the_infinite_gyre(self):
+        """Ulamog — 'shuffle your graveyard into your library'."""
+        result = parse_oracle_text(
+            "When Ulamog, the Infinite Gyre is put into a graveyard from anywhere, "
+            "its owner shuffles their graveyard into their library.",
+            "Legendary Creature — Eldrazi",
+        )
+        assert_has_mechanics(result, [Mechanic.GRAVEYARD_SHUFFLE, Mechanic.GRAVEYARD_HATE],
+                             "Ulamog, the Infinite Gyre")
+
+    def test_gaeas_blessing(self):
+        """Gaea's Blessing — 'shuffle your graveyard into your library'."""
+        result = parse_oracle_text(
+            "Target player shuffles up to three target cards from their graveyard into their library. "
+            "When Gaea's Blessing is put into your graveyard from your library, "
+            "you shuffle your graveyard into your library.",
+            "Sorcery",
+        )
+        assert_has_mechanics(result, [Mechanic.GRAVEYARD_SHUFFLE, Mechanic.GRAVEYARD_HATE],
+                             "Gaea's Blessing")
+
+
+# =============================================================================
+# MANA FIXING PATTERNS
+# =============================================================================
+
+class TestManaFixing:
+    """Cards that fix mana colors."""
+
+    def test_orochi_leafcaller(self):
+        """Orochi Leafcaller — '{G}: Add one mana of any color.'"""
+        result = parse_oracle_text(
+            "{G}: Add one mana of any color.",
+            "Creature — Snake Shaman",
+        )
+        assert_has_mechanics(result, [Mechanic.ADD_MANA, Mechanic.MANA_OF_ANY_COLOR, Mechanic.MANA_FIXING],
+                             "Orochi Leafcaller")
+
+    def test_chromatic_lantern(self):
+        """Chromatic Lantern — 'Lands you control have \"{T}: Add one mana of any color.\"'"""
+        result = parse_oracle_text(
+            'Lands you control have "{T}: Add one mana of any color."\n{T}: Add one mana of any color.',
+            "Artifact",
+        )
+        assert_has_mechanics(result, [Mechanic.ADD_MANA, Mechanic.MANA_OF_ANY_COLOR, Mechanic.MANA_FIXING],
+                             "Chromatic Lantern")

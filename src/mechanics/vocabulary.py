@@ -598,6 +598,14 @@ class Mechanic(IntEnum):
     FACE_DOWN_MATTERS = 1380             # "face down"/"face up"/"turned face up" — morph/manifest/disguise/cloak
     TOUGHNESS_MATTERS = 1381             # "equal to toughness"/"total toughness"/"greatest toughness"
 
+    # ==========================================================================
+    # MANA / GRAVEYARD / LAYOUT MECHANICS (1382-1385)
+    # ==========================================================================
+    MANA_FIXING = 1382                   # Color fixing: "add one mana of any color" with activation cost
+    GRAVEYARD_SHUFFLE = 1383             # "shuffle graveyard into library" (Blessed Respite, Eldrazi titans)
+    ADVENTURE_SPELL = 1384               # Card has Adventure layout (two modes: creature + spell)
+    MDFC = 1385                          # Modal double-faced card (two usable faces)
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1
