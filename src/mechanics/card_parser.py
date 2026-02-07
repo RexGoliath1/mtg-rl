@@ -1540,6 +1540,16 @@ def parse_card(card_data: Dict[str, Any]) -> CardEncoding:
             power = -1 if power_str in ["*", "X"] else 0
             toughness = -1 if toughness_str in ["*", "X"] else 0
 
+    # Detect card layout (adventure, modal_dfc, etc.)
+    layout = card_data.get("layout", "normal")
+    layout_mechanics = list(result.mechanics)
+    if layout == "adventure":
+        if Mechanic.ADVENTURE_SPELL not in layout_mechanics:
+            layout_mechanics.append(Mechanic.ADVENTURE_SPELL)
+    elif layout == "modal_dfc":
+        if Mechanic.MDFC not in layout_mechanics:
+            layout_mechanics.append(Mechanic.MDFC)
+
     # Merge mana-parsed parameters with oracle text parameters
     merged_params = result.parameters.copy()
     merged_params.update(parameters)
@@ -1550,7 +1560,7 @@ def parse_card(card_data: Dict[str, Any]) -> CardEncoding:
         cmc=cmc,
         types=types,
         subtypes=subtypes,
-        mechanics=result.mechanics,
+        mechanics=layout_mechanics,
         parameters=merged_params,
         power=power,
         toughness=toughness,

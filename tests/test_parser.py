@@ -5330,3 +5330,72 @@ class TestManaFixing:
         )
         assert_has_mechanics(result, [Mechanic.ADD_MANA, Mechanic.MANA_OF_ANY_COLOR, Mechanic.MANA_FIXING],
                              "Chromatic Lantern")
+
+
+# =============================================================================
+# CARD LAYOUT DETECTION
+# =============================================================================
+
+class TestCardLayout:
+    """Cards with special layouts (adventure, modal_dfc)."""
+
+    def test_adventure_card(self):
+        """Beanstalk Giant — adventure layout should emit ADVENTURE_SPELL."""
+        card = make_card(
+            "Beanstalk Giant // Fertile Footsteps", "{6}{G}", 7,
+            "Creature — Giant // Sorcery — Adventure",
+            "Beanstalk Giant's power and toughness are each equal to the number of lands you control.",
+            power="*", toughness="*",
+            layout="adventure",
+            card_faces=[
+                {
+                    "name": "Beanstalk Giant",
+                    "oracle_text": "Beanstalk Giant's power and toughness are each equal to the number of lands you control.",
+                    "type_line": "Creature — Giant",
+                    "mana_cost": "{6}{G}",
+                },
+                {
+                    "name": "Fertile Footsteps",
+                    "oracle_text": "Search your library for a basic land card, put it onto the battlefield, then shuffle.",
+                    "type_line": "Sorcery — Adventure",
+                    "mana_cost": "{2}{G}",
+                },
+            ],
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.ADVENTURE_SPELL], "Beanstalk Giant")
+
+    def test_mdfc_card(self):
+        """Emeria's Call — modal_dfc layout should emit MDFC."""
+        card = make_card(
+            "Emeria's Call // Emeria, Shattered Skyclave", "{4}{W}{W}{W}", 7,
+            "Sorcery // Land",
+            "Create two 4/4 white Angel Warrior creature tokens with flying.",
+            layout="modal_dfc",
+            card_faces=[
+                {
+                    "name": "Emeria's Call",
+                    "oracle_text": "Create two 4/4 white Angel Warrior creature tokens with flying. Non-Angel creatures you control gain indestructible until your next turn.",
+                    "type_line": "Sorcery",
+                    "mana_cost": "{4}{W}{W}{W}",
+                },
+                {
+                    "name": "Emeria, Shattered Skyclave",
+                    "oracle_text": "As Emeria, Shattered Skyclave enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {W}.",
+                    "type_line": "Land",
+                    "mana_cost": "",
+                },
+            ],
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.MDFC], "Emeria's Call")
+
+    def test_normal_card_no_layout_tag(self):
+        """Lightning Bolt — normal layout should NOT emit ADVENTURE_SPELL or MDFC."""
+        card = make_card(
+            "Lightning Bolt", "{R}", 1,
+            "Instant",
+            "Lightning Bolt deals 3 damage to any target.",
+        )
+        enc = parse_card(card)
+        assert_lacks_mechanics(enc, [Mechanic.ADVENTURE_SPELL, Mechanic.MDFC], "Lightning Bolt")
