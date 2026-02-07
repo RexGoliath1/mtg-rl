@@ -97,6 +97,7 @@ KEYWORD_ABILITIES = {
     "emerge": Mechanic.EMERGE,
     "mutate": Mechanic.MUTATE,
     "spectacle": Mechanic.SPECTACLE,
+    "madness": Mechanic.MADNESS,
     "ninjutsu": Mechanic.NINJUTSU,
     "buyback": Mechanic.BUYBACK,
     "overload": Mechanic.OVERLOAD,
@@ -218,6 +219,129 @@ KEYWORD_ABILITIES = {
     "transmute": Mechanic.TRANSMUTE,
     "forecast": Mechanic.FORECAST,
     "bloodthirst": Mechanic.BLOODTHIRST,
+}
+
+
+# =============================================================================
+# KEYWORD COST TAXONOMY
+# =============================================================================
+# Maps keywords from KEYWORD_ABILITIES to their cost category.
+# When a keyword is detected, we also fire the appropriate cost enum.
+# See docs/MTG_RULES_REFERENCE.md for full rules classification.
+
+KEYWORD_COST_CATEGORY = {
+    # --- ADDITIONAL COSTS (Rule 118.8) ---
+    # Paid ON TOP of the mana cost
+    "kicker": Mechanic.ADDITIONAL_COST,
+    "multikicker": Mechanic.ADDITIONAL_COST,
+    "buyback": Mechanic.ADDITIONAL_COST,
+    "entwine": Mechanic.ADDITIONAL_COST,
+    "exploit": Mechanic.ADDITIONAL_COST,
+    "casualty": Mechanic.ADDITIONAL_COST,
+    "splice": Mechanic.ADDITIONAL_COST,
+    "retrace": Mechanic.ADDITIONAL_COST,       # Cast from GY + discard land
+    "jump-start": Mechanic.ADDITIONAL_COST,    # Cast from GY + discard card
+
+    # --- ALTERNATIVE COSTS (Rule 118.9) ---
+    # Replaces the mana cost entirely
+    "flashback": Mechanic.ALTERNATIVE_COST,
+    "overload": Mechanic.ALTERNATIVE_COST,
+    "madness": Mechanic.ALTERNATIVE_COST,
+    "evoke": Mechanic.ALTERNATIVE_COST,
+    "dash": Mechanic.ALTERNATIVE_COST,
+    "blitz": Mechanic.ALTERNATIVE_COST,
+    "bestow": Mechanic.ALTERNATIVE_COST,
+    "escape": Mechanic.ALTERNATIVE_COST,
+    "disturb": Mechanic.ALTERNATIVE_COST,
+    "foretell": Mechanic.ALTERNATIVE_COST,
+    "miracle": Mechanic.ALTERNATIVE_COST,
+    "morph": Mechanic.ALTERNATIVE_COST,
+    "disguise": Mechanic.ALTERNATIVE_COST,
+    "spectacle": Mechanic.ALTERNATIVE_COST,
+    "ninjutsu": Mechanic.ALTERNATIVE_COST,
+    "cleave": Mechanic.ALTERNATIVE_COST,
+    "emerge": Mechanic.ALTERNATIVE_COST,
+    "mutate": Mechanic.ALTERNATIVE_COST,
+    "warp": Mechanic.ALTERNATIVE_COST,
+    "plot": Mechanic.ALTERNATIVE_COST,
+
+    # --- COST REDUCTION (not additional or alternative per rules) ---
+    "convoke": Mechanic.REDUCE_COST,
+    "delve": Mechanic.REDUCE_COST,
+    "affinity": Mechanic.REDUCE_COST,
+    "improvise": Mechanic.REDUCE_COST,
+    "undaunted": Mechanic.REDUCE_COST,
+    "assist": Mechanic.REDUCE_COST,
+}
+
+# =============================================================================
+# KEYWORD IMPLIED EFFECTS
+# =============================================================================
+# Maps keywords to mechanical effects hidden in their reminder text.
+# Since strip_reminder_text() removes ALL parenthesized text before parsing,
+# these effects would otherwise be invisible to the parser.
+# Only includes high-value signals — effects the network can learn from.
+
+KEYWORD_IMPLICATIONS = {
+    # --- Additional cost implied effects ---
+    "buyback": [Mechanic.TO_HAND],              # Return spell to hand instead of graveyard
+    "exploit": [Mechanic.SACRIFICE],             # May sacrifice a creature on ETB
+    "casualty": [Mechanic.SACRIFICE],            # Sacrifice creature with power N+
+    "retrace": [Mechanic.DISCARD, Mechanic.CAST_FROM_GRAVEYARD],
+    "jump-start": [Mechanic.DISCARD, Mechanic.CAST_FROM_GRAVEYARD],
+
+    # --- Alternative cost implied effects ---
+    "flashback": [Mechanic.CAST_FROM_GRAVEYARD],
+    "escape": [Mechanic.CAST_FROM_GRAVEYARD],
+    "disturb": [Mechanic.CAST_FROM_GRAVEYARD, Mechanic.TRANSFORM],
+    "dash": [Mechanic.HASTE],                    # Gains haste, returns to hand at end step
+    "blitz": [Mechanic.HASTE, Mechanic.DRAW],    # Haste + draw on death + sacrifice at end step
+    "evoke": [Mechanic.SACRIFICE],               # Sacrifice on ETB when evoked
+    "emerge": [Mechanic.SACRIFICE],              # Sacrifice creature as part of cost
+    "ninjutsu": [Mechanic.BOUNCE_TO_HAND],       # Return unblocked attacker to hand
+    "foretell": [Mechanic.CAST_FROM_EXILE],      # Exile face-down, cast later
+    "plot": [Mechanic.CAST_FROM_EXILE],           # Exile, cast free on later turn
+    "warp": [Mechanic.CAST_FROM_EXILE],           # Exile, recast later
+    "madness": [Mechanic.DISCARD],               # Triggered by being discarded
+
+    # --- Non-cost keywords with important implied effects ---
+    "undying": [Mechanic.DEATH_TRIGGER, Mechanic.PLUS_ONE_COUNTER],
+    "persist": [Mechanic.DEATH_TRIGGER, Mechanic.MINUS_ONE_COUNTER],
+    "modular": [Mechanic.PLUS_ONE_COUNTER, Mechanic.DEATH_TRIGGER],
+    "storm": [Mechanic.COPY_SPELL],
+    "cascade": [Mechanic.FREE_CAST_CONDITION],
+    "dredge": [Mechanic.MILL, Mechanic.REGROWTH],
+    "encore": [Mechanic.CREATE_TOKEN, Mechanic.CAST_FROM_GRAVEYARD],
+    "cycling": [Mechanic.DRAW, Mechanic.DISCARD],
+    "infect": [Mechanic.POISON_COUNTER, Mechanic.MINUS_ONE_COUNTER],
+    "wither": [Mechanic.MINUS_ONE_COUNTER],
+    "living weapon": [Mechanic.CREATE_TOKEN, Mechanic.EQUIP],
+    "devour": [Mechanic.SACRIFICE, Mechanic.PLUS_ONE_COUNTER],
+    "fabricate": [Mechanic.PLUS_ONE_COUNTER, Mechanic.CREATE_TOKEN],
+    "extort": [Mechanic.GAIN_LIFE, Mechanic.LOSE_LIFE],
+    "annihilator": [Mechanic.SACRIFICE],
+    "mentor": [Mechanic.PLUS_ONE_COUNTER],
+    "training": [Mechanic.PLUS_ONE_COUNTER],
+    "evolve": [Mechanic.PLUS_ONE_COUNTER],
+    "riot": [Mechanic.HASTE, Mechanic.PLUS_ONE_COUNTER],
+    "adapt": [Mechanic.PLUS_ONE_COUNTER],
+    "monstrosity": [Mechanic.PLUS_ONE_COUNTER],
+    "renown": [Mechanic.PLUS_ONE_COUNTER],
+    "support": [Mechanic.PLUS_ONE_COUNTER],
+    "bolster": [Mechanic.PLUS_ONE_COUNTER],
+    "backup": [Mechanic.PLUS_ONE_COUNTER],
+    "decayed": [Mechanic.SACRIFICE],             # Sacrifice after attacking
+    "afflict": [Mechanic.LOSE_LIFE],             # Opponent loses N when this is blocked
+    "battle cry": [Mechanic.ANTHEM_EFFECT],       # Attacking creatures get +1/+0
+    "exalted": [Mechanic.PLUS_POWER, Mechanic.PLUS_TOUGHNESS],
+    "prowess": [Mechanic.PLUS_POWER, Mechanic.PLUS_TOUGHNESS],
+    "flanking": [Mechanic.MINUS_POWER, Mechanic.MINUS_TOUGHNESS],
+    "incubate": [Mechanic.CREATE_TOKEN, Mechanic.PLUS_ONE_COUNTER],
+    "suspend": [Mechanic.CAST_FROM_EXILE, Mechanic.HASTE],
+    "discover": [Mechanic.FREE_CAST_CONDITION],
+    "learn": [Mechanic.DRAW, Mechanic.DISCARD],  # Draw a Lesson or loot
+    "transmute": [Mechanic.TUTOR_TO_HAND, Mechanic.DISCARD],
+    "forecast": [Mechanic.FROM_HAND],
 }
 
 
@@ -421,33 +545,41 @@ PATTERNS = [
     # =========================================================================
     # RECENT SET MECHANICS
     # =========================================================================
-    (r"spree\b", [Mechanic.SPREE]),
-    (r"offspring\b", [Mechanic.OFFSPRING]),
+    (r"spree\b", [Mechanic.SPREE, Mechanic.ADDITIONAL_COST]),
+    (r"offspring\b", [Mechanic.OFFSPRING, Mechanic.ADDITIONAL_COST, Mechanic.CREATE_TOKEN]),
     (r"\beerie\b", [Mechanic.EERIE]),
     (r"\bsurvival\b", [Mechanic.SURVIVAL]),
-    (r"impending\s+\d+", [Mechanic.IMPENDING]),
-    (r"\bbargain\b", [Mechanic.BARGAIN]),
+    (r"impending\s+\d+", [Mechanic.IMPENDING, Mechanic.ALTERNATIVE_COST]),
+    (r"\bbargain\b", [Mechanic.BARGAIN, Mechanic.ADDITIONAL_COST, Mechanic.SACRIFICE]),
     (r"\bcelebrat(e|ion)\b", [Mechanic.CELEBRATION]),
     (r"\brole\b.+\btoken\b", [Mechanic.ROLE_TOKEN]),
     (r"\bcase\b", [Mechanic.CASE]),
     (r"\bsuspect\b", [Mechanic.SUSPECT]),
     (r"\bcloak\b", [Mechanic.CLOAK]),
-    (r"\bconnive[sd]?\b", [Mechanic.CONNIVE]),
-    (r"collect evidence\s+\d+", [Mechanic.COLLECT_EVIDENCE]),
+    (r"\bconnive[sd]?\b", [Mechanic.CONNIVE, Mechanic.DRAW, Mechanic.DISCARD]),
+    (r"collect evidence\s+\d+", [Mechanic.COLLECT_EVIDENCE, Mechanic.ADDITIONAL_COST]),
     (r"commit(ted|s)? a crime", [Mechanic.COMMIT_A_CRIME]),
     (r"saddle\s+\d+", [Mechanic.SADDLE]),
-    (r"gift a\b", [Mechanic.GIFT]),
+    (r"gift a\b", [Mechanic.GIFT, Mechanic.ADDITIONAL_COST]),
     (r"\bdescend 4\b", [Mechanic.DESCEND_4]),
     (r"\bdescend 8\b", [Mechanic.DESCEND_8]),
     (r"fathomless descent", [Mechanic.FATHOMLESS_DESCENT]),
     (r"\bmap token", [Mechanic.MAP_TOKEN]),
     (r"\bvaliant\b", [Mechanic.VALIANT]),
     (r"\boutlaw\b", [Mechanic.OUTLAW]),
-    (r"\bescalate\b", [Mechanic.ESCALATE]),
-    (r"\btiered\b", [Mechanic.ESCALATE]),
-    (r"\bcycling\b", [Mechanic.CYCLING]),
+    (r"\bescalate\b", [Mechanic.ESCALATE, Mechanic.ADDITIONAL_COST]),
+    (r"\btiered\b", [Mechanic.ESCALATE, Mechanic.ADDITIONAL_COST]),
+    (r"\bcycling\b", [Mechanic.CYCLING, Mechanic.DRAW, Mechanic.DISCARD]),
     (r"\bexert\b", [Mechanic.EXERT]),
     (r"play an additional land", [Mechanic.EXTRA_LAND_PLAY]),
+
+    # Unnamed cost patterns (not keyword-specific)
+    (r"as an additional cost.+discard", [Mechanic.ADDITIONAL_COST, Mechanic.DISCARD]),
+    (r"as an additional cost.+pay.+life", [Mechanic.ADDITIONAL_COST, Mechanic.PAY_LIFE]),
+    (r"as an additional cost.+exile", [Mechanic.ADDITIONAL_COST, Mechanic.EXILE]),
+    (r"as an additional cost.+tap", [Mechanic.ADDITIONAL_COST, Mechanic.TAP]),
+    (r"rather than pay (this spell's|its) mana cost", [Mechanic.ALTERNATIVE_COST]),
+    (r"you may pay .+ rather than", [Mechanic.ALTERNATIVE_COST]),
 
     # =========================================================================
     # QUIZ ROUND 2 DESIGN DECISIONS
@@ -724,6 +856,18 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
         if re.search(pattern, text):
             mechanics.append(mechanic)
             matched_spans.append(keyword)
+
+            # Add cost category (ADDITIONAL_COST / ALTERNATIVE_COST / REDUCE_COST)
+            if keyword in KEYWORD_COST_CATEGORY:
+                cost_cat = KEYWORD_COST_CATEGORY[keyword]
+                if cost_cat not in mechanics:
+                    mechanics.append(cost_cat)
+
+            # Add implied effects (what the reminder text describes)
+            if keyword in KEYWORD_IMPLICATIONS:
+                for implied in KEYWORD_IMPLICATIONS[keyword]:
+                    if implied not in mechanics:
+                        mechanics.append(implied)
 
     # Extract numeric parameters from keyword abilities
     # Ward N

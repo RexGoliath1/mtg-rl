@@ -3827,3 +3827,446 @@ class TestQuizRound4Fixes:
             "Enchantment",
         )
         assert Mechanic.GRANTS_ABILITY not in result.mechanics
+
+
+# =============================================================================
+# KEYWORD COST TAXONOMY & IMPLICATIONS
+# =============================================================================
+
+class TestKeywordCostTaxonomy:
+    """Test that keywords correctly fire their cost category and implied effects."""
+
+    # --- ALTERNATIVE COST keywords ---
+
+    def test_flashback_fires_alternative_cost_and_graveyard(self):
+        """Flashback = ALTERNATIVE_COST + CAST_FROM_GRAVEYARD."""
+        result = parse_oracle_text(
+            "Deal 3 damage to any target.\nFlashback {4}{R}",
+            "Instant",
+        )
+        assert Mechanic.FLASHBACK in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.CAST_FROM_GRAVEYARD in result.mechanics
+
+    def test_escape_fires_alternative_cost_and_graveyard(self):
+        """Escape = ALTERNATIVE_COST + CAST_FROM_GRAVEYARD."""
+        result = parse_oracle_text(
+            "Escape—{1}{B}{B}, Exile two other cards from your graveyard.",
+            "Creature",
+        )
+        assert Mechanic.ESCAPE in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.CAST_FROM_GRAVEYARD in result.mechanics
+
+    def test_dash_fires_alternative_cost_and_haste(self):
+        """Dash = ALTERNATIVE_COST + HASTE."""
+        result = parse_oracle_text(
+            "Dash {1}{R}",
+            "Creature",
+        )
+        assert Mechanic.DASH in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.HASTE in result.mechanics
+
+    def test_blitz_fires_alternative_cost_haste_draw(self):
+        """Blitz = ALTERNATIVE_COST + HASTE + DRAW."""
+        result = parse_oracle_text(
+            "Blitz {1}{R}",
+            "Creature",
+        )
+        assert Mechanic.BLITZ in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.HASTE in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+
+    def test_evoke_fires_alternative_cost_and_sacrifice(self):
+        """Evoke = ALTERNATIVE_COST + SACRIFICE."""
+        result = parse_oracle_text(
+            "Flying\nWhen Mulldrifter enters, draw two cards.\nEvoke {2}{U}",
+            "Creature",
+        )
+        assert Mechanic.EVOKE in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+
+    def test_morph_fires_alternative_cost(self):
+        """Morph = ALTERNATIVE_COST."""
+        result = parse_oracle_text(
+            "Morph {2}{U}\nWhen this creature is turned face up, draw a card.",
+            "Creature",
+        )
+        assert Mechanic.MORPH in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+
+    def test_disturb_fires_alternative_cost_graveyard_transform(self):
+        """Disturb = ALTERNATIVE_COST + CAST_FROM_GRAVEYARD + TRANSFORM."""
+        result = parse_oracle_text(
+            "Disturb {3}{U}",
+            "Creature",
+        )
+        assert Mechanic.DISTURB in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.CAST_FROM_GRAVEYARD in result.mechanics
+        assert Mechanic.TRANSFORM in result.mechanics
+
+    def test_foretell_fires_alternative_cost_and_cast_from_exile(self):
+        """Foretell = ALTERNATIVE_COST + CAST_FROM_EXILE."""
+        result = parse_oracle_text(
+            "Foretell {1}{W}\nDestroy target creature.",
+            "Instant",
+        )
+        assert Mechanic.FORETELL in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.CAST_FROM_EXILE in result.mechanics
+
+    def test_ninjutsu_fires_alternative_cost_bounce(self):
+        """Ninjutsu = ALTERNATIVE_COST + BOUNCE_TO_HAND."""
+        result = parse_oracle_text(
+            "Ninjutsu {1}{U}\nWhenever this creature deals combat damage to a player, draw a card.",
+            "Creature",
+        )
+        assert Mechanic.NINJUTSU in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.BOUNCE_TO_HAND in result.mechanics
+
+    def test_emerge_fires_alternative_cost_sacrifice(self):
+        """Emerge = ALTERNATIVE_COST + SACRIFICE."""
+        result = parse_oracle_text(
+            "Emerge {5}{U}{U}\nWhen you cast this spell, return target creature to its owner's hand.",
+            "Creature",
+        )
+        assert Mechanic.EMERGE in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+
+    def test_plot_fires_alternative_cost_cast_from_exile(self):
+        """Plot = ALTERNATIVE_COST + CAST_FROM_EXILE."""
+        result = parse_oracle_text(
+            "Plot {1}{R}\nDeal 3 damage to any target.",
+            "Sorcery",
+        )
+        assert Mechanic.PLOT in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.CAST_FROM_EXILE in result.mechanics
+
+    def test_madness_fires_alternative_cost_discard(self):
+        """Madness = ALTERNATIVE_COST + DISCARD."""
+        result = parse_oracle_text(
+            "Madness {1}{B}\nDestroy target creature with power 3 or less.",
+            "Instant",
+        )
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.DISCARD in result.mechanics
+
+    # --- ADDITIONAL COST keywords ---
+
+    def test_kicker_fires_additional_cost(self):
+        """Kicker = ADDITIONAL_COST."""
+        result = parse_oracle_text(
+            "Kicker {2}\nWhen this creature enters, if it was kicked, draw two cards.",
+            "Creature",
+        )
+        assert Mechanic.KICKER in result.mechanics
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+
+    def test_buyback_fires_additional_cost_to_hand(self):
+        """Buyback = ADDITIONAL_COST + TO_HAND."""
+        result = parse_oracle_text(
+            "Buyback {3}\nDraw a card.",
+            "Instant",
+        )
+        assert Mechanic.BUYBACK in result.mechanics
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+        assert Mechanic.TO_HAND in result.mechanics
+
+    def test_exploit_fires_additional_cost_sacrifice(self):
+        """Exploit = ADDITIONAL_COST + SACRIFICE."""
+        result = parse_oracle_text(
+            "Exploit\nWhen this creature exploits a creature, draw a card.",
+            "Creature",
+        )
+        assert Mechanic.EXPLOIT in result.mechanics
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+
+    def test_casualty_fires_additional_cost_sacrifice(self):
+        """Casualty = ADDITIONAL_COST + SACRIFICE."""
+        result = parse_oracle_text(
+            "Casualty 1\nEach opponent loses 2 life and you gain 2 life.",
+            "Sorcery",
+        )
+        assert Mechanic.CASUALTY in result.mechanics
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+
+    def test_jumpstart_fires_additional_cost_discard_graveyard(self):
+        """Jump-start = ADDITIONAL_COST + DISCARD + CAST_FROM_GRAVEYARD."""
+        result = parse_oracle_text(
+            "Deal 4 damage to any target.\nJump-start",
+            "Instant",
+        )
+        assert Mechanic.JUMP_START in result.mechanics
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+        assert Mechanic.DISCARD in result.mechanics
+        assert Mechanic.CAST_FROM_GRAVEYARD in result.mechanics
+
+    def test_retrace_fires_additional_cost_discard_graveyard(self):
+        """Retrace = ADDITIONAL_COST + DISCARD + CAST_FROM_GRAVEYARD."""
+        result = parse_oracle_text(
+            "Put a 1/1 green Worm creature token onto the battlefield for each land you control.\nRetrace",
+            "Sorcery",
+        )
+        assert Mechanic.RETRACE in result.mechanics
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+        assert Mechanic.DISCARD in result.mechanics
+        assert Mechanic.CAST_FROM_GRAVEYARD in result.mechanics
+
+    # --- COST REDUCTION keywords ---
+
+    def test_convoke_fires_reduce_cost(self):
+        """Convoke = REDUCE_COST."""
+        result = parse_oracle_text(
+            "Convoke\nCreate two 1/1 white Soldier creature tokens.",
+            "Instant",
+        )
+        assert Mechanic.CONVOKE in result.mechanics
+        assert Mechanic.REDUCE_COST in result.mechanics
+
+    def test_delve_fires_reduce_cost(self):
+        """Delve = REDUCE_COST."""
+        result = parse_oracle_text(
+            "Delve\nFlying",
+            "Creature",
+        )
+        assert Mechanic.DELVE in result.mechanics
+        assert Mechanic.REDUCE_COST in result.mechanics
+
+    def test_affinity_fires_reduce_cost(self):
+        """Affinity = REDUCE_COST."""
+        result = parse_oracle_text(
+            "Affinity for artifacts\nFlying",
+            "Artifact Creature",
+        )
+        assert Mechanic.AFFINITY in result.mechanics
+        assert Mechanic.REDUCE_COST in result.mechanics
+
+    # --- SET MECHANICS via PATTERNS ---
+
+    def test_bargain_pattern_fires_additional_cost_sacrifice(self):
+        """Bargain (detected via pattern) = ADDITIONAL_COST + SACRIFICE."""
+        result = parse_oracle_text(
+            "Bargain\nSearch your library for a card, put it into your hand, then shuffle.",
+            "Sorcery",
+        )
+        assert Mechanic.BARGAIN in result.mechanics
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+
+    def test_offspring_pattern_fires_additional_cost_token(self):
+        """Offspring (detected via pattern) = ADDITIONAL_COST + CREATE_TOKEN."""
+        result = parse_oracle_text(
+            "Offspring {2}\nWhen this creature enters, you gain 3 life.",
+            "Creature",
+        )
+        assert Mechanic.OFFSPRING in result.mechanics
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+
+    def test_spree_pattern_fires_additional_cost(self):
+        """Spree (detected via pattern) = ADDITIONAL_COST."""
+        result = parse_oracle_text(
+            "Spree\n+ {R} — Deal 3 damage to any target.\n+ {W} — You gain 3 life.",
+            "Instant",
+        )
+        assert Mechanic.SPREE in result.mechanics
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+
+    def test_impending_pattern_fires_alternative_cost(self):
+        """Impending (detected via pattern) = ALTERNATIVE_COST."""
+        result = parse_oracle_text(
+            "Impending 4\nFlying",
+            "Enchantment Creature",
+        )
+        assert Mechanic.IMPENDING in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+
+    def test_escalate_pattern_fires_additional_cost(self):
+        """Escalate (detected via pattern) = ADDITIONAL_COST."""
+        result = parse_oracle_text(
+            "Escalate {1}\nChoose one or more —\n• Target player draws a card.",
+            "Instant",
+        )
+        assert Mechanic.ESCALATE in result.mechanics
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+
+    def test_connive_pattern_fires_draw_discard(self):
+        """Connive (detected via pattern) = DRAW + DISCARD."""
+        result = parse_oracle_text(
+            "When this creature enters, it connives.",
+            "Creature",
+        )
+        assert Mechanic.CONNIVE in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+        assert Mechanic.DISCARD in result.mechanics
+
+    # --- UNNAMED COST PATTERNS ---
+
+    def test_unnamed_additional_cost_discard(self):
+        """'As an additional cost... discard' → ADDITIONAL_COST + DISCARD."""
+        result = parse_oracle_text(
+            "As an additional cost to cast this spell, discard a card.\nDraw two cards.",
+            "Sorcery",
+        )
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+        assert Mechanic.DISCARD in result.mechanics
+
+    def test_unnamed_additional_cost_pay_life(self):
+        """'As an additional cost... pay life' → ADDITIONAL_COST + PAY_LIFE."""
+        result = parse_oracle_text(
+            "As an additional cost to cast this spell, pay 2 life.\nDraw two cards.",
+            "Instant",
+        )
+        assert Mechanic.ADDITIONAL_COST in result.mechanics
+        assert Mechanic.PAY_LIFE in result.mechanics
+
+    def test_unnamed_alternative_cost(self):
+        """'rather than pay its mana cost' → ALTERNATIVE_COST."""
+        result = parse_oracle_text(
+            "You may pay {1} and exile a blue card from your hand rather than pay this spell's mana cost.",
+            "Instant",
+        )
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+
+    # --- NON-COST KEYWORD IMPLICATIONS ---
+
+    def test_undying_implies_death_trigger_counter(self):
+        """Undying = DEATH_TRIGGER + PLUS_ONE_COUNTER."""
+        result = parse_oracle_text(
+            "Undying",
+            "Creature",
+        )
+        assert Mechanic.UNDYING in result.mechanics
+        assert Mechanic.DEATH_TRIGGER in result.mechanics
+        assert Mechanic.PLUS_ONE_COUNTER in result.mechanics
+
+    def test_persist_implies_death_trigger_counter(self):
+        """Persist = DEATH_TRIGGER + MINUS_ONE_COUNTER."""
+        result = parse_oracle_text(
+            "Persist",
+            "Creature",
+        )
+        assert Mechanic.PERSIST in result.mechanics
+        assert Mechanic.DEATH_TRIGGER in result.mechanics
+        assert Mechanic.MINUS_ONE_COUNTER in result.mechanics
+
+    def test_storm_implies_copy_spell(self):
+        """Storm = COPY_SPELL."""
+        result = parse_oracle_text(
+            "Storm\nDeal 2 damage to any target.",
+            "Instant",
+        )
+        assert Mechanic.STORM in result.mechanics
+        assert Mechanic.COPY_SPELL in result.mechanics
+
+    def test_cascade_implies_free_cast(self):
+        """Cascade = FREE_CAST_CONDITION."""
+        result = parse_oracle_text(
+            "Cascade\nFlying",
+            "Creature",
+        )
+        assert Mechanic.CASCADE in result.mechanics
+        assert Mechanic.FREE_CAST_CONDITION in result.mechanics
+
+    def test_cycling_implies_draw_discard(self):
+        """Cycling = DRAW + DISCARD (via both keyword and pattern)."""
+        result = parse_oracle_text(
+            "Cycling {2}\nWhen you cycle this card, create a 1/1 white Soldier token.",
+            "Instant",
+        )
+        assert Mechanic.CYCLING in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+        assert Mechanic.DISCARD in result.mechanics
+
+    def test_infect_implies_poison_and_minus_counter(self):
+        """Infect = POISON_COUNTER + MINUS_ONE_COUNTER."""
+        result = parse_oracle_text(
+            "Infect",
+            "Creature",
+        )
+        assert Mechanic.INFECT in result.mechanics
+        assert Mechanic.POISON_COUNTER in result.mechanics
+        assert Mechanic.MINUS_ONE_COUNTER in result.mechanics
+
+    def test_dredge_implies_mill_and_regrowth(self):
+        """Dredge = MILL + REGROWTH."""
+        result = parse_oracle_text(
+            "Dredge 3",
+            "Creature",
+        )
+        assert Mechanic.DREDGE in result.mechanics
+        assert Mechanic.MILL in result.mechanics
+        assert Mechanic.REGROWTH in result.mechanics
+
+    def test_living_weapon_implies_token_equip(self):
+        """Living weapon = CREATE_TOKEN + EQUIP."""
+        result = parse_oracle_text(
+            "Living weapon\nEquip {2}",
+            "Artifact — Equipment",
+        )
+        assert Mechanic.LIVING_WEAPON in result.mechanics
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+        assert Mechanic.EQUIP in result.mechanics
+
+    def test_extort_implies_gain_lose_life(self):
+        """Extort = GAIN_LIFE + LOSE_LIFE."""
+        result = parse_oracle_text(
+            "Extort",
+            "Creature",
+        )
+        assert Mechanic.EXTORT in result.mechanics
+        assert Mechanic.GAIN_LIFE in result.mechanics
+        assert Mechanic.LOSE_LIFE in result.mechanics
+
+    def test_riot_implies_haste_and_counter(self):
+        """Riot = HASTE + PLUS_ONE_COUNTER (choose one)."""
+        result = parse_oracle_text(
+            "Riot\nTrample",
+            "Creature",
+        )
+        assert Mechanic.RIOT in result.mechanics
+        assert Mechanic.HASTE in result.mechanics
+        assert Mechanic.PLUS_ONE_COUNTER in result.mechanics
+
+    def test_fabricate_implies_counter_and_token(self):
+        """Fabricate = PLUS_ONE_COUNTER + CREATE_TOKEN (choose one)."""
+        result = parse_oracle_text(
+            "Fabricate 1",
+            "Creature",
+        )
+        assert Mechanic.FABRICATE in result.mechanics
+        assert Mechanic.PLUS_ONE_COUNTER in result.mechanics
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+
+    # --- REGRESSION: keywords without cost category stay clean ---
+
+    def test_flying_no_cost_category(self):
+        """Flying should NOT fire any cost category."""
+        result = parse_oracle_text(
+            "Flying",
+            "Creature",
+        )
+        assert Mechanic.FLYING in result.mechanics
+        assert Mechanic.ADDITIONAL_COST not in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST not in result.mechanics
+        assert Mechanic.REDUCE_COST not in result.mechanics
+
+    def test_hexproof_no_cost_category(self):
+        """Hexproof should NOT fire any cost category."""
+        result = parse_oracle_text(
+            "Hexproof\nFlash",
+            "Creature",
+        )
+        assert Mechanic.HEXPROOF in result.mechanics
+        assert Mechanic.ADDITIONAL_COST not in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST not in result.mechanics
+        assert Mechanic.REDUCE_COST not in result.mechanics
