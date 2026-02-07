@@ -22,7 +22,7 @@ set -e
 
 # Configuration
 S3_BUCKET="mtg-rl-checkpoints-20260124190118616600000001"
-REGION="us-west-2"
+REGION="${REGION:-us-east-1}"
 INSTANCE_TYPE="${INSTANCE_TYPE:-c5.2xlarge}"  # CPU-only (no GPU needed for collection)
 NUM_GAMES="${NUM_GAMES:-1000}"
 WORKERS="${WORKERS:-8}"
