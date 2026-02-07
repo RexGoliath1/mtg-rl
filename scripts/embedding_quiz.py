@@ -168,7 +168,7 @@ def fetch_random_cards(n: int = 9, fmt: str = "standard",
 
         # Parse front face
         try:
-            result = parse_oracle_text(oracle, type_line)
+            result = parse_oracle_text(oracle, type_line, card_name=name)
             mechanics = [m.name for m in result.mechanics]
             params = result.parameters
             confidence = result.confidence
@@ -186,7 +186,7 @@ def fetch_random_cards(n: int = 9, fmt: str = "standard",
         back_unparsed = ""
         if back_oracle.strip():
             try:
-                back_result = parse_oracle_text(back_oracle, back_type_line)
+                back_result = parse_oracle_text(back_oracle, back_type_line, card_name=name)
                 back_mechanics = [m.name for m in back_result.mechanics]
                 back_params = back_result.parameters
                 back_confidence = round(back_result.confidence, 3)
