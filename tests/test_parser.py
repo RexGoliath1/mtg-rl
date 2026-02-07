@@ -5048,3 +5048,63 @@ class TestCreatureTypeDetection:
             "Creature — Elf Druid",
         )
         assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+
+
+# =============================================================================
+# FACE-DOWN MATTERS TESTS
+# =============================================================================
+
+class TestFaceDownMatters:
+    """Tests for FACE_DOWN_MATTERS detection."""
+
+    def test_morph_implies_face_down(self):
+        """Morph keyword implies FACE_DOWN_MATTERS via KEYWORD_IMPLICATIONS."""
+        result = parse_card(make_card(
+            "Willbender", "{1}{U}", 2, "Creature — Human Wizard",
+            "Morph {1}{U}\nWhen Willbender is turned face up, change the target of target spell or ability with a single target.",
+            power=1, toughness=2,
+        ))
+        assert_has_mechanics(result, [Mechanic.MORPH, Mechanic.FACE_DOWN_MATTERS], "Willbender")
+
+    def test_manifest_implies_face_down(self):
+        """Manifest keyword implies FACE_DOWN_MATTERS."""
+        result = parse_card(make_card(
+            "Whisperwood Elemental", "{3}{G}{G}", 5, "Creature — Elemental",
+            "At the beginning of your end step, manifest the top card of your library.",
+            power=4, toughness=4,
+        ))
+        assert_has_mechanics(result, [Mechanic.MANIFEST, Mechanic.FACE_DOWN_MATTERS], "Whisperwood Elemental")
+
+    def test_disguise_implies_face_down(self):
+        """Disguise keyword implies FACE_DOWN_MATTERS."""
+        result = parse_card(make_card(
+            "Deadly Disguise", "{2}{B}", 3, "Creature — Shapeshifter",
+            "Disguise {1}{B}\nWhen this creature is turned face up, destroy target creature.",
+            power=2, toughness=2,
+        ))
+        assert_has_mechanics(result, [Mechanic.DISGUISE, Mechanic.FACE_DOWN_MATTERS], "Deadly Disguise")
+
+    def test_face_up_text(self):
+        """Oracle text mentioning 'face up' triggers FACE_DOWN_MATTERS."""
+        result = parse_oracle_text(
+            "Whenever a permanent you control is turned face up, draw a card.",
+            "Creature — Human Wizard",
+        )
+        assert Mechanic.FACE_DOWN_MATTERS in result.mechanics
+
+    def test_face_down_text(self):
+        """Oracle text mentioning 'face down' triggers FACE_DOWN_MATTERS."""
+        result = parse_oracle_text(
+            "You may look at face-down creatures you control any time.",
+            "Creature — Human",
+        )
+        assert Mechanic.FACE_DOWN_MATTERS in result.mechanics
+
+    def test_cloak_implies_face_down(self):
+        """Cloak pattern should also emit FACE_DOWN_MATTERS."""
+        result = parse_oracle_text(
+            "Cloak the top card of your library.",
+            "Instant",
+        )
+        assert Mechanic.CLOAK in result.mechanics
+        assert Mechanic.FACE_DOWN_MATTERS in result.mechanics

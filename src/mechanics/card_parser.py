@@ -340,6 +340,9 @@ KEYWORD_IMPLICATIONS = {
     "artifact landcycling": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.TUTOR_LAND],
     "wizardcycling": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.CREATURE_TYPE_MATTERS],
     "slivercycling": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.CREATURE_TYPE_MATTERS],
+    "morph": [Mechanic.FACE_DOWN_MATTERS],
+    "manifest": [Mechanic.FACE_DOWN_MATTERS],
+    "disguise": [Mechanic.FACE_DOWN_MATTERS],
     "infect": [Mechanic.POISON_COUNTER, Mechanic.MINUS_ONE_COUNTER],
     "wither": [Mechanic.MINUS_ONE_COUNTER],
     "living weapon": [Mechanic.CREATE_TOKEN, Mechanic.EQUIP],
@@ -743,7 +746,7 @@ PATTERNS = [
     (r"\brole\b.+\btoken\b", [Mechanic.ROLE_TOKEN]),
     (r"\bcase\b", [Mechanic.CASE]),
     (r"\bsuspect\b", [Mechanic.SUSPECT]),
-    (r"\bcloak\b", [Mechanic.CLOAK]),
+    (r"\bcloak\b", [Mechanic.CLOAK, Mechanic.FACE_DOWN_MATTERS]),
     (r"\bconnive[sd]?\b", [Mechanic.CONNIVE, Mechanic.DRAW, Mechanic.DISCARD]),
     (r"collect evidence\s+\d+", [Mechanic.COLLECT_EVIDENCE, Mechanic.ADDITIONAL_COST]),
     (r"commit(ted|s)? a crime", [Mechanic.COMMIT_A_CRIME]),
@@ -763,6 +766,12 @@ PATTERNS = [
     (r"\bvoid\b\s*—", [Mechanic.VOID]),
     (r"\broom\b", [Mechanic.ROOM]),
     (r"\bbehold\b", [Mechanic.REVEAL, Mechanic.CREATURE_TYPE_MATTERS]),
+
+    # Face-down mechanics — morph/manifest/disguise/cloak text references
+    (r"face[- ]down", [Mechanic.FACE_DOWN_MATTERS]),
+    (r"face[- ]up", [Mechanic.FACE_DOWN_MATTERS]),
+    (r"turned? face[- ]up", [Mechanic.FACE_DOWN_MATTERS]),
+    (r"is turned face[- ]down", [Mechanic.FACE_DOWN_MATTERS]),
 
     # Land tutoring / ramp
     (r"search.{0,30}(for|your library).{0,30}basic land", [Mechanic.TUTOR_LAND]),
