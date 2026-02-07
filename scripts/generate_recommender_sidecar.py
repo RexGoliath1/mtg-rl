@@ -14,7 +14,6 @@ Usage:
 import argparse
 import json
 import os
-import re
 import sys
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -134,7 +133,7 @@ def main():
     n_with_tribal = sum(1 for v in metadata.values() if v["tribal_types"])
     n_lands = sum(1 for v in metadata.values() if v["is_land"])
 
-    print(f"\nMetadata generated:")
+    print("\nMetadata generated:")
     print(f"  Total cards: {len(metadata)}")
     print(f"  With creature subtypes: {n_with_subtypes}")
     print(f"  With tribal references: {n_with_tribal}")
