@@ -116,6 +116,26 @@ if METADATA:
 # Sol Ring (rank ~1) gets ~1.05x, unranked cards get 1.0x
 QUALITY_BOOST = 1.0 + 0.1 * np.clip(1.0 - np.log1p(EDHREC_RANK) / 12.0, 0, 0.5)
 
+# Pre-compute CMC array for curve-aware recommendations
+CARD_CMC = np.full(len(CARD_INDEX), -1.0, dtype=np.float64)
+if METADATA:
+    for name, idx in CARD_INDEX.items():
+        cmc = METADATA.get(name, {}).get("cmc")
+        if cmc is not None and not METADATA.get(name, {}).get("is_land", False):
+            CARD_CMC[idx] = cmc
+    n_with_cmc = int((CARD_CMC >= 0).sum())
+    print(f"CMC data loaded: {n_with_cmc:,} nonland cards")
+
+# CMC bucket for each card (0-7, where 7 = 7+). -1 for lands/unknown.
+CARD_CMC_BUCKET = np.full(len(CARD_INDEX), -1, dtype=np.int32)
+CARD_CMC_BUCKET[CARD_CMC >= 0] = np.clip(CARD_CMC[CARD_CMC >= 0].astype(np.int32), 0, 7)
+
+# Ideal curve proportions (fraction of nonland cards per CMC bucket 0-7+)
+# Commander: slightly higher curve, more 4-5 drops
+IDEAL_CURVE_COMMANDER = {0: 0.03, 1: 0.12, 2: 0.22, 3: 0.20, 4: 0.15, 5: 0.11, 6: 0.08, 7: 0.09}
+# 60-card: lower, faster curve
+IDEAL_CURVE_60 = {0: 0.03, 1: 0.22, 2: 0.28, 3: 0.22, 4: 0.14, 5: 0.06, 6: 0.03, 7: 0.02}
+
 # Graveyard-theme mechanic indices (for theme relevance filtering)
 _GY_MECH_NAMES = {
     "MILL", "REANIMATE", "REGROWTH", "CAST_FROM_GRAVEYARD", "FROM_GRAVEYARD",
@@ -401,6 +421,46 @@ def compute_deck_stats(resolved: list[str]) -> dict:
     }
 
 
+def compute_curve_boost(deck_stats: dict) -> np.ndarray:
+    """Compute per-card multiplier that boosts cards filling mana curve gaps.
+
+    Cards in underrepresented CMC buckets get up to 1.25x boost.
+    Cards in overrepresented buckets get up to 0.85x penalty.
+    Lands and unknown-CMC cards get 1.0 (no change).
+    """
+    curve = deck_stats.get("curve", {})
+    nonland_count = deck_stats.get("nonland_count", 0)
+    total = deck_stats.get("total", 0)
+
+    if nonland_count < 5:
+        return np.ones(len(CARD_INDEX), dtype=np.float64)
+
+    # Pick ideal curve based on deck size
+    ideal = IDEAL_CURVE_COMMANDER if total > 80 else IDEAL_CURVE_60
+
+    # Compute actual proportions
+    actual_prop = {}
+    for bucket in range(8):
+        actual_prop[bucket] = curve.get(bucket, 0) / nonland_count
+
+    # Gap = ideal - actual (positive = underrepresented = boost)
+    # Scale: +0.10 gap → 1.25x boost, -0.10 gap → 0.85x penalty
+    bucket_multiplier = {}
+    for bucket in range(8):
+        gap = ideal[bucket] - actual_prop[bucket]
+        # Clamp multiplier to [0.85, 1.25]
+        mult = 1.0 + np.clip(gap * 2.5, -0.15, 0.25)
+        bucket_multiplier[bucket] = mult
+
+    # Map to per-card array
+    boost = np.ones(len(CARD_INDEX), dtype=np.float64)
+    for bucket in range(8):
+        mask = CARD_CMC_BUCKET == bucket
+        boost[mask] = bucket_multiplier[bucket]
+
+    return boost
+
+
 def _kmeans_themes(vecs: np.ndarray, card_names: list[str], k: int, max_iter: int = 20) -> list[dict]:
     """Simple KMeans to identify deck themes. Returns list of {label, cards, centroid, top_mechanics}."""
     n = len(vecs)
@@ -550,6 +610,10 @@ def recommend_by_themes(
     color_ok = _color_filter_mask(deck_colors)
     eligible = ~exclude & color_ok
 
+    # Pre-compute curve gap boost (same for all themes)
+    deck_stats = analysis.get("deck_stats", {})
+    curve_boost = compute_curve_boost(deck_stats)
+
     results = []
     already_recommended = set()
 
@@ -583,6 +647,9 @@ def recommend_by_themes(
                 card_gy_count = sum(1 for m in GRAVEYARD_THEME_INDICES if MECHANICS[idx, m])
                 if card_gy_count >= 3:
                     scores[idx] *= 0.3
+
+        # Mana curve gap boost: prefer cards that fill underrepresented CMC slots
+        scores *= curve_boost
 
         # Apply masks
         scores[~eligible] = 0
