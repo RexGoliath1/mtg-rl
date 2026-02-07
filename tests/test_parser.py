@@ -4730,3 +4730,76 @@ class TestQuizRound5DesignDecisions:
         )
         assert Mechanic.ADD_MANA in result.mechanics
         assert Mechanic.SACRIFICE in result.mechanics
+
+
+class TestEmblems:
+    """Tests for emblem detection and sub-parsing (#19)."""
+
+    def test_chandra_torch_of_defiance_emblem(self):
+        """Chandra's ultimate — triggered emblem with damage."""
+        result = parse_oracle_text(
+            '+1: Exile the top card of your library. You may cast that card.\n'
+            '+1: Add {R}{R}.\n'
+            '\u22123: Chandra, Torch of Defiance deals 4 damage to target creature.\n'
+            '\u22127: You get an emblem with "Whenever you cast a spell, this emblem deals 5 damage to any target."',
+            "Legendary Planeswalker \u2014 Chandra",
+        )
+        assert Mechanic.CREATE_EMBLEM in result.mechanics
+        assert Mechanic.EMBLEM_TRIGGERED in result.mechanics
+        assert Mechanic.DEAL_DAMAGE in result.mechanics
+
+    def test_domri_rade_static_emblem(self):
+        """Domri Rade's ultimate — static emblem granting keywords."""
+        result = parse_oracle_text(
+            '\u22127: You get an emblem with "Creatures you control have double strike, trample, hexproof, and haste."',
+            "Legendary Planeswalker \u2014 Domri",
+        )
+        assert Mechanic.CREATE_EMBLEM in result.mechanics
+        assert Mechanic.EMBLEM_STATIC in result.mechanics
+
+    def test_chandra_awakened_inferno_opponent_emblem(self):
+        """Chandra, Awakened Inferno — opponent gets emblem."""
+        result = parse_oracle_text(
+            '+2: Each opponent gets an emblem with "At the beginning of your upkeep, this emblem deals 1 damage to you."',
+            "Legendary Planeswalker \u2014 Chandra",
+        )
+        assert Mechanic.CREATE_EMBLEM in result.mechanics
+        assert Mechanic.EMBLEM_OPPONENT in result.mechanics
+        assert Mechanic.EMBLEM_TRIGGERED in result.mechanics
+        assert Mechanic.DEAL_DAMAGE in result.mechanics
+
+    def test_karn_living_legacy_activated_emblem(self):
+        """Karn, Living Legacy — activated ability emblem (rare)."""
+        result = parse_oracle_text(
+            '\u22127: You get an emblem with "Tap an untapped artifact you control: This emblem deals 1 damage to any target."',
+            "Legendary Planeswalker \u2014 Karn",
+        )
+        assert Mechanic.CREATE_EMBLEM in result.mechanics
+        assert Mechanic.EMBLEM_ACTIVATED in result.mechanics
+
+    def test_ajani_adversary_emblem(self):
+        """Ajani's ultimate — triggered emblem creating tokens."""
+        result = parse_oracle_text(
+            '\u22127: You get an emblem with "At the beginning of your end step, create three 1/1 white Cat creature tokens with lifelink."',
+            "Legendary Planeswalker \u2014 Ajani",
+        )
+        assert Mechanic.CREATE_EMBLEM in result.mechanics
+        assert Mechanic.EMBLEM_TRIGGERED in result.mechanics
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+
+    def test_capitoline_triad_non_pw_emblem(self):
+        """The Capitoline Triad — non-planeswalker card creates emblem."""
+        result = parse_oracle_text(
+            'You get an emblem with "Creatures you control have base power and toughness 9/9."',
+            "Legendary Creature \u2014 God Artificer",
+        )
+        assert Mechanic.CREATE_EMBLEM in result.mechanics
+        assert Mechanic.EMBLEM_STATIC in result.mechanics
+
+    def test_no_emblem_false_positive(self):
+        """Cards mentioning 'emblem' in non-standard ways should not trigger."""
+        result = parse_oracle_text(
+            "Flying\nWhen this creature enters, draw a card.",
+            "Creature \u2014 Angel",
+        )
+        assert Mechanic.CREATE_EMBLEM not in result.mechanics
