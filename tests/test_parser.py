@@ -3629,3 +3629,201 @@ class TestQuizRound3DesignDecisions:
             "Enchantment",
         )
         assert Mechanic.CAST_FROM_GRAVEYARD in result.mechanics
+
+
+class TestQuizRound4Fixes:
+    """Fixes from quiz round 4 (quiz_2026-02-06_200515.json)."""
+
+    # --- Generic number words in draw ---
+
+    def test_draw_four_cards(self):
+        """'draw four cards' with word number."""
+        result = parse_oracle_text("Draw four cards.", "Sorcery")
+        assert Mechanic.DRAW in result.mechanics
+
+    def test_draw_seven_cards(self):
+        """'draw seven cards' with word number."""
+        result = parse_oracle_text("Draw seven cards.", "Sorcery")
+        assert Mechanic.DRAW in result.mechanics
+
+    # --- Compound target patterns ---
+
+    def test_target_creature_or_planeswalker(self):
+        """'target creature or planeswalker' fires both."""
+        result = parse_oracle_text(
+            "Obliterating Bolt deals 4 damage to target creature or "
+            "planeswalker.",
+            "Sorcery",
+        )
+        assert Mechanic.TARGET_CREATURE in result.mechanics
+        assert Mechanic.TARGET_PLANESWALKER in result.mechanics
+
+    def test_target_artifact_or_enchantment(self):
+        """'target artifact or enchantment' fires both."""
+        result = parse_oracle_text(
+            "Destroy target artifact or enchantment.",
+            "Instant",
+        )
+        assert Mechanic.TARGET_ARTIFACT in result.mechanics
+        assert Mechanic.TARGET_ENCHANTMENT in result.mechanics
+
+    def test_target_creature_or_enchantment(self):
+        """'target creature or enchantment' fires both."""
+        result = parse_oracle_text(
+            "Destroy target creature or enchantment. You lose 2 life.",
+            "Instant",
+        )
+        assert Mechanic.TARGET_CREATURE in result.mechanics
+        assert Mechanic.TARGET_ENCHANTMENT in result.mechanics
+
+    # --- X in stat modifications ---
+
+    def test_gets_minus_x_x(self):
+        """'gets -X/-X' fires MINUS_POWER and MINUS_TOUGHNESS."""
+        result = parse_oracle_text(
+            "Target creature gets -X/-X until end of turn.",
+            "Instant",
+        )
+        assert Mechanic.MINUS_POWER in result.mechanics
+        assert Mechanic.MINUS_TOUGHNESS in result.mechanics
+
+    # --- Combined gain/lose life trigger ---
+
+    def test_gain_or_lose_life_trigger(self):
+        """'gain or lose life' fires both triggers."""
+        result = parse_oracle_text(
+            "Whenever you gain or lose life during your turn, this "
+            "creature gets +1/+0 until end of turn.",
+            "Creature",
+        )
+        assert Mechanic.GAIN_LIFE_TRIGGER in result.mechanics
+        assert Mechanic.LOSE_LIFE_TRIGGER in result.mechanics
+
+    # --- TARGET_PLANESWALKER + TARGET_ANY ---
+
+    def test_any_target(self):
+        """'any target' fires TARGET_ANY + creature + player + planeswalker."""
+        result = parse_oracle_text(
+            "It deals damage equal to its power to any target.",
+            "Creature",
+        )
+        assert Mechanic.TARGET_ANY in result.mechanics
+        assert Mechanic.TARGET_CREATURE in result.mechanics
+        assert Mechanic.TARGET_PLAYER in result.mechanics
+        assert Mechanic.TARGET_PLANESWALKER in result.mechanics
+
+    def test_target_planeswalker(self):
+        """'target planeswalker' fires TARGET_PLANESWALKER."""
+        result = parse_oracle_text(
+            "Destroy target planeswalker.",
+            "Sorcery",
+        )
+        assert Mechanic.TARGET_PLANESWALKER in result.mechanics
+
+    # --- COLOR_CONDITION ---
+
+    def test_for_each_color(self):
+        """'for each color' fires COLOR_CONDITION."""
+        result = parse_oracle_text(
+            "For each color, put a +1/+1 counter on a Dragon you "
+            "control of that color.",
+            "Enchantment",
+        )
+        assert Mechanic.COLOR_CONDITION in result.mechanics
+
+    # --- EFFECT_MULTIPLIER ---
+
+    def test_three_times_that_many(self):
+        """Ojer Taq — 'three times that many tokens'."""
+        result = parse_oracle_text(
+            "If one or more creature tokens would be created under "
+            "your control, three times that many of those tokens "
+            "are created instead.",
+            "Creature",
+        )
+        assert Mechanic.EFFECT_MULTIPLIER in result.mechanics
+
+    def test_twice_that_many(self):
+        """Doubling Season style — 'twice that many'."""
+        result = parse_oracle_text(
+            "If an effect would create one or more tokens under your "
+            "control, it creates twice that many of those tokens instead.",
+            "Enchantment",
+        )
+        assert Mechanic.EFFECT_MULTIPLIER in result.mechanics
+
+    # --- MANA_VALUE_CONDITION ---
+
+    def test_mana_value_or_less(self):
+        """'mana value is 4 or less' fires MANA_VALUE_CONDITION."""
+        result = parse_oracle_text(
+            "Each other creature you control enters with an additional "
+            "+1/+1 counter on it if its mana value is 4 or less.",
+            "Artifact",
+        )
+        assert Mechanic.MANA_VALUE_CONDITION in result.mechanics
+
+    def test_mana_value_or_greater(self):
+        """'mana value 5 or greater' fires MANA_VALUE_CONDITION."""
+        result = parse_oracle_text(
+            "Counter target spell with mana value 5 or greater.",
+            "Instant",
+        )
+        assert Mechanic.MANA_VALUE_CONDITION in result.mechanics
+
+    # --- HAND_SIZE_MATTERS ---
+
+    def test_for_each_card_in_hand(self):
+        """Stingerback Terror — 'for each card in your hand'."""
+        result = parse_oracle_text(
+            "This creature gets -1/-1 for each card in your hand.",
+            "Creature",
+        )
+        assert Mechanic.HAND_SIZE_MATTERS in result.mechanics
+
+    # --- GRANTS_ABILITY ---
+
+    def test_grants_haste_lord(self):
+        """'Goblins you control have haste' fires GRANTS_ABILITY."""
+        result = parse_oracle_text(
+            "Other Goblins you control have haste.",
+            "Creature",
+        )
+        assert Mechanic.GRANTS_ABILITY in result.mechanics
+        assert Mechanic.HASTE in result.mechanics
+
+    def test_grants_indestructible(self):
+        """'Dragons you control have indestructible'."""
+        result = parse_oracle_text(
+            "Dragons you control have indestructible.",
+            "Enchantment",
+        )
+        assert Mechanic.GRANTS_ABILITY in result.mechanics
+        assert Mechanic.INDESTRUCTIBLE in result.mechanics
+
+    def test_grants_equipped(self):
+        """'Equipped creature gains reach' — EQUIP + REACH is sufficient signal.
+        Note: 'equipped creature' is consumed by EQUIP pattern first,
+        so GRANTS_ABILITY only fires if 'has/gains' survives."""
+        result = parse_oracle_text(
+            "Equipped creature gets +2/+2, has reach, and is a Bard.",
+            "Artifact",
+        )
+        assert Mechanic.EQUIP in result.mechanics
+        assert Mechanic.REACH in result.mechanics
+
+    def test_grants_as_though_flash(self):
+        """'as though they had flash'."""
+        result = parse_oracle_text(
+            "You may cast noncreature spells as though they had flash.",
+            "Creature",
+        )
+        assert Mechanic.GRANTS_ABILITY in result.mechanics
+
+    def test_grants_no_false_positive_dies(self):
+        """'creature you control dies' should NOT fire GRANTS_ABILITY."""
+        result = parse_oracle_text(
+            "Whenever a creature you control dies, draw a card.",
+            "Enchantment",
+        )
+        assert Mechanic.GRANTS_ABILITY not in result.mechanics

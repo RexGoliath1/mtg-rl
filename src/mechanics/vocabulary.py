@@ -566,6 +566,16 @@ class Mechanic(IntEnum):
     THRESHOLD_CONDITION = 1365          # "if you control N or more" count-based gate
     TARGET_OPPONENT_PERMANENT = 1366    # "target nonland permanent an opponent controls"
 
+    # ==========================================================================
+    # QUIZ ROUND 4 FIXES (1367-1372)
+    # ==========================================================================
+    TARGET_ANY = 1367                   # "any target" (creature, player, or planeswalker)
+    COLOR_CONDITION = 1368              # "for each color", "of that color" — color-relevant conditional
+    EFFECT_MULTIPLIER = 1369            # "double", "twice", "N times that many" — Doubling Season etc.
+    MANA_VALUE_CONDITION = 1370         # "mana value N or less/more" — CMC-based gate
+    HAND_SIZE_MATTERS = 1371            # "for each card in your hand" / hand count relevant
+    GRANTS_ABILITY = 1372               # "you control have/gain [keyword]" — lord/equipment grants
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1

@@ -225,13 +225,21 @@ KEYWORD_ABILITIES = {
 # TEXT PATTERN MATCHING
 # =============================================================================
 
+# Generic number word pattern — used in draw, token, discard, mill patterns
+NUM = r"(?:a|an|\d+|x|one|two|three|four|five|six|seven|eight|nine|ten)"
+
 # Patterns for common text structures
 PATTERNS = [
-    # Targeting patterns (opponent-specific BEFORE generic)
+    # Targeting patterns (compound BEFORE specific, opponent-specific BEFORE generic)
+    (r"any target", [Mechanic.TARGET_ANY, Mechanic.TARGET_CREATURE, Mechanic.TARGET_PLAYER, Mechanic.TARGET_PLANESWALKER]),
+    (r"target creature or planeswalker", [Mechanic.TARGET_CREATURE, Mechanic.TARGET_PLANESWALKER]),
+    (r"target (artifact or enchantment|enchantment or artifact)", [Mechanic.TARGET_ARTIFACT, Mechanic.TARGET_ENCHANTMENT]),
+    (r"target creature or enchantment", [Mechanic.TARGET_CREATURE, Mechanic.TARGET_ENCHANTMENT]),
     (r"target creature an opponent controls", [Mechanic.TARGET_CREATURE, Mechanic.TARGET_OPPONENT_CREATURE]),
     (r"creature an opponent controls", [Mechanic.TARGET_OPPONENT_CREATURE]),
     (r"target creature you don't control", [Mechanic.TARGET_CREATURE, Mechanic.TARGET_OPPONENT_CREATURE]),
     (r"target creature", [Mechanic.TARGET_CREATURE]),
+    (r"target planeswalker", [Mechanic.TARGET_PLANESWALKER]),
     (r"target player", [Mechanic.TARGET_PLAYER]),
     (r"target opponent", [Mechanic.TARGET_OPPONENT]),
     (r"target .{0,20}permanent an opponent controls", [Mechanic.TARGET_PERMANENT, Mechanic.TARGET_OPPONENT_PERMANENT]),
@@ -264,7 +272,7 @@ PATTERNS = [
     (r"you lose life equal to", [Mechanic.LOSE_LIFE]),
 
     # Creation patterns
-    (r"create(s)? (a|\d+|an?|two|three|four|five|x) .*?(token|treasure|food|clue|blood)", [Mechanic.CREATE_TOKEN]),
+    (r"create(s)? " + NUM + r" .*?(token|treasure|food|clue|blood)", [Mechanic.CREATE_TOKEN]),
     (r"create(s)?.+cop(y|ies) of", [Mechanic.CREATE_TOKEN_COPY]),
     (r"create(s)?.+treasure token", [Mechanic.CREATE_TOKEN, Mechanic.CREATE_TREASURE]),
     (r"create(s)?.+food token", [Mechanic.CREATE_TOKEN, Mechanic.CREATE_FOOD]),
@@ -273,8 +281,8 @@ PATTERNS = [
     (r"\binvestigate\b", [Mechanic.CREATE_CLUE]),
 
     # Card advantage
-    (r"draw(s)? (a card|two cards|three cards|\d+ cards?|x cards?)", [Mechanic.DRAW]),
-    (r"may draw (a card|two cards|three cards|\d+ cards?|x cards?)", [Mechanic.DRAW_OPTIONAL]),
+    (r"draw(s)? (" + NUM + r" cards?|a card)", [Mechanic.DRAW]),
+    (r"may draw (" + NUM + r" cards?|a card)", [Mechanic.DRAW_OPTIONAL]),
     (r"scry (\d+|x)", [Mechanic.SCRY]),
     (r"surveil (\d+|x)", [Mechanic.SURVEIL]),
     (r"look at the top", [Mechanic.LOOK_AT_TOP]),
@@ -283,8 +291,8 @@ PATTERNS = [
     (r"search your library.+put.+onto the battlefield", [Mechanic.TUTOR_TO_BATTLEFIELD]),
     (r"return.+from.+graveyard to the battlefield", [Mechanic.REANIMATE]),
     (r"return.+from.+graveyard to your hand", [Mechanic.REGROWTH]),
-    (r"discard(s)? (a card|two cards|three cards|\d+ cards?|your hand|that card|it|them)", [Mechanic.DISCARD]),
-    (r"mills?\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|x)\s+cards?", [Mechanic.MILL]),
+    (r"discard(s)? (" + NUM + r" cards?|a card|your hand|that card|it|them)", [Mechanic.DISCARD]),
+    (r"mills?\s+" + NUM + r"\s+cards?", [Mechanic.MILL]),
     (r"you may cast.+from.+graveyard", [Mechanic.CAST_FROM_GRAVEYARD]),
     (r"cast .+from (your|a|the) graveyard", [Mechanic.CAST_FROM_GRAVEYARD]),
     (r"play .+from (your|a|the) graveyard", [Mechanic.CAST_FROM_GRAVEYARD]),
@@ -309,6 +317,7 @@ PATTERNS = [
     (r"at the beginning of combat on your turn", [Mechanic.BEGINNING_OF_COMBAT_TRIGGER]),
     (r"at the beginning of (each|your) end step", [Mechanic.END_STEP_TRIGGER]),
     (r"when(ever)? you draw", [Mechanic.DRAW_TRIGGER]),
+    (r"when(ever)? you gain or lose life", [Mechanic.GAIN_LIFE_TRIGGER, Mechanic.LOSE_LIFE_TRIGGER]),
     (r"when(ever)? you gain life", [Mechanic.GAIN_LIFE_TRIGGER]),
     (r"when(ever)? you lose life", [Mechanic.LOSE_LIFE_TRIGGER]),
     (r"when(ever)? a land enters", [Mechanic.LANDFALL]),
@@ -325,12 +334,13 @@ PATTERNS = [
     (r"unless (that player|they) pays?", [Mechanic.UNLESS_PAYS]),
     (r"was dealt damage this turn", [Mechanic.DEALT_DAMAGE_CONDITION]),
     (r"if you control (\w+) or more", [Mechanic.THRESHOLD_CONDITION]),
+    (r"(for each|of that|of the chosen|from .{0,10}) color", [Mechanic.COLOR_CONDITION]),
 
-    # Stats modification
-    (r"gets? \+\d+/\+\d+", [Mechanic.PLUS_POWER, Mechanic.PLUS_TOUGHNESS]),
-    (r"gets? -\d+/-\d+", [Mechanic.MINUS_POWER, Mechanic.MINUS_TOUGHNESS]),
-    (r"gets? \+\d+/\+0", [Mechanic.PLUS_POWER]),
-    (r"gets? \+0/\+\d+", [Mechanic.PLUS_TOUGHNESS]),
+    # Stats modification (digits or X)
+    (r"gets? \+(\d+|x)/\+(\d+|x)", [Mechanic.PLUS_POWER, Mechanic.PLUS_TOUGHNESS]),
+    (r"gets? -(\d+|x)/-(\d+|x)", [Mechanic.MINUS_POWER, Mechanic.MINUS_TOUGHNESS]),
+    (r"gets? \+(\d+|x)/\+0", [Mechanic.PLUS_POWER]),
+    (r"gets? \+0/\+(\d+|x)", [Mechanic.PLUS_TOUGHNESS]),
     (r"(other )?(creatures|permanents) you control get \+", [Mechanic.ANTHEM_EFFECT]),
     (r"\+1/\+1 counter", [Mechanic.PLUS_ONE_COUNTER]),
     (r"-1/-1 counter", [Mechanic.MINUS_ONE_COUNTER]),
@@ -468,6 +478,27 @@ PATTERNS = [
     (r"(?:power|toughness) \d+ or (?:greater|more|less)", [Mechanic.POWER_TOUGHNESS_CONDITION]),
     (r"with (?:power|toughness) \d+ or (?:greater|more|less)", [Mechanic.POWER_TOUGHNESS_CONDITION]),
     (r"(?:power|toughness) (?:equal to|less than|greater than)", [Mechanic.POWER_TOUGHNESS_CONDITION]),
+
+    # Effect multiplier — Doubling Season, Parallel Lives, Ojer Taq
+    (r"(twice|double|two times) that many", [Mechanic.EFFECT_MULTIPLIER]),
+    (r"(three|four|five|\d+) times that many", [Mechanic.EFFECT_MULTIPLIER]),
+    (r"(twice|double) the number of", [Mechanic.EFFECT_MULTIPLIER]),
+    (r"tokens? (are|is) created instead", [Mechanic.EFFECT_MULTIPLIER]),
+
+    # Mana value condition — "mana value N or less/more"
+    (r"mana value.{0,10}(\d+|x) or (less|fewer|more|greater)", [Mechanic.MANA_VALUE_CONDITION]),
+    (r"mana value.{0,10}(less than|greater than|equal to)", [Mechanic.MANA_VALUE_CONDITION]),
+    (r"(converted mana cost|mana value) (is |was )?\d+", [Mechanic.MANA_VALUE_CONDITION]),
+
+    # Hand size matters — "for each card in your hand"
+    (r"for each card in (your|their|a player's) hand", [Mechanic.HAND_SIZE_MATTERS]),
+    (r"cards? in (your|their) hand", [Mechanic.HAND_SIZE_MATTERS]),
+    (r"(equal to|less than|greater than) the number of cards in", [Mechanic.HAND_SIZE_MATTERS]),
+
+    # Grants ability — lord/equipment granting keywords to others
+    (r"\w+s? you control (have|gain) ", [Mechanic.GRANTS_ABILITY]),
+    (r"equipped creature (has|gains) ", [Mechanic.GRANTS_ABILITY]),
+    (r"as though (they|it) had ", [Mechanic.GRANTS_ABILITY]),
 
     # =========================================================================
     # TYPE FILTERS
