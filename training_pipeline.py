@@ -38,10 +38,10 @@ from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 
 # Local imports
-from entity_encoder import EntityEncoder, EntityEncoderConfig, EncoderMode
-from shared_card_encoder import SharedCardEncoder, CardEncoderConfig, CardFeatureExtractor
-from text_embeddings import PretrainedTextEmbedder, TextEmbeddingConfig
-from hybrid_card_encoder import (
+from src.models.entity_encoder import EntityEncoder, EntityEncoderConfig, EncoderMode
+from src.models.shared_card_encoder import SharedCardEncoder, CardEncoderConfig, CardFeatureExtractor
+from src.models.text_embeddings import PretrainedTextEmbedder, TextEmbeddingConfig
+from src.models.hybrid_card_encoder import (
     HybridCardEncoder,
     HybridEncoderConfig,
     StructuralFeatureExtractor,

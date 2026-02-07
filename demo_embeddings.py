@@ -10,7 +10,7 @@ This script addresses specific concerns:
 """
 
 import numpy as np
-from text_embeddings import PretrainedTextEmbedder, TextEmbeddingConfig
+from src.models.text_embeddings import PretrainedTextEmbedder, TextEmbeddingConfig
 
 
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:

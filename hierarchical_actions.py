@@ -33,7 +33,7 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 
-from policy_network import TransformerConfig, PositionalEncoding, MultiHeadAttention
+from src.models.policy_network import TransformerConfig, PositionalEncoding, MultiHeadAttention
 
 
 # =============================================================================

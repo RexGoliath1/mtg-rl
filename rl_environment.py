@@ -123,7 +123,7 @@ class CardState:
         """Get or create shared embedder instance."""
         if cls._embedder is None:
             try:
-                from card_embeddings import CardEmbedding
+                from src.models.card_embeddings import CardEmbedding
                 cls._embedder = CardEmbedding(use_text_embeddings=False)
             except ImportError:
                 cls._embedder = None

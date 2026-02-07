@@ -33,7 +33,7 @@ import math
 
 import torch
 
-from policy_network import MTGPolicyNetwork, TransformerConfig, StatePreprocessor
+from src.models.policy_network import MTGPolicyNetwork, TransformerConfig, StatePreprocessor
 from ppo_agent import PPOAgent, PPOConfig
 from daemon_environment import DaemonMTGEnvironment
 

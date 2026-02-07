@@ -12,9 +12,9 @@ Quick demonstration of the complete MTG RL pipeline:
 import numpy as np
 import torch
 
-from card_embeddings import CardEmbedding
+from src.models.card_embeddings import CardEmbedding
 from evaluate import GameResult, EvalMetrics
-from policy_network import MTGPolicyNetwork, TransformerConfig
+from src.models.policy_network import MTGPolicyNetwork, TransformerConfig
 from ppo_agent import PPOAgent, PPOConfig
 print("="*60)
 print("MTG Reinforcement Learning Demo")

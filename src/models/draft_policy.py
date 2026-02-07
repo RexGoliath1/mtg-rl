@@ -25,7 +25,7 @@ import torch.nn.functional as F
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
-from shared_card_encoder import SharedCardEncoder, CardEncoderConfig, CardFeatureExtractor
+from src.models.shared_card_encoder import SharedCardEncoder, CardEncoderConfig, CardFeatureExtractor
 
 
 @dataclass

@@ -33,7 +33,7 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
 
-from hybrid_card_encoder import HybridCardEncoder, HybridEncoderConfig, StructuralFeatureExtractor
+from src.models.hybrid_card_encoder import HybridCardEncoder, HybridEncoderConfig, StructuralFeatureExtractor
 
 
 def upload_to_s3(local_path: str, bucket: str, s3_key: str) -> bool:

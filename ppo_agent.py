@@ -22,7 +22,7 @@ from dataclasses import dataclass
 import time
 from collections import deque
 
-from policy_network import MTGPolicyNetwork, TransformerConfig, StatePreprocessor
+from src.models.policy_network import MTGPolicyNetwork, TransformerConfig, StatePreprocessor
 
 
 # =============================================================================

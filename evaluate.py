@@ -18,7 +18,7 @@ import statistics
 import torch
 
 from rl_environment import MTGEnvironment, GameState
-from policy_network import TransformerConfig
+from src.models.policy_network import TransformerConfig
 from ppo_agent import PPOAgent, PPOConfig
 
 

@@ -1,7 +1,7 @@
 """Tests for card encoders."""
 import torch
-from shared_card_encoder import SharedCardEncoder, CardEncoderConfig, CardFeatureExtractor
-from hybrid_card_encoder import (
+from src.models.shared_card_encoder import SharedCardEncoder, CardEncoderConfig, CardFeatureExtractor
+from src.models.hybrid_card_encoder import (
     HybridCardEncoder,
     HybridEncoderConfig,
     StructuralFeatureExtractor,

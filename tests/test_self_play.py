@@ -31,7 +31,7 @@ from self_play import (
     EloTracker, ModelPool, ModelCheckpoint,
     SelfPlayConfig, SelfPlayTrainer
 )
-from policy_network import MTGPolicyNetwork, TransformerConfig
+from src.models.policy_network import MTGPolicyNetwork, TransformerConfig
 from ppo_agent import PPOConfig
 from rl_environment import GameState, CardState
 

@@ -73,7 +73,7 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 # Import text embedding components
-from text_embeddings import (
+from src.models.text_embeddings import (
     PretrainedTextEmbedder,
     TextEmbeddingConfig,
 )
