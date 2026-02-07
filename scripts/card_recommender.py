@@ -102,6 +102,31 @@ CTM_IDX = Mechanic.CREATURE_TYPE_MATTERS.value if Mechanic.CREATURE_TYPE_MATTERS
 # Pre-compute mechanics counts per card (used for filtering)
 MECH_COUNTS = MECHANICS.sum(axis=1)
 
+# EDHREC rank quality signal (lower rank = more popular)
+EDHREC_RANK = np.full(len(CARD_INDEX), 999999, dtype=np.float64)
+if METADATA:
+    for name, idx in CARD_INDEX.items():
+        rank = METADATA.get(name, {}).get("edhrec_rank")
+        if rank is not None:
+            EDHREC_RANK[idx] = rank
+    n_ranked = int((EDHREC_RANK < 999999).sum())
+    print(f"EDHREC ranks loaded: {n_ranked:,} cards ranked")
+
+# Quality boost: mild multiplier based on EDHREC rank (log scale)
+# Sol Ring (rank ~1) gets ~1.05x, unranked cards get 1.0x
+QUALITY_BOOST = 1.0 + 0.1 * np.clip(1.0 - np.log1p(EDHREC_RANK) / 12.0, 0, 0.5)
+
+# Graveyard-theme mechanic indices (for theme relevance filtering)
+_GY_MECH_NAMES = {
+    "MILL", "REANIMATE", "REGROWTH", "CAST_FROM_GRAVEYARD", "FROM_GRAVEYARD",
+    "TO_GRAVEYARD", "FLASHBACK", "ESCAPE", "GRAVEYARD_SHUFFLE", "DREDGE",
+    "THRESHOLD", "DELIRIUM",
+}
+GRAVEYARD_THEME_INDICES: set[int] = set()
+for m in Mechanic:
+    if m.name in _GY_MECH_NAMES and m.value < DB_VOCAB_SIZE:
+        GRAVEYARD_THEME_INDICES.add(m.value)
+
 # Color name mapping
 COLOR_NAMES = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"}
 COLOR_HEX = {"W": "#f9faf4", "U": "#0e68ab", "B": "#150b00", "R": "#d3202a", "G": "#00733e"}
@@ -476,6 +501,17 @@ def recommend_by_themes(
 
         # Tribal and land penalties
         _apply_tribal_and_land_penalties(scores, analysis.get("creature_types", set()))
+
+        # Quality boost (EDHREC popularity)
+        scores *= QUALITY_BOOST
+
+        # Graveyard theme relevance: penalize graveyard-matters cards in non-graveyard themes
+        theme_gy_density = sum(centroid[i] for i in GRAVEYARD_THEME_INDICES) / (centroid.sum() + 1e-8)
+        if theme_gy_density < 0.1:
+            for idx in range(len(MECHANICS)):
+                card_gy_count = sum(1 for m in GRAVEYARD_THEME_INDICES if MECHANICS[idx, m])
+                if card_gy_count >= 3:
+                    scores[idx] *= 0.3
 
         # Apply masks
         scores[~eligible] = 0
@@ -1118,6 +1154,7 @@ Example:
             scores = dots / (card_norms * centroid_norm + 1e-8)
             scores[MECH_COUNTS < 3] *= 0.3
             _apply_tribal_and_land_penalties(scores, analysis.get("creature_types", set()))
+            scores *= QUALITY_BOOST
             scores[~eligible] = 0
 
             top_idx = np.argsort(-scores)[:9]
