@@ -543,6 +543,42 @@ def recommend_alternatives(
     return recs
 
 
+def find_cuts(analysis: dict, limit: int = 5) -> list[dict]:
+    """Find deck cards that are least synergistic with the rest of the deck.
+
+    For each card, compute cosine similarity to the centroid of all OTHER deck
+    cards. Cards with lowest similarity are the weakest links.
+    """
+    resolved = analysis["resolved"]
+    vecs = analysis["vecs"]
+    if len(resolved) < 3:
+        return []
+
+    vecs_float = vecs.astype(np.float64)
+    results = []
+
+    for i, name in enumerate(resolved):
+        # Skip basic lands
+        if name in BASIC_LANDS:
+            continue
+        # Centroid of all other cards
+        other_vecs = np.delete(vecs_float, i, axis=0)
+        centroid = other_vecs.mean(axis=0)
+        centroid_norm = np.sqrt((centroid ** 2).sum())
+        card_norm = np.sqrt((vecs_float[i] ** 2).sum())
+        if centroid_norm < 1e-8 or card_norm < 1e-8:
+            continue
+        sim = float(np.dot(vecs_float[i], centroid) / (card_norm * centroid_norm))
+        results.append({
+            "name": name,
+            "score": sim,
+            "mechanics": get_mechanics_for_idx(CARD_INDEX[name]),
+        })
+
+    results.sort(key=lambda x: x["score"])
+    return results[:limit]
+
+
 # ---------------------------------------------------------------------------
 # HTML
 # ---------------------------------------------------------------------------
@@ -833,7 +869,11 @@ def _card_html(card_info: dict, rank: int, score: float, mechanics: list[str],
     scryfall_uri = card_info.get("scryfall_uri", "")
 
     if image_uri:
-        img_html = f'<img class="card-img" src="{image_uri}" alt="{_html_escape(name)}" loading="lazy">'
+        img = f'<img class="card-img" src="{image_uri}" alt="{_html_escape(name)}" loading="lazy">'
+        if scryfall_uri:
+            img_html = f'<a href="{scryfall_uri}" target="_blank" style="cursor:pointer">{img}</a>'
+        else:
+            img_html = img
     else:
         img_html = '<div class="card-img-placeholder">No image</div>'
 
@@ -906,7 +946,8 @@ class RecommenderHandler(BaseHTTPRequestHandler):
             params = parse_qs(body)
             decklist = params.get("decklist", [""])[0]
             mode = params.get("mode", ["themes"])[0]
-            self._serve_results(decklist, mode)
+            cards_per_theme = int(params.get("cards_per_theme", ["3"])[0])
+            self._serve_results(decklist, mode, cards_per_theme=cards_per_theme)
         elif self.path == "/api/recommend":
             try:
                 data = json.loads(body)
@@ -992,7 +1033,7 @@ Example:
         </script>"""
         self._html_response(body)
 
-    def _serve_results(self, decklist: str, mode: str):
+    def _serve_results(self, decklist: str, mode: str, cards_per_theme: int = 3):
         t0 = time.time()
 
         parsed = parse_decklist(decklist)
@@ -1056,7 +1097,7 @@ Example:
 
         # Get recommendations based on mode
         if mode == "themes":
-            themed_recs = recommend_by_themes(analysis, cards_per_theme=3)
+            themed_recs = recommend_by_themes(analysis, cards_per_theme=cards_per_theme)
             all_rec_names = [r["name"] for tr in themed_recs for r in tr["recommendations"]]
         elif mode == "alternatives":
             alt_recs = recommend_alternatives(
@@ -1149,6 +1190,42 @@ Example:
           <div>Time: <span>{elapsed:.1f}s</span></div>
         </div>"""
 
+        # View More button (theme mode only)
+        view_more_html = ""
+        if mode == "themes":
+            next_cpt = cards_per_theme + 3
+            escaped_decklist = _html_escape(decklist)
+            view_more_html = f"""
+            <form method="POST" style="text-align:center;margin:20px 0">
+              <input type="hidden" name="decklist" value="{escaped_decklist}">
+              <input type="hidden" name="mode" value="themes">
+              <input type="hidden" name="cards_per_theme" value="{next_cpt}">
+              <button type="submit" class="submit-btn" style="background:#0f3460">View More ({next_cpt} per theme)</button>
+            </form>"""
+
+        # Cards to Cut section
+        cuts_html = ""
+        cuts = find_cuts(analysis, limit=5)
+        if cuts:
+            cut_names = [c["name"] for c in cuts]
+            print(f"  Fetching {len(cut_names)} cut candidate images from Scryfall...")
+            cut_infos = batch_scryfall_lookup(cut_names)
+            cut_infos_map = {info["name"]: info for info in cut_infos}
+
+            cuts_cards_html = ""
+            for i, cut in enumerate(cuts):
+                info = cut_infos_map.get(cut["name"], {"name": cut["name"]})
+                cuts_cards_html += _card_html(info, i + 1, cut["score"], cut["mechanics"])
+
+            cuts_html = f"""
+            <div class="theme-section" style="margin-top:32px">
+              <div class="theme-header">
+                <div class="theme-label" style="color:var(--bad)">Cards to Consider Cutting</div>
+                <div class="theme-cards-count">least synergistic with deck</div>
+              </div>
+              <div class="grid">{cuts_cards_html}</div>
+            </div>"""
+
         body = f"""
         <header>
           <h1>Recommendations</h1>
@@ -1159,6 +1236,8 @@ Example:
           {warning_html}
           {analysis_html}
           {recs_html}
+          {view_more_html}
+          {cuts_html}
           <a class="back-link" href="/">&larr; Try another decklist</a>
         </div>"""
 
