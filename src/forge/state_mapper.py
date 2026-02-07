@@ -13,6 +13,7 @@ from typing import Optional
 from dataclasses import dataclass, field
 
 from src.forge.forge_client import (
+    ActionOption,
     Decision,
     GameState,
     PlayerState,
