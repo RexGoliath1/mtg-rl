@@ -20,11 +20,16 @@ Usage:
 
 import argparse
 import json
+import os
+import sys
 import signal
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
+
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import requests
 import torch

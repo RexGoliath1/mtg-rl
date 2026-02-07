@@ -19,12 +19,17 @@ Usage:
 
 import argparse
 import json
+import os
+import sys
 import gzip
 import csv
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 import torch

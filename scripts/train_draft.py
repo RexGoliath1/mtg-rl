@@ -11,9 +11,14 @@ Usage:
 """
 
 import argparse
+import os
+import sys
 import time
 from pathlib import Path
 from typing import Dict, Optional
+
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import torch
 import torch.nn as nn

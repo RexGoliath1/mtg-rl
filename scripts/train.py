@@ -38,6 +38,7 @@ Usage:
 import argparse
 import json
 import os
+import sys
 import random
 import time
 import warnings
@@ -45,6 +46,9 @@ from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple, Dict
+
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 import torch

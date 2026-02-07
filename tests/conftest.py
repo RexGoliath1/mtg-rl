@@ -1,5 +1,12 @@
 """Shared test fixtures."""
+import os
+import sys
 import pytest
+
+# Add project root and scripts/ to path so tests can import from both
+_project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _project_root)
+sys.path.insert(0, os.path.join(_project_root, "scripts"))
 
 try:
     import torch

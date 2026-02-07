@@ -27,7 +27,7 @@ import torch
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from self_play import (
+from src.agents.self_play import (
     EloTracker, ModelPool, ModelCheckpoint,
     SelfPlayConfig, SelfPlayTrainer
 )
