@@ -622,6 +622,40 @@ def find_cuts(analysis: dict, limit: int = 5) -> list[dict]:
     return results[:limit]
 
 
+def map_cuts_to_recs(cuts: list[dict], recs_flat: list[dict]) -> list[dict]:
+    """For each recommendation, find the best cut candidate to replace.
+
+    Match by highest shared non-zero mechanics count (the rec "replaces"
+    the cut with the most mechanical overlap).
+    """
+    if not cuts or not recs_flat:
+        return recs_flat
+
+    cut_vecs = {}
+    for c in cuts:
+        if c["name"] in CARD_INDEX:
+            cut_vecs[c["name"]] = MECHANICS[CARD_INDEX[c["name"]]]
+
+    if not cut_vecs:
+        return recs_flat
+
+    for rec in recs_flat:
+        if rec["name"] not in CARD_INDEX:
+            continue
+        rec_vec = MECHANICS[CARD_INDEX[rec["name"]]]
+        best_cut = None
+        best_overlap = -1
+        for cut_name, cut_vec in cut_vecs.items():
+            overlap = int((rec_vec & cut_vec).sum())
+            if overlap > best_overlap:
+                best_overlap = overlap
+                best_cut = cut_name
+        if best_cut and best_overlap > 0:
+            rec["suggested_cut"] = best_cut
+
+    return recs_flat
+
+
 # ---------------------------------------------------------------------------
 # HTML
 # ---------------------------------------------------------------------------
@@ -821,6 +855,10 @@ HTML_PAGE = r"""<!DOCTYPE html>
     font-size: 0.6rem; color: var(--text-muted); margin-bottom: 3px;
     font-style: italic;
   }
+  .cut-suggestion {
+    font-size: 0.65rem; color: var(--bad); margin-top: 4px;
+    font-style: italic; opacity: 0.85;
+  }
 
   .rank-badge {
     position: absolute; top: -4px; left: -4px;
@@ -902,7 +940,8 @@ def _mech_bars_html(profile: dict, max_count: int | None = None) -> str:
 
 
 def _card_html(card_info: dict, rank: int, score: float, mechanics: list[str],
-               shared: list[str] | None = None) -> str:
+               shared: list[str] | None = None,
+               suggested_cut: str | None = None) -> str:
     """Render a single recommendation card."""
     name = card_info.get("name", "Unknown")
     image_uri = card_info.get("image_uri", "")
@@ -961,6 +1000,7 @@ def _card_html(card_info: dict, rank: int, score: float, mechanics: list[str],
         </div>
         {shared_label}
         <div class="mechanics-list">{all_tags}</div>
+        {'<div class="cut-suggestion">Replaces: ' + _html_escape(suggested_cut) + '</div>' if suggested_cut else ''}
       </div>
     </div>"""
 
@@ -1176,6 +1216,18 @@ Example:
                 })
             all_rec_names = [r["name"] for r in centroid_recs]
 
+        # Compute cuts early so we can map them to recommendations
+        cuts = find_cuts(analysis, limit=5)
+
+        # Map cuts to recommendations (add suggested_cut to each rec)
+        if mode == "themes":
+            all_recs_flat = [r for tr in themed_recs for r in tr["recommendations"]]
+        elif mode == "alternatives":
+            all_recs_flat = alt_recs
+        else:
+            all_recs_flat = centroid_recs
+        map_cuts_to_recs(cuts, all_recs_flat)
+
         # Fetch Scryfall images
         print(f"  Fetching {len(all_rec_names)} card images from Scryfall...")
         card_infos_map = {}
@@ -1207,20 +1259,23 @@ Example:
                 for rec in theme_result["recommendations"]:
                     info = card_infos_map.get(rec["name"], {"name": rec["name"]})
                     recs_html += _card_html(info, rank, rec["score"], rec["mechanics"],
-                                            shared=rec.get("shared_with_theme"))
+                                            shared=rec.get("shared_with_theme"),
+                                            suggested_cut=rec.get("suggested_cut"))
                     rank += 1
                 recs_html += "</div></div>"
         elif mode == "alternatives":
             recs_html = '<div class="grid">'
             for i, rec in enumerate(alt_recs):
                 info = card_infos_map.get(rec["name"], {"name": rec["name"]})
-                recs_html += _card_html(info, i + 1, rec["score"], rec["mechanics"])
+                recs_html += _card_html(info, i + 1, rec["score"], rec["mechanics"],
+                                        suggested_cut=rec.get("suggested_cut"))
             recs_html += "</div>"
         else:
             recs_html = '<div class="grid">'
             for i, rec in enumerate(centroid_recs):
                 info = card_infos_map.get(rec["name"], {"name": rec["name"]})
-                recs_html += _card_html(info, i + 1, rec["score"], rec["mechanics"])
+                recs_html += _card_html(info, i + 1, rec["score"], rec["mechanics"],
+                                        suggested_cut=rec.get("suggested_cut"))
             recs_html += "</div>"
 
         mode_names = {"themes": "Theme-Based", "centroid": "Global Similar", "alternatives": "Alternatives"}
@@ -1247,9 +1302,8 @@ Example:
               <button type="submit" class="submit-btn" style="background:#0f3460">View More ({next_cpt} per theme)</button>
             </form>"""
 
-        # Cards to Cut section
+        # Cards to Cut section (cuts already computed above for mapping)
         cuts_html = ""
-        cuts = find_cuts(analysis, limit=5)
         if cuts:
             cut_names = [c["name"] for c in cuts]
             print(f"  Fetching {len(cut_names)} cut candidate images from Scryfall...")
