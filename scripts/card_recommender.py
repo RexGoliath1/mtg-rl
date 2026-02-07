@@ -1053,7 +1053,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
   /* Mana curve histogram */
   .curve-chart {
-    display: flex; align-items: flex-end; gap: 3px;
+    display: flex; align-items: stretch; gap: 3px;
     height: 120px; padding: 4px 0;
     border-bottom: 1px solid rgba(255,255,255,0.15);
   }
@@ -1067,7 +1067,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
   .curve-bar {
     width: 100%; border-radius: 3px 3px 0 0;
     background: var(--accent); transition: height 0.3s;
-    min-height: 0;
+    min-height: 2px;
   }
   .curve-bar.boosted { background: var(--good); }
   .curve-bar.penalized { background: var(--bad); opacity: 0.7; }
