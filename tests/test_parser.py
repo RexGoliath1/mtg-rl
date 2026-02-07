@@ -3411,3 +3411,71 @@ class TestQuizRound2DesignDecisions:
             "Sorcery",
         )
         assert Mechanic.POWER_TOUGHNESS_CONDITION in result.mechanics
+
+
+class TestQuizRound3Fixes:
+    """Fixes from quiz round 3 (quiz_2026-02-06_185726.json)."""
+
+    # --- GAIN_CONTROL false positive ---
+
+    def test_waterspout_warden_no_gain_control(self):
+        """'enters under your control' should NOT fire GAIN_CONTROL."""
+        result = parse_oracle_text(
+            "Whenever a creature with flying enters under your control, "
+            "you gain 1 life.",
+            "Creature",
+        )
+        assert Mechanic.GAIN_CONTROL not in result.mechanics
+        assert Mechanic.GAIN_LIFE in result.mechanics
+        assert Mechanic.ETB_TRIGGER in result.mechanics
+
+    def test_theft_still_fires_gain_control(self):
+        """'return under your control' should still fire GAIN_CONTROL."""
+        result = parse_oracle_text(
+            "Put target creature card from a graveyard onto the "
+            "battlefield under your control.",
+            "Sorcery",
+        )
+        assert Mechanic.GAIN_CONTROL in result.mechanics
+
+    # --- CREATE_TOKEN non-greedy fix ---
+
+    def test_token_count_x(self):
+        """'create X tokens' should parse token_count='x', not grab digits from other text."""
+        result = parse_oracle_text(
+            "Create X 1/1 white Soldier creature tokens.",
+            "Sorcery",
+        )
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+        assert result.parameters.get("token_count") == "x"
+
+    def test_token_greedy_no_bleed(self):
+        """Token pattern shouldn't span across sentences to grab wrong counts."""
+        result = parse_oracle_text(
+            "Whenever you gain life, create a 1/1 white Cat creature "
+            "token. You gain 1 life.",
+            "Enchantment",
+        )
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+        assert result.parameters.get("token_count") == 1
+
+    # --- DRAW "x cards" + exhaust ---
+
+    def test_draw_x_cards(self):
+        """'draw X cards' should fire DRAW with draw_count='x'."""
+        result = parse_oracle_text(
+            "Draw X cards.",
+            "Sorcery",
+        )
+        assert Mechanic.DRAW in result.mechanics
+        assert result.parameters.get("draw_count") == "x"
+
+    def test_exhaust_once_per_turn(self):
+        """Exhaust keyword should fire ONCE_PER_TURN and ACTIVATED_ABILITY."""
+        result = parse_oracle_text(
+            "Exhaust — Draw a card.",
+            "Creature",
+        )
+        assert Mechanic.ONCE_PER_TURN in result.mechanics
+        assert Mechanic.ACTIVATED_ABILITY in result.mechanics
+        assert Mechanic.DRAW in result.mechanics

@@ -262,7 +262,7 @@ PATTERNS = [
     (r"you lose life equal to", [Mechanic.LOSE_LIFE]),
 
     # Creation patterns
-    (r"create(s)? (a|\d+|an?|two|three|four|five|x) .*(token|treasure|food|clue|blood)", [Mechanic.CREATE_TOKEN]),
+    (r"create(s)? (a|\d+|an?|two|three|four|five|x) .*?(token|treasure|food|clue|blood)", [Mechanic.CREATE_TOKEN]),
     (r"create(s)?.+cop(y|ies) of", [Mechanic.CREATE_TOKEN_COPY]),
     (r"create(s)?.+treasure token", [Mechanic.CREATE_TOKEN, Mechanic.CREATE_TREASURE]),
     (r"create(s)?.+food token", [Mechanic.CREATE_TOKEN, Mechanic.CREATE_FOOD]),
@@ -271,8 +271,8 @@ PATTERNS = [
     (r"\binvestigate\b", [Mechanic.CREATE_CLUE]),
 
     # Card advantage
-    (r"draw(s)? (a card|two cards|three cards|\d+ cards?)", [Mechanic.DRAW]),
-    (r"may draw (a card|two cards|three cards|\d+ cards?)", [Mechanic.DRAW_OPTIONAL]),
+    (r"draw(s)? (a card|two cards|three cards|\d+ cards?|x cards?)", [Mechanic.DRAW]),
+    (r"may draw (a card|two cards|three cards|\d+ cards?|x cards?)", [Mechanic.DRAW_OPTIONAL]),
     (r"scry (\d+|x)", [Mechanic.SCRY]),
     (r"surveil (\d+|x)", [Mechanic.SURVEIL]),
     (r"look at the top", [Mechanic.LOOK_AT_TOP]),
@@ -356,7 +356,7 @@ PATTERNS = [
     (r"gain control of", [Mechanic.GAIN_CONTROL]),
     (r"gains? control of", [Mechanic.GAIN_CONTROL]),
     (r"exchange control", [Mechanic.GAIN_CONTROL]),
-    (r"under your control", [Mechanic.GAIN_CONTROL]),  # "return under your control" = theft
+    (r"(?:return|put).{0,80}under your control", [Mechanic.GAIN_CONTROL]),  # theft, not "entered under your control"
     (r"crew\s+\d+", [Mechanic.CREW]),
     (r"exile the top.+you may (play|cast)", [Mechanic.IMPULSE_DRAW]),
     (r"exile.+from the top.+you may (play|cast)", [Mechanic.IMPULSE_DRAW]),
@@ -449,6 +449,8 @@ PATTERNS = [
     # Once per turn restriction
     (r"this ability triggers only once each turn", [Mechanic.ONCE_PER_TURN]),
     (r"activate .{0,20}only once each turn", [Mechanic.ONCE_PER_TURN]),
+    (r"activate .{0,30}only once\b", [Mechanic.ONCE_PER_TURN]),  # exhaust reminder text
+    (r"\bexhaust\b.{0,5}—", [Mechanic.ONCE_PER_TURN, Mechanic.ACTIVATED_ABILITY]),  # exhaust keyword ability
 
     # Pay life as cost/condition
     (r"pay (\d+|x) life", [Mechanic.PAY_LIFE]),
