@@ -5516,3 +5516,242 @@ class TestForcedCombat:
             "Enchantment",
         )
         assert Mechanic.ATTACKS_EACH_COMBAT in result.mechanics
+
+
+# =============================================================================
+# QUICK-WIN PATTERN TESTS
+# =============================================================================
+
+class TestSacrificeTrigger:
+    """Test SACRIFICE_TRIGGER pattern detection."""
+
+    def test_whenever_you_sacrifice(self):
+        """Korvold — 'whenever you sacrifice a permanent'."""
+        result = parse_oracle_text(
+            "Flying\nWhenever you sacrifice a permanent, draw a card and put a +1/+1 counter on this creature.",
+            "Creature — Dragon Noble",
+        )
+        assert Mechanic.SACRIFICE_TRIGGER in result.mechanics
+
+    def test_when_you_sacrifice(self):
+        """Generic — 'when you sacrifice a creature'."""
+        result = parse_oracle_text(
+            "When you sacrifice a creature, each opponent loses 1 life.",
+            "Enchantment",
+        )
+        assert Mechanic.SACRIFICE_TRIGGER in result.mechanics
+
+    def test_whenever_a_creature_is_sacrificed(self):
+        """Butcher of Malakir — 'whenever a creature you control is sacrificed'."""
+        result = parse_oracle_text(
+            "Whenever this creature or another creature you control dies or is sacrificed, each opponent sacrifices a creature.",
+            "Creature — Vampire Warrior",
+        )
+        assert Mechanic.SACRIFICE_TRIGGER in result.mechanics
+
+
+class TestTheRing:
+    """Test THE_RING pattern detection."""
+
+    def test_ring_tempts_you(self):
+        """Call of the Ring — 'the ring tempts you'."""
+        result = parse_oracle_text(
+            "At the beginning of your upkeep, the ring tempts you. You lose 1 life.",
+            "Enchantment",
+        )
+        assert Mechanic.THE_RING in result.mechanics
+
+    def test_ring_tempts_trigger(self):
+        """Frodo — 'whenever the ring tempts you'."""
+        result = parse_oracle_text(
+            "Whenever the ring tempts you, if this creature is your Ring-bearer, it gains lifelink until end of turn.",
+            "Creature — Halfling Scout",
+        )
+        assert Mechanic.THE_RING in result.mechanics
+
+
+class TestVoting:
+    """Test VOTING pattern detection."""
+
+    def test_vote_pattern(self):
+        """Expropriate — 'each player votes'."""
+        result = parse_oracle_text(
+            "Council's dilemma — Starting with you, each player votes for time or money. For each time vote, take an extra turn. For each money vote, choose a permanent owned by the voter and gain control of it.",
+            "Sorcery",
+        )
+        assert Mechanic.VOTING in result.mechanics
+        assert Mechanic.COUNCIL_DILEMMA in result.mechanics
+
+    def test_will_of_the_council(self):
+        """Plea for Power — 'will of the council'."""
+        result = parse_oracle_text(
+            "Will of the council — Starting with you, each player votes for time or knowledge. If time gets more votes, take an extra turn. If knowledge gets more votes or the vote is tied, draw three cards.",
+            "Sorcery",
+        )
+        assert Mechanic.VOTING in result.mechanics
+        assert Mechanic.WILL_OF_COUNCIL in result.mechanics
+
+
+class TestTimeCounter:
+    """Test TIME_COUNTER pattern detection."""
+
+    def test_time_counter_suspend(self):
+        """Ancestral Vision — 'remove a time counter'."""
+        result = parse_oracle_text(
+            "Suspend 4 — {U}\nTarget player draws three cards.",
+            "Sorcery",
+        )
+        assert Mechanic.SUSPEND in result.mechanics
+
+    def test_time_counter_text(self):
+        """Generic — 'put a time counter on it'."""
+        result = parse_oracle_text(
+            "Put a time counter on target permanent.",
+            "Instant",
+        )
+        assert Mechanic.TIME_COUNTER in result.mechanics
+
+
+class TestTargetUpToX:
+    """Test TARGET_UP_TO_X pattern detection."""
+
+    def test_up_to_one_target(self):
+        """Teferi — 'up to one target artifact'."""
+        result = parse_oracle_text(
+            "Return up to one target artifact, creature, or enchantment to its owner's hand.",
+            "Instant",
+        )
+        assert Mechanic.TARGET_UP_TO_X in result.mechanics
+
+    def test_up_to_two_targets(self):
+        """Generic — 'up to two target creatures'."""
+        result = parse_oracle_text(
+            "Up to two target creatures each get +2/+2 until end of turn.",
+            "Instant",
+        )
+        assert Mechanic.TARGET_UP_TO_X in result.mechanics
+
+    def test_up_to_three_targets(self):
+        """Generic — 'destroy up to three target artifacts'."""
+        result = parse_oracle_text(
+            "Destroy up to three target artifacts.",
+            "Sorcery",
+        )
+        assert Mechanic.TARGET_UP_TO_X in result.mechanics
+
+
+class TestTutorToTop:
+    """Test TUTOR_TO_TOP pattern detection."""
+
+    def test_mystical_tutor(self):
+        """Mystical Tutor — search and put on top."""
+        result = parse_oracle_text(
+            "Search your library for an instant or sorcery card, reveal it, then shuffle and put that card on top.",
+            "Instant",
+        )
+        assert Mechanic.TUTOR_TO_TOP in result.mechanics
+
+    def test_worldly_tutor(self):
+        """Worldly Tutor — search library put on top."""
+        result = parse_oracle_text(
+            "Search your library for a creature card, reveal it, put it on top of your library, then shuffle.",
+            "Instant",
+        )
+        assert Mechanic.TUTOR_TO_TOP in result.mechanics
+
+
+class TestPopulate:
+    """Test POPULATE keyword detection via KEYWORD_ABILITIES."""
+
+    def test_populate_keyword(self):
+        """Trostani — 'populate' keyword detected."""
+        result = parse_oracle_text(
+            "Whenever another creature enters the battlefield under your control, you gain life equal to that creature's toughness.\n{1}{G}{W}, {T}: Populate.",
+            "Creature — Dryad",
+        )
+        assert Mechanic.POPULATE in result.mechanics
+        assert Mechanic.CREATE_TOKEN in result.mechanics  # from KEYWORD_IMPLICATIONS
+
+    def test_populate_in_text(self):
+        """Rootborn Defenses — 'populate' in spell text."""
+        result = parse_oracle_text(
+            "Creatures you control gain indestructible until end of turn. Populate.",
+            "Instant",
+        )
+        assert Mechanic.POPULATE in result.mechanics
+
+
+class TestDetain:
+    """Test DETAIN keyword detection via KEYWORD_ABILITIES."""
+
+    def test_detain_keyword(self):
+        """Archon of the Triumvirate — detain on attack."""
+        result = parse_oracle_text(
+            "Flying\nWhenever this creature attacks, detain up to two target nonland permanents your opponents control.",
+            "Creature — Archon",
+        )
+        assert Mechanic.DETAIN in result.mechanics
+        assert Mechanic.CANT_ATTACK in result.mechanics  # from KEYWORD_IMPLICATIONS
+        assert Mechanic.CANT_BLOCK in result.mechanics    # from KEYWORD_IMPLICATIONS
+
+
+class TestPartnerWith:
+    """Test PARTNER_WITH keyword detection."""
+
+    def test_partner_with_keyword(self):
+        """Pir — 'partner with Toothy'."""
+        result = parse_oracle_text(
+            "Partner with Toothy, Imaginary Friend\nIf one or more counters would be put on a permanent your team controls, that many plus one of each of those kinds of counters are put on that permanent instead.",
+            "Creature — Human",
+        )
+        assert Mechanic.PARTNER_WITH in result.mechanics
+        assert Mechanic.TUTOR_TO_HAND in result.mechanics  # from KEYWORD_IMPLICATIONS
+
+
+class TestEminence:
+    """Test EMINENCE keyword detection."""
+
+    def test_eminence_keyword(self):
+        """Edgar Markov — eminence ability."""
+        result = parse_oracle_text(
+            "Eminence — Whenever you cast another Vampire spell, if this creature is in the command zone or on the battlefield, create a 1/1 black Vampire creature token.",
+            "Creature — Vampire Knight",
+        )
+        assert Mechanic.EMINENCE in result.mechanics
+
+
+class TestXCost:
+    """Test X_COST mechanic fired from mana cost {X}."""
+
+    def test_fireball_x_cost(self):
+        """Fireball — {X}{R} has X_COST."""
+        card = make_card(
+            "Fireball", "{X}{R}", 1,
+            "Sorcery",
+            "This spell costs {1} more to cast for each target beyond the first.\nFireball deals X damage divided evenly, rounded down, among any number of targets.",
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.X_COST], "Fireball")
+        assert enc.parameters.get("x_cost_count") == 1
+
+    def test_walking_ballista_x_cost(self):
+        """Walking Ballista — {X}{X} has X_COST."""
+        card = make_card(
+            "Walking Ballista", "{X}{X}", 0,
+            "Artifact Creature — Construct",
+            "Walking Ballista enters the battlefield with X +1/+1 counters on it.\n{4}: Put a +1/+1 counter on Walking Ballista.\nRemove a +1/+1 counter from Walking Ballista: It deals 1 damage to any target.",
+            power=0, toughness=0,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [Mechanic.X_COST], "Walking Ballista")
+        assert enc.parameters.get("x_cost_count") == 2
+
+    def test_no_x_cost_normal_spell(self):
+        """Lightning Bolt — no {X}, no X_COST."""
+        card = make_card(
+            "Lightning Bolt", "{R}", 1,
+            "Instant",
+            "Lightning Bolt deals 3 damage to any target.",
+        )
+        enc = parse_card(card)
+        assert_lacks_mechanics(enc, [Mechanic.X_COST], "Lightning Bolt")

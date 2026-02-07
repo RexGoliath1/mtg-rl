@@ -157,6 +157,9 @@ KEYWORD_ABILITIES = {
     "goad": Mechanic.GOAD,
     "monarch": Mechanic.MONARCH,
     "initiative": Mechanic.INITIATIVE,
+    "populate": Mechanic.POPULATE,
+    "detain": Mechanic.DETAIN,
+    "eminence": Mechanic.EMINENCE,
 
     # Dinosaur/Ixalan
     "enrage": Mechanic.DAMAGE_RECEIVED_TRIGGER,
@@ -200,6 +203,7 @@ KEYWORD_ABILITIES = {
 
     # Partner/companion (missing)
     "companion": Mechanic.COMPANION,
+    "partner with": Mechanic.PARTNER_WITH,
     "partner": Mechanic.PARTNER,
 
     # Aura/equipment keywords (missing)
@@ -373,6 +377,9 @@ KEYWORD_IMPLICATIONS = {
     "converge": [Mechanic.MANA_FIXING],
     "goad": [Mechanic.ATTACKS_EACH_COMBAT],
     "provoke": [Mechanic.MUST_BE_BLOCKED],
+    "populate": [Mechanic.CREATE_TOKEN],
+    "detain": [Mechanic.CANT_ATTACK, Mechanic.CANT_BLOCK],
+    "partner with": [Mechanic.TUTOR_TO_HAND],
 }
 
 
@@ -1027,6 +1034,32 @@ PATTERNS = [
     (r"put\s+it\s+onto\s+the\s+battlefield\s+tapped", [Mechanic.TO_BATTLEFIELD_TAPPED]),
     (r"then\s+shuffle", []),
 
+    # =========================================================================
+    # QUICK-WIN PATTERN WIRING (zero-hit enums)
+    # =========================================================================
+
+    # Sacrifice trigger — "whenever you sacrifice" / "when you sacrifice" / "is sacrificed"
+    (r"when(?:ever)? .{0,30}sacrifice", [Mechanic.SACRIFICE_TRIGGER]),
+    (r"is sacrificed", [Mechanic.SACRIFICE_TRIGGER]),
+
+    # The Ring — "the ring tempts you"
+    (r"the ring tempts you", [Mechanic.THE_RING]),
+
+    # Voting / council mechanics
+    (r"\bvotes?\b", [Mechanic.VOTING]),
+    (r"council's dilemma", [Mechanic.VOTING, Mechanic.COUNCIL_DILEMMA]),
+    (r"will of the council", [Mechanic.VOTING, Mechanic.WILL_OF_COUNCIL]),
+
+    # Time counters — suspend/vanishing use them
+    (r"time counter", [Mechanic.TIME_COUNTER]),
+
+    # Target up to X — "up to N target"
+    (r"up to (\w+) target", [Mechanic.TARGET_UP_TO_X]),
+
+    # Tutor to top of library — "search your library...put...on top"
+    (r"search your library.{0,80}put.{0,40}on top", [Mechanic.TUTOR_TO_TOP]),
+    (r"put .{0,20}on top of (your|their) library.{0,20}shuffle", [Mechanic.TUTOR_TO_TOP]),
+
     # Common text fragments
     (r"at\s+the\s+beginning\s+of\s+(your|the)\s+(first|second|next)\s+main\s+phase", []),
     (r"return\s+(?!.*from .*(graveyard|exile)).+?\s+to\s+(its|their)\s+owner's\s+hand", [Mechanic.BOUNCE_TO_HAND]),
@@ -1518,8 +1551,10 @@ def parse_card(card_data: Dict[str, Any]) -> CardEncoding:
     # X costs: {X}
     x_count = mana_cost.count('{X}')
     parameters = {}
+    has_x_cost = False
     if x_count:
         parameters["x_cost_count"] = x_count
+        has_x_cost = True
 
     # Parse types (handle various dash characters and // for split cards)
     types = []
@@ -1565,6 +1600,10 @@ def parse_card(card_data: Dict[str, Any]) -> CardEncoding:
     elif layout == "modal_dfc":
         if Mechanic.MDFC not in layout_mechanics:
             layout_mechanics.append(Mechanic.MDFC)
+
+    # Fire X_COST mechanic from mana cost {X}
+    if has_x_cost and Mechanic.X_COST not in layout_mechanics:
+        layout_mechanics.append(Mechanic.X_COST)
 
     # Merge mana-parsed parameters with oracle text parameters
     merged_params = result.parameters.copy()
