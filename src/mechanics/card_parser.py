@@ -99,10 +99,23 @@ KEYWORD_ABILITIES = {
     "spectacle": Mechanic.SPECTACLE,
     "madness": Mechanic.MADNESS,
     "ninjutsu": Mechanic.NINJUTSU,
+    "web-slinging": Mechanic.NINJUTSU,   # SPM — alt cost, return tapped creature to hand
+    "sneak": Mechanic.NINJUTSU,           # TMT — alt cost, return unblocked attacker to hand
     "buyback": Mechanic.BUYBACK,
     "overload": Mechanic.OVERLOAD,
     "kicker": Mechanic.KICKER,
     "multikicker": Mechanic.MULTIKICKER,
+
+    # Typecycling variants (land types → TUTOR_LAND, creature types → CREATURE_TYPE_MATTERS)
+    "mountaincycling": Mechanic.CYCLING,
+    "forestcycling": Mechanic.CYCLING,
+    "islandcycling": Mechanic.CYCLING,
+    "plainscycling": Mechanic.CYCLING,
+    "swampcycling": Mechanic.CYCLING,
+    "basic landcycling": Mechanic.CYCLING,
+    "artifact landcycling": Mechanic.CYCLING,
+    "wizardcycling": Mechanic.CYCLING,
+    "slivercycling": Mechanic.CYCLING,
 
     # Triggered keywords
     "landfall": Mechanic.LANDFALL,
@@ -259,6 +272,8 @@ KEYWORD_COST_CATEGORY = {
     "disguise": Mechanic.ALTERNATIVE_COST,
     "spectacle": Mechanic.ALTERNATIVE_COST,
     "ninjutsu": Mechanic.ALTERNATIVE_COST,
+    "web-slinging": Mechanic.ALTERNATIVE_COST,
+    "sneak": Mechanic.ALTERNATIVE_COST,
     "cleave": Mechanic.ALTERNATIVE_COST,
     "emerge": Mechanic.ALTERNATIVE_COST,
     "mutate": Mechanic.ALTERNATIVE_COST,
@@ -299,6 +314,8 @@ KEYWORD_IMPLICATIONS = {
     "evoke": [Mechanic.SACRIFICE],               # Sacrifice on ETB when evoked
     "emerge": [Mechanic.SACRIFICE],              # Sacrifice creature as part of cost
     "ninjutsu": [Mechanic.BOUNCE_TO_HAND],       # Return unblocked attacker to hand
+    "web-slinging": [Mechanic.BOUNCE_TO_HAND],   # Return tapped creature to hand
+    "sneak": [Mechanic.BOUNCE_TO_HAND],           # Return unblocked attacker to hand
     "foretell": [Mechanic.CAST_FROM_EXILE],      # Exile face-down, cast later
     "plot": [Mechanic.CAST_FROM_EXILE],           # Exile, cast free on later turn
     "warp": [Mechanic.CAST_FROM_EXILE],           # Exile, recast later
@@ -313,6 +330,16 @@ KEYWORD_IMPLICATIONS = {
     "dredge": [Mechanic.MILL, Mechanic.REGROWTH],
     "encore": [Mechanic.CREATE_TOKEN, Mechanic.CAST_FROM_GRAVEYARD],
     "cycling": [Mechanic.DRAW, Mechanic.DISCARD],
+    # Typecycling — all share DRAW+DISCARD from cycling, land variants also tutor
+    "mountaincycling": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.TUTOR_LAND],
+    "forestcycling": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.TUTOR_LAND],
+    "islandcycling": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.TUTOR_LAND],
+    "plainscycling": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.TUTOR_LAND],
+    "swampcycling": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.TUTOR_LAND],
+    "basic landcycling": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.TUTOR_LAND],
+    "artifact landcycling": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.TUTOR_LAND],
+    "wizardcycling": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.CREATURE_TYPE_MATTERS],
+    "slivercycling": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.CREATURE_TYPE_MATTERS],
     "infect": [Mechanic.POISON_COUNTER, Mechanic.MINUS_ONE_COUNTER],
     "wither": [Mechanic.MINUS_ONE_COUNTER],
     "living weapon": [Mechanic.CREATE_TOKEN, Mechanic.EQUIP],
@@ -426,6 +453,7 @@ PATTERNS = [
     (r"target opponent", [Mechanic.TARGET_OPPONENT]),
     (r"target .{0,30}(artifact|creature|permanent|enchantment).+opponent controls", [Mechanic.TARGET_PERMANENT, Mechanic.TARGET_OPPONENT_PERMANENT]),
     (r"(artifact|creature|permanent|enchantment) an opponent controls", [Mechanic.TARGET_OPPONENT_PERMANENT]),
+    (r"(creatures?|permanents?|artifacts?|enchantments?|lands?) your opponents? controls?", [Mechanic.TARGET_OPPONENT_CONTROLS]),
     (r"target permanent", [Mechanic.TARGET_PERMANENT]),
     (r"target spell", [Mechanic.TARGET_SPELL]),
     (r"target artifact", [Mechanic.TARGET_ARTIFACT]),
@@ -439,7 +467,7 @@ PATTERNS = [
     (r"each player", [Mechanic.TARGETS_EACH, Mechanic.TARGET_PLAYER]),
 
     # Removal patterns
-    (r"destroy (another )?(target|all|each)", [Mechanic.DESTROY]),
+    (r"destroy (another )?(up to \w+ )?(target|all|each)", [Mechanic.DESTROY]),
     (r"destroys? (it|that|this|target)", [Mechanic.DESTROY]),
     (r"exile target", [Mechanic.EXILE]),
     (r"exiles? (it|that|this|target)", [Mechanic.EXILE]),
@@ -1075,24 +1103,19 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
     if "saga" in card_type_lower or re.search(r'^[IV]+\s*[—–\-]', oracle_text, re.MULTILINE):
         if Mechanic.SAGA not in mechanics:
             mechanics.append(Mechanic.SAGA)
-        chapter_map = {"I": Mechanic.CHAPTER_I, "II": Mechanic.CHAPTER_II,
-                       "III": Mechanic.CHAPTER_III, "IV": Mechanic.CHAPTER_IV}
         chapters = re.findall(r'^(I{1,3}|IV)\s*[—–\-]\s*(.+)$', oracle_text, re.MULTILINE)
         chapter_count = 0
         for chapter_num, chapter_text in chapters:
-            if chapter_num in chapter_map:
-                if chapter_map[chapter_num] not in mechanics:
-                    mechanics.append(chapter_map[chapter_num])
-                chapter_count += 1
-                # Parse chapter text for sub-effects (non-recursive via patterns)
-                chapter_text_lower = chapter_text.lower()
-                for pattern, mechs in PATTERNS:
-                    sub_match = re.search(pattern, chapter_text_lower)
-                    if sub_match:
-                        for m in mechs:
-                            if m not in mechanics:
-                                mechanics.append(m)
-                        matched_spans.append(sub_match.group())
+            chapter_count += 1
+            # Parse chapter text for sub-effects (non-recursive via patterns)
+            chapter_text_lower = chapter_text.lower()
+            for pattern, mechs in PATTERNS:
+                sub_match = re.search(pattern, chapter_text_lower)
+                if sub_match:
+                    for m in mechs:
+                        if m not in mechanics:
+                            mechanics.append(m)
+                    matched_spans.append(sub_match.group())
         if chapter_count > 0:
             parameters["chapter_count"] = chapter_count
 

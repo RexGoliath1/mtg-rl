@@ -262,9 +262,6 @@ class TestSagas:
         enc = parse_card(card)
         assert_has_mechanics(enc, [
             Mechanic.SAGA,
-            Mechanic.CHAPTER_I,
-            Mechanic.CHAPTER_II,
-            Mechanic.CHAPTER_III,
             Mechanic.EXILE,
             Mechanic.REANIMATE,
         ], card.get("name"))
@@ -1582,10 +1579,8 @@ class TestBenchmarkCards:
         enc = parse_card(card)
         assert_has_mechanics(enc, [
             Mechanic.SAGA,
-            Mechanic.CHAPTER_I,
-            Mechanic.CHAPTER_II,
-            Mechanic.CHAPTER_III,
         ], "Urza's Saga")
+        assert enc.parameters.get("chapter_count") == 3
 
     def test_cyclonic_rift(self):
         """Cyclonic Rift — bounce + overload."""
@@ -4803,3 +4798,151 @@ class TestEmblems:
             "Creature \u2014 Angel",
         )
         assert Mechanic.CREATE_EMBLEM not in result.mechanics
+
+
+# =============================================================================
+# QUIZ ROUND 6 FIXES
+# =============================================================================
+
+class TestQuizRound6Fixes:
+    """Tests for parser fixes from quiz round 6 (2026-02-06)."""
+
+    def test_webstrike_elite_destroy_on_cycling(self):
+        """Webstrike Elite — 'destroy up to one target' fires DESTROY."""
+        result = parse_oracle_text(
+            "Reach\n"
+            "Cycling {X}{G}{G}\n"
+            "When you cycle this card, destroy up to one target artifact or "
+            "enchantment with mana value X.",
+            "Creature — Insect Archer",
+            card_name="Webstrike Elite",
+        )
+        assert Mechanic.DESTROY in result.mechanics
+        assert Mechanic.CYCLING in result.mechanics
+        assert Mechanic.REACH in result.mechanics
+        assert Mechanic.TARGET_ARTIFACT in result.mechanics
+        assert Mechanic.TARGET_ENCHANTMENT in result.mechanics
+
+    def test_mountaincycling(self):
+        """Bedhead Beastie — mountaincycling maps to CYCLING+TUTOR_LAND."""
+        result = parse_oracle_text(
+            "Menace\nMountaincycling {2}",
+            "Creature — Beast",
+            card_name="Bedhead Beastie",
+        )
+        assert Mechanic.CYCLING in result.mechanics
+        assert Mechanic.TUTOR_LAND in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+        assert Mechanic.DISCARD in result.mechanics
+        assert Mechanic.MENACE in result.mechanics
+
+    def test_forestcycling(self):
+        """Forestcycling maps to CYCLING+TUTOR_LAND."""
+        result = parse_oracle_text("Forestcycling {2}", "Creature")
+        assert Mechanic.CYCLING in result.mechanics
+        assert Mechanic.TUTOR_LAND in result.mechanics
+
+    def test_islandcycling(self):
+        """Islandcycling maps to CYCLING+TUTOR_LAND."""
+        result = parse_oracle_text("Islandcycling {2}", "Creature")
+        assert Mechanic.CYCLING in result.mechanics
+        assert Mechanic.TUTOR_LAND in result.mechanics
+
+    def test_basic_landcycling(self):
+        """Basic landcycling maps to CYCLING+TUTOR_LAND."""
+        result = parse_oracle_text("Basic landcycling {1}{G}", "Creature")
+        assert Mechanic.CYCLING in result.mechanics
+        assert Mechanic.TUTOR_LAND in result.mechanics
+
+    def test_wizardcycling(self):
+        """Wizardcycling maps to CYCLING+CREATURE_TYPE_MATTERS (not TUTOR_LAND)."""
+        result = parse_oracle_text("Wizardcycling {3}", "Creature — Human Wizard")
+        assert Mechanic.CYCLING in result.mechanics
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+        assert Mechanic.TUTOR_LAND not in result.mechanics
+
+    def test_bewildering_blizzard_opponents_control(self):
+        """Bewildering Blizzard — 'your opponents control' fires TARGET_OPPONENT_CONTROLS."""
+        result = parse_oracle_text(
+            "Draw three cards. Creatures your opponents control get -3/-0 until end of turn.",
+            "Instant",
+        )
+        assert Mechanic.TARGET_OPPONENT_CONTROLS in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+        assert Mechanic.MINUS_POWER in result.mechanics
+        assert Mechanic.UNTIL_END_OF_TURN in result.mechanics
+
+    def test_web_slinging(self):
+        """Spiders-Man — web-slinging maps to NINJUTSU+ALT_COST+BOUNCE."""
+        result = parse_oracle_text(
+            "Web-slinging {4}{G}{G}\n"
+            "When this creature enters, if they were cast using web-slinging, "
+            "you gain 3 life and create two 2/1 green Spider creature tokens with reach.",
+            "Legendary Creature — Spider Hero",
+            card_name="Spiders-Man, Heroic Horde",
+        )
+        assert Mechanic.NINJUTSU in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.BOUNCE_TO_HAND in result.mechanics
+        assert Mechanic.ETB_TRIGGER in result.mechanics
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+        assert Mechanic.GAIN_LIFE in result.mechanics
+
+    def test_sneak_ninjutsu_variant(self):
+        """Sneak (TMT) maps to NINJUTSU+ALT_COST+BOUNCE like web-slinging."""
+        result = parse_oracle_text(
+            "Sneak {2}{U}\nWhen this creature enters, draw a card.",
+            "Creature — Turtle Ninja",
+        )
+        assert Mechanic.NINJUTSU in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+        assert Mechanic.BOUNCE_TO_HAND in result.mechanics
+
+    def test_witchs_vanity_no_chapter_enums(self):
+        """Witch's Vanity — chapter_count param without CHAPTER_I/II/III enums."""
+        result = parse_oracle_text(
+            "I — Destroy target creature an opponent controls with mana value 2 or less.\n"
+            "II — Create a Food token.\n"
+            "III — Create a Wicked Role token attached to target creature you control.",
+            "Enchantment — Saga",
+        )
+        assert Mechanic.SAGA in result.mechanics
+        assert result.parameters.get("chapter_count") == 3
+        # Chapter enums should NOT be present
+        assert Mechanic.CHAPTER_I not in result.mechanics
+        assert Mechanic.CHAPTER_II not in result.mechanics
+        assert Mechanic.CHAPTER_III not in result.mechanics
+        # Sub-effects should still parse
+        assert Mechanic.DESTROY in result.mechanics
+        assert Mechanic.CREATE_FOOD in result.mechanics
+        assert Mechanic.ROLE_TOKEN in result.mechanics
+
+    def test_ajanis_pridemate_self_reference(self):
+        """Ajani's Pridemate — self-reference stripping keeps confidence high."""
+        result = parse_oracle_text(
+            "Whenever you gain life, put a +1/+1 counter on Ajani's Pridemate.",
+            "Creature — Cat Soldier",
+            card_name="Ajani's Pridemate",
+        )
+        assert Mechanic.GAIN_LIFE_TRIGGER in result.mechanics
+        assert Mechanic.PLUS_ONE_COUNTER in result.mechanics
+        assert result.confidence == 1.0
+
+    def test_bushwhack_tutor_land(self):
+        """Bushwhack — 'search for a basic land' fires TUTOR_LAND."""
+        result = parse_oracle_text(
+            "Choose one —\n"
+            "• Search your library for a basic land card, reveal it, put it into your hand, then shuffle.\n"
+            "• Target creature you control fights target creature you don't control.",
+            "Sorcery",
+        )
+        assert Mechanic.TUTOR_LAND in result.mechanics
+        assert Mechanic.FIGHT in result.mechanics
+        assert Mechanic.MODAL_CHOOSE_ONE in result.mechanics
+
+    def test_destroy_up_to_regression(self):
+        """Standard 'destroy target' still works after 'destroy up to' fix."""
+        result = parse_oracle_text("Destroy target creature.", "Instant")
+        assert Mechanic.DESTROY in result.mechanics
+        result2 = parse_oracle_text("Destroy all creatures.", "Sorcery")
+        assert Mechanic.DESTROY in result2.mechanics
