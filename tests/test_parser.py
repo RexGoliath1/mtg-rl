@@ -17,7 +17,7 @@ Test categories:
 """
 
 from src.mechanics.vocabulary import Mechanic
-from src.mechanics.card_parser import parse_card, parse_oracle_text, strip_reminder_text
+from src.mechanics.card_parser import parse_card, parse_oracle_text, strip_reminder_text, TOKEN_IMPLICATIONS, NAMED_MECHANIC_EFFECTS
 
 
 # =============================================================================
@@ -4424,3 +4424,309 @@ class TestQuizRound5Fixes:
         )
         assert Mechanic.TUTOR_TO_HAND in result.mechanics
         assert Mechanic.CREW in result.mechanics
+
+
+class TestQuizRound5DesignDecisions:
+    """Tests for design items #11-#18 from quiz round 5 feedback."""
+
+    # =========================================================================
+    # #11: Token Implications
+    # =========================================================================
+    def test_food_token_implies_gain_life(self):
+        """Food token creates → GAIN_LIFE + SACRIFICE implied."""
+        result = parse_oracle_text(
+            "When this creature enters, create a Food token.",
+            "Creature — Cat",
+        )
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+        assert Mechanic.GAIN_LIFE in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+
+    def test_clue_token_implies_draw(self):
+        """Clue token → DRAW + SACRIFICE implied."""
+        result = parse_oracle_text(
+            "When this creature enters, create a Clue token.",
+            "Creature — Human Detective",
+        )
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+
+    def test_treasure_token_implies_mana(self):
+        """Treasure token → ADD_MANA + SACRIFICE implied."""
+        result = parse_oracle_text(
+            "Whenever this creature attacks, create a Treasure token.",
+            "Creature — Pirate",
+        )
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+        assert Mechanic.ADD_MANA in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+
+    def test_blood_token_implies_draw_discard(self):
+        """Blood token → DRAW + DISCARD + SACRIFICE implied."""
+        result = parse_oracle_text(
+            "When this creature enters, create a Blood token.",
+            "Creature — Vampire",
+        )
+        assert Mechanic.DRAW in result.mechanics
+        assert Mechanic.DISCARD in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+
+    def test_map_token_implies_explore(self):
+        """Map token → EXPLORE + SACRIFICE implied."""
+        result = parse_oracle_text(
+            "When this creature enters, create a Map token.",
+            "Creature — Merfolk Scout",
+        )
+        assert Mechanic.EXPLORE in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+
+    def test_token_implications_map_complete(self):
+        """All major token types are covered in TOKEN_IMPLICATIONS."""
+        expected_tokens = {"food", "clue", "treasure", "blood", "map", "powerstone", "incubator", "shard", "gold", "junk"}
+        assert expected_tokens == set(TOKEN_IMPLICATIONS.keys())
+
+    def test_tireless_tracker_clue(self):
+        """Tireless Tracker — landfall creates Clue → DRAW implied."""
+        card = make_card(
+            "Tireless Tracker", "{2}{G}", 3,
+            "Creature — Human Scout",
+            "Whenever a land enters the battlefield under your control, investigate. (Create a Clue token.)\nWhenever you sacrifice a Clue, put a +1/+1 counter on Tireless Tracker.",
+            power=3, toughness=2,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.LANDFALL,
+            Mechanic.DRAW,       # from Clue implication
+            Mechanic.SACRIFICE,  # from Clue implication
+        ], "Tireless Tracker")
+
+    # =========================================================================
+    # #12: TUTOR_LAND
+    # =========================================================================
+    def test_rampant_growth(self):
+        """Rampant Growth — search for basic land → TUTOR_LAND."""
+        result = parse_oracle_text(
+            "Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+            "Sorcery",
+        )
+        assert Mechanic.TUTOR_LAND in result.mechanics
+        assert Mechanic.TO_BATTLEFIELD_TAPPED in result.mechanics
+
+    def test_cultivate(self):
+        """Cultivate — search for basic land cards → TUTOR_LAND."""
+        result = parse_oracle_text(
+            "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+            "Sorcery",
+        )
+        assert Mechanic.TUTOR_LAND in result.mechanics
+
+    def test_farseek(self):
+        """Farseek — search for Plains/Island/Swamp/Mountain → TUTOR_LAND."""
+        result = parse_oracle_text(
+            "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle.",
+            "Sorcery",
+        )
+        assert Mechanic.TUTOR_LAND in result.mechanics
+
+    def test_demonic_tutor_not_tutor_land(self):
+        """Demonic Tutor — generic tutor should NOT get TUTOR_LAND."""
+        result = parse_oracle_text(
+            "Search your library for a card, put that card into your hand, then shuffle.",
+            "Sorcery",
+        )
+        assert Mechanic.TUTOR_LAND not in result.mechanics
+        assert Mechanic.TUTOR_TO_HAND in result.mechanics
+
+    # =========================================================================
+    # #13: Card Self-Reference Stripping
+    # =========================================================================
+    def test_self_reference_creature(self):
+        """Card name replaced with 'this creature' for confidence boost."""
+        result = parse_oracle_text(
+            "Whenever Atraxa, Grand Unifier enters, you draw cards equal to the number of card types among cards in your graveyard.",
+            "Creature — Phyrexian Angel",
+            card_name="Atraxa, Grand Unifier",
+        )
+        # "Atraxa, Grand Unifier" should be stripped, improving confidence
+        assert "atraxa" not in result.unparsed_text
+
+    def test_self_reference_instant(self):
+        """Spell self-references replaced with 'this spell'."""
+        result = parse_oracle_text(
+            "Lightning Bolt deals 3 damage to any target.",
+            "Instant",
+            card_name="Lightning Bolt",
+        )
+        assert Mechanic.DEAL_DAMAGE in result.mechanics
+        assert "lightning bolt" not in result.unparsed_text
+
+    def test_self_reference_dfc(self):
+        """DFC name parts both stripped."""
+        result = parse_oracle_text(
+            "When Delver of Secrets transforms, Insectile Aberration gets +1/+0 until end of turn.",
+            "Creature — Human Wizard",
+            card_name="Delver of Secrets // Insectile Aberration",
+        )
+        assert "delver of secrets" not in result.unparsed_text
+        assert "insectile aberration" not in result.unparsed_text
+
+    def test_self_reference_no_false_strip(self):
+        """Card names shorter than 3 chars should not be stripped (safety)."""
+        result = parse_oracle_text(
+            "Flying\nWhen It enters, draw a card.",
+            "Creature — Horror",
+            card_name="It",
+        )
+        # "It" is too short, so stripping should be skipped
+        assert Mechanic.FLYING in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+
+    def test_self_reference_via_parse_card(self):
+        """parse_card passes card name through automatically."""
+        card = make_card(
+            "Sheoldred, the Apocalypse", "{2}{B}{B}", 4,
+            "Legendary Creature — Phyrexian Praetor",
+            "Deathtouch\nWhenever you draw a card, you gain 2 life.\nWhenever an opponent draws a card, they lose 2 life.",
+            power=4, toughness=5,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.DEATHTOUCH,
+            Mechanic.DRAW,
+            Mechanic.GAIN_LIFE,
+            Mechanic.LOSE_LIFE,
+        ], "Sheoldred")
+
+    # =========================================================================
+    # #14: Named Mechanic Underlying Effects
+    # =========================================================================
+    def test_commit_a_crime_implies_target_opponent(self):
+        """'commit a crime' → TARGET_OPPONENT underlying effect."""
+        result = parse_oracle_text(
+            "Whenever you commit a crime, create a 1/1 white Mercenary token.",
+            "Creature — Human Rogue",
+        )
+        assert Mechanic.COMMIT_A_CRIME in result.mechanics
+        assert Mechanic.TARGET_OPPONENT in result.mechanics
+
+    def test_raid_implies_attack_trigger(self):
+        """'raid' → ATTACK_TRIGGER underlying effect."""
+        result = parse_oracle_text(
+            "Raid — When this creature enters, if you attacked this turn, draw a card.",
+            "Creature — Orc Pirate",
+        )
+        assert Mechanic.RAID in result.mechanics
+        assert Mechanic.ATTACK_TRIGGER in result.mechanics
+
+    def test_revolt_implies_ltb_trigger(self):
+        """'revolt' → LTB_TRIGGER underlying effect."""
+        result = parse_oracle_text(
+            "Revolt — When this creature enters, if a permanent you controlled left the battlefield this turn, put a +1/+1 counter on it.",
+            "Creature — Aetherborn Warrior",
+        )
+        assert Mechanic.REVOLT in result.mechanics
+        assert Mechanic.LTB_TRIGGER in result.mechanics
+
+    def test_morbid_implies_death_trigger(self):
+        """'morbid' → DEATH_TRIGGER underlying effect."""
+        result = parse_oracle_text(
+            "Morbid — When this creature enters, if a creature died this turn, put two +1/+1 counters on it.",
+            "Creature — Elemental",
+        )
+        assert Mechanic.MORBID in result.mechanics
+        assert Mechanic.DEATH_TRIGGER in result.mechanics
+
+    def test_domain_implies_color_condition(self):
+        """'domain' → COLOR_CONDITION underlying effect."""
+        result = parse_oracle_text(
+            "Domain — This creature gets +1/+1 for each basic land type among lands you control.",
+            "Creature — Kavu",
+        )
+        assert Mechanic.DOMAIN in result.mechanics
+        assert Mechanic.COLOR_CONDITION in result.mechanics
+
+    def test_named_mechanic_map_coverage(self):
+        """Key ability words are covered in NAMED_MECHANIC_EFFECTS."""
+        key_mechanics = {"commit a crime", "celebration", "raid", "revolt", "morbid",
+                        "landfall", "constellation", "domain", "threshold", "delirium",
+                        "metalcraft", "ferocious", "hellbent"}
+        assert key_mechanics.issubset(set(NAMED_MECHANIC_EFFECTS.keys()))
+
+    # =========================================================================
+    # #16: YOUR_TURN_CONDITION
+    # =========================================================================
+    def test_if_its_your_turn(self):
+        """'if it's your turn' → YOUR_TURN_CONDITION."""
+        result = parse_oracle_text(
+            "This creature gets +1/+1 if it's your turn.",
+            "Creature — Human Soldier",
+        )
+        assert Mechanic.YOUR_TURN_CONDITION in result.mechanics
+
+    def test_during_your_turn(self):
+        """'during your turn' → YOUR_TURN_CONDITION."""
+        result = parse_oracle_text(
+            "Flash\nThis creature has hexproof during your turn.",
+            "Creature — Faerie Rogue",
+        )
+        assert Mechanic.YOUR_TURN_CONDITION in result.mechanics
+        assert Mechanic.FLASH in result.mechanics
+
+    def test_on_your_turn(self):
+        """'on your turn' → YOUR_TURN_CONDITION."""
+        result = parse_oracle_text(
+            "At the beginning of combat on your turn, target creature gets +1/+0.",
+            "Creature — Human Knight",
+        )
+        assert Mechanic.YOUR_TURN_CONDITION in result.mechanics
+
+    # =========================================================================
+    # #18: Spacecraft → word-consuming
+    # =========================================================================
+    def test_spacecraft_consumed(self):
+        """'spacecraft' is consumed to avoid noise."""
+        result = parse_oracle_text(
+            "Flying, trample\nSpacecraft you control get +1/+1.",
+            "Creature — Alien Spacecraft",
+        )
+        assert Mechanic.FLYING in result.mechanics
+        assert Mechanic.TRAMPLE in result.mechanics
+
+    # =========================================================================
+    # Regression tests
+    # =========================================================================
+    def test_keen_eyed_curator_tutor_land(self):
+        """Keen-Eyed Curator — search for basic land → TUTOR_LAND (existing test still passes)."""
+        card = make_card(
+            "Keen-Eyed Curator", "{2}{G}", 3,
+            "Creature — Raccoon Druid",
+            "Vigilance\nWhen Keen-Eyed Curator enters the battlefield, exile target "
+            "card from a graveyard. If it was a land card, search your library for a "
+            "basic land card, put it onto the battlefield tapped, then shuffle.",
+            power=3, toughness=2,
+        )
+        enc = parse_card(card)
+        assert_has_mechanics(enc, [
+            Mechanic.TUTOR_LAND,
+            Mechanic.TUTOR_TO_BATTLEFIELD,
+        ], "Keen-Eyed Curator")
+
+    def test_existing_keyword_implications_preserved(self):
+        """Flashback still gets CAST_FROM_GRAVEYARD + ALTERNATIVE_COST."""
+        result = parse_oracle_text(
+            "Draw two cards.\nFlashback {4}{U}",
+            "Instant",
+        )
+        assert Mechanic.FLASHBACK in result.mechanics
+        assert Mechanic.CAST_FROM_GRAVEYARD in result.mechanics
+        assert Mechanic.ALTERNATIVE_COST in result.mechanics
+
+    def test_gold_token_in_king_macar(self):
+        """King Macar — 'Gold token' → ADD_MANA + SACRIFICE implied."""
+        result = parse_oracle_text(
+            "Whenever King Macar, the Gold-Cursed becomes untapped, you may exile target creature. If you do, create a Gold token.",
+            "Legendary Creature — Human",
+        )
+        assert Mechanic.ADD_MANA in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
