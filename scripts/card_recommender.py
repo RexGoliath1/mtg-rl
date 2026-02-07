@@ -483,6 +483,30 @@ def compute_curve_boost(deck_stats: dict) -> np.ndarray:
     return boost
 
 
+def compute_mana_fixing_boost(deck_colors: set[str]) -> np.ndarray:
+    """Boost MANA_FIXING cards proportional to deck color count.
+
+    2 colors: 1.0x (fixing is nice but not critical)
+    3 colors: 1.15x
+    4 colors: 1.30x
+    5 colors: 1.50x (fixing is essential)
+    """
+    n_colors = len(deck_colors)
+    if n_colors <= 2:
+        return np.ones(len(CARD_INDEX), dtype=np.float64)
+
+    boost_table = {3: 1.15, 4: 1.30, 5: 1.50}
+    boost_factor = boost_table.get(n_colors, 1.0)
+
+    mf_idx = Mechanic.MANA_FIXING.value
+    if mf_idx >= DB_VOCAB_SIZE:
+        return np.ones(len(CARD_INDEX), dtype=np.float64)
+
+    boost = np.ones(len(CARD_INDEX), dtype=np.float64)
+    boost[MECHANICS[:, mf_idx].astype(bool)] = boost_factor
+    return boost
+
+
 def _kmeans_themes(vecs: np.ndarray, card_names: list[str], k: int, max_iter: int = 20) -> list[dict]:
     """Simple KMeans to identify deck themes. Returns list of {label, cards, centroid, top_mechanics}."""
     n = len(vecs)
@@ -632,9 +656,10 @@ def recommend_by_themes(
     color_ok = _color_filter_mask(deck_colors)
     eligible = ~exclude & color_ok
 
-    # Pre-compute curve gap boost (same for all themes)
+    # Pre-compute boosts (same for all themes)
     deck_stats = analysis.get("deck_stats", {})
     curve_boost = compute_curve_boost(deck_stats)
+    fixing_boost = compute_mana_fixing_boost(deck_colors)
 
     results = []
     already_recommended = set()
@@ -672,6 +697,9 @@ def recommend_by_themes(
 
         # Mana curve gap boost: prefer cards that fill underrepresented CMC slots
         scores *= curve_boost
+
+        # Mana fixing boost: prefer fixing in 3+ color decks
+        scores *= fixing_boost
 
         # Apply masks
         scores[~eligible] = 0
@@ -722,6 +750,9 @@ def recommend_alternatives(
     intersection = (MECHANICS & query_vec).sum(axis=1)
     union = (MECHANICS | query_vec).sum(axis=1)
     scores = intersection.astype(np.float64) / (union.astype(np.float64) + 1e-8)
+
+    # Mana fixing boost for 3+ color decks
+    scores *= compute_mana_fixing_boost(deck_colors)
 
     scores[~(~exclude & color_ok)] = 0
 

@@ -5327,6 +5327,92 @@ class TestManaFixing:
         assert_has_mechanics(result, [Mechanic.ADD_MANA, Mechanic.MANA_OF_ANY_COLOR, Mechanic.MANA_FIXING],
                              "Chromatic Lantern")
 
+    # --- Dual Lands ---
+
+    def test_dual_land_two_colors(self):
+        """Dual land producing two colors should emit MANA_FIXING."""
+        result = parse_oracle_text(
+            "This land enters tapped.\n{T}: Add {B} or {G}.",
+            "Land",
+        )
+        assert_has_mechanics(result, [Mechanic.ADD_MANA, Mechanic.MANA_FIXING],
+                             "Dual land ({B} or {G})")
+
+    def test_tri_land_three_colors(self):
+        """Arcane Sanctum — tri-land producing three colors."""
+        result = parse_oracle_text(
+            "Arcane Sanctum enters tapped.\n{T}: Add {W}, {U}, or {B}.",
+            "Land",
+        )
+        assert_has_mechanics(result, [Mechanic.ADD_MANA, Mechanic.MANA_FIXING],
+                             "Arcane Sanctum")
+
+    # --- Filter Lands ---
+
+    def test_mystic_gate_filter_land(self):
+        """Mystic Gate — '{W/U}, {T}: Add {W}{W}, {W}{U}, or {U}{U}.'"""
+        result = parse_oracle_text(
+            "{T}: Add {C}.\n{W/U}, {T}: Add {W}{W}, {W}{U}, or {U}{U}.",
+            "Land",
+        )
+        assert_has_mechanics(result, [Mechanic.ADD_MANA, Mechanic.MANA_FIXING],
+                             "Mystic Gate")
+
+    def test_graven_cairns_filter_land(self):
+        """Graven Cairns — '{B/R}, {T}: Add {B}{B}, {B}{R}, or {R}{R}.'"""
+        result = parse_oracle_text(
+            "{T}: Add {C}.\n{B/R}, {T}: Add {B}{B}, {B}{R}, or {R}{R}.",
+            "Land",
+        )
+        assert_has_mechanics(result, [Mechanic.ADD_MANA, Mechanic.MANA_FIXING],
+                             "Graven Cairns")
+
+    # --- Fetch Lands ---
+
+    def test_polluted_delta_fetch(self):
+        """Polluted Delta — searches for Island or Swamp."""
+        result = parse_oracle_text(
+            "{T}, Pay 1 life, Sacrifice Polluted Delta: Search your library for "
+            "an Island or Swamp card, put it onto the battlefield, then shuffle.",
+            "Land",
+        )
+        assert_has_mechanics(result, [Mechanic.MANA_FIXING, Mechanic.TUTOR_LAND],
+                             "Polluted Delta")
+
+    def test_flooded_strand_fetch(self):
+        """Flooded Strand — searches for Plains or Island."""
+        result = parse_oracle_text(
+            "{T}, Pay 1 life, Sacrifice Flooded Strand: Search your library for "
+            "a Plains or Island card, put it onto the battlefield, then shuffle.",
+            "Land",
+        )
+        assert_has_mechanics(result, [Mechanic.MANA_FIXING, Mechanic.TUTOR_LAND],
+                             "Flooded Strand")
+
+    # --- Negative: Basic Lands ---
+
+    def test_basic_forest_no_fixing(self):
+        """Basic Forest — single color should NOT emit MANA_FIXING."""
+        result = parse_oracle_text("{T}: Add {G}.", "Basic Land — Forest")
+        assert Mechanic.ADD_MANA in result.mechanics
+        assert Mechanic.MANA_FIXING not in result.mechanics
+
+    def test_basic_island_no_fixing(self):
+        """Basic Island — single color should NOT emit MANA_FIXING."""
+        result = parse_oracle_text("{T}: Add {U}.", "Basic Land — Island")
+        assert Mechanic.ADD_MANA in result.mechanics
+        assert Mechanic.MANA_FIXING not in result.mechanics
+
+    # --- Mana-Granting Creatures ---
+
+    def test_tap_for_any_color(self):
+        """'Creatures you control tap for mana of any color' phrasing."""
+        result = parse_oracle_text(
+            "Creatures you control tap for mana of any color.",
+            "Enchantment",
+        )
+        assert_has_mechanics(result, [Mechanic.MANA_FIXING], "Tap for any color")
+
 
 # =============================================================================
 # CARD LAYOUT DETECTION

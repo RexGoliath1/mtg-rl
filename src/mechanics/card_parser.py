@@ -679,6 +679,10 @@ PATTERNS = [
     (r"add \{", [Mechanic.ADD_MANA]),
     (r"add (one|two|three|\d+) mana", [Mechanic.ADD_MANA]),
     (r"mana of any (color|type)", [Mechanic.MANA_OF_ANY_COLOR, Mechanic.MANA_FIXING]),
+    # Fetch lands searching for two land types → MANA_FIXING
+    (r"search.{0,40}(plains|island|swamp|mountain|forest).{0,15}or\s+(plains|island|swamp|mountain|forest)", [Mechanic.MANA_FIXING]),
+    # "tap for any color" variant phrasing
+    (r"tap.{0,20}for mana of any color", [Mechanic.MANA_FIXING, Mechanic.ADD_MANA]),
     (r"costs? \{?\d+\}? less to cast", [Mechanic.REDUCE_COST]),
     (r"costs? \{?\d+\}? more to cast", [Mechanic.INCREASE_COST]),
     (r"without paying (its|their) mana cost", [Mechanic.FREE_CAST_CONDITION]),
@@ -1305,6 +1309,16 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
                         parameters["power_mod"] = p_val
                     if t_val != 0:
                         parameters["toughness_mod"] = t_val
+
+    # Multi-color mana production → MANA_FIXING (dual lands, tri-lands, filter lands)
+    # If card already has ADD_MANA but not MANA_FIXING, check for 2+ distinct color symbols
+    if Mechanic.ADD_MANA in mechanics and Mechanic.MANA_FIXING not in mechanics:
+        add_matches = re.findall(r'add\s+[^.]*', text)
+        colors_in_add = set()
+        for add_text in add_matches:
+            colors_in_add.update(re.findall(r'\{([wubrg])\}', add_text))
+        if len(colors_in_add) >= 2:
+            mechanics.append(Mechanic.MANA_FIXING)
 
     # Saga chapter parsing (use original text for roman numeral case matching)
     if "saga" in card_type_lower or re.search(r'^[IV]+\s*[—–\-]', oracle_text, re.MULTILINE):
