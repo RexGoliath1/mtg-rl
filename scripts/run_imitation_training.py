@@ -146,7 +146,8 @@ Decisions per Game & 50-200 & """ + f"{avg_decisions:.1f}" + r""" \\
     total_decisions = sum(type_counts.values())
     for dt, count in sorted(type_counts.items(), key=lambda x: -x[1]):
         pct = count / total_decisions * 100 if total_decisions > 0 else 0
-        latex += f"{dt.replace('_', '\\_')} & {count:,} & {pct:.1f}\\% \\\\\n"
+        escaped_dt = dt.replace('_', '\\_')
+        latex += f"{escaped_dt} & {count:,} & {pct:.1f}\\% \\\\\n"
 
     latex += r"""
 \bottomrule
