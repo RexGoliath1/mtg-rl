@@ -21,6 +21,14 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from src.mechanics.card_parser import TRIBAL_CONTEXT_PATTERNS  # noqa: E402
 
+# Composite types: batched type names that map to multiple creature subtypes.
+# When oracle text references these, we expand to all component types so tribal
+# filtering works correctly (e.g. "other Outlaws you control" matches Rogues).
+COMPOSITE_TYPES = {
+    "outlaw": {"assassin", "mercenary", "pirate", "rogue", "warlock"},
+    "party": {"cleric", "rogue", "warrior", "wizard"},
+}
+
 
 def load_bulk_cards(json_path: str, format_filter: str | None = None) -> list[dict]:
     """Load cards from bulk JSON, matching precompute_embeddings.py dedup logic."""
@@ -66,7 +74,11 @@ def extract_creature_subtypes(type_line: str) -> list[str]:
 
 
 def extract_tribal_types(oracle_text: str) -> list[str]:
-    """Extract creature types referenced in tribal context from oracle text."""
+    """Extract creature types referenced in tribal context from oracle text.
+
+    Expands composite types (outlaw, party) into their component subtypes
+    so tribal filtering works correctly.
+    """
     if not oracle_text:
         return []
     text_lower = oracle_text.lower()
@@ -74,6 +86,12 @@ def extract_tribal_types(oracle_text: str) -> list[str]:
     for pattern in TRIBAL_CONTEXT_PATTERNS:
         for match in pattern.finditer(text_lower):
             tribal_types.add(match.group(1).lower())
+
+    # Expand composite types to their component subtypes
+    for composite, components in COMPOSITE_TYPES.items():
+        if composite in tribal_types:
+            tribal_types.update(components)
+
     return sorted(tribal_types)
 
 
