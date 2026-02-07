@@ -1401,8 +1401,8 @@ Example:
         parsed = parse_decklist(decklist)
         all_cards = []
         for section in ["commander", "mainboard", "sideboard"]:
-            for _, card in parsed[section]:
-                all_cards.append(card)
+            for qty, card in parsed[section]:
+                all_cards.extend([card] * qty)
 
         if not all_cards:
             self._html_response("""
@@ -1632,8 +1632,8 @@ Example:
         parsed = parse_decklist(decklist)
         all_cards = []
         for section in ["commander", "mainboard", "sideboard"]:
-            for _, card in parsed[section]:
-                all_cards.append(card)
+            for qty, card in parsed[section]:
+                all_cards.extend([card] * qty)
 
         analysis = analyze_deck(all_cards)
 
