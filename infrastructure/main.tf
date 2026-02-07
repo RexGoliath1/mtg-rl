@@ -227,47 +227,142 @@ resource "aws_s3_bucket" "checkpoints" {
 resource "aws_s3_bucket_versioning" "checkpoints" {
   bucket = aws_s3_bucket.checkpoints.id
   versioning_configuration {
-    status = "Enabled"
+    # Suspended: reproducible training artifacts don't need versioning.
+    # Previously Enabled, which silently accumulated hidden versions.
+    # Note: "Suspended" stops creating new versions but preserves existing ones.
+    status = "Suspended"
   }
 }
 
-# Lifecycle rule to manage costs
+# Lifecycle rules to manage S3 costs
 resource "aws_s3_bucket_lifecycle_configuration" "checkpoints" {
   bucket = aws_s3_bucket.checkpoints.id
 
+  # ---- Experiment checkpoints: IA after 30d, delete after 90d ----
+  # Applies to experiment checkpoint files (epoch_*.pt, latest.pt, etc.)
+  # but NOT to best.pt which is promoted to models/ prefix.
   rule {
-    id     = "cleanup-old-checkpoints"
+    id     = "cleanup-experiment-checkpoints"
     status = "Enabled"
 
-    # Move to Infrequent Access after 30 days
+    filter {
+      prefix = "experiments/"
+    }
+
     transition {
       days          = 30
       storage_class = "STANDARD_IA"
     }
 
-    # Delete after 90 days (keep recent checkpoints)
     expiration {
       days = 90
     }
+  }
 
-    # Only apply to non-best checkpoints
+  # ---- Legacy checkpoints/ prefix: same policy ----
+  # Existing data under checkpoints/ from prior runs.
+  # Excludes best.pt via separate promoted-models rule.
+  rule {
+    id     = "cleanup-legacy-checkpoints"
+    status = "Enabled"
+
     filter {
       prefix = "checkpoints/"
     }
-  }
 
-  rule {
-    id     = "keep-best-models"
-    status = "Enabled"
-
-    # Best models never expire, just move to cheaper storage
     transition {
       days          = 30
       storage_class = "STANDARD_IA"
     }
 
+    expiration {
+      days = 90
+    }
+  }
+
+  # ---- Promoted best models: never expire, cheaper storage ----
+  # Best models are copied to models/ when promoted.
+  # Store as IA after 30d since they're rarely re-downloaded.
+  rule {
+    id     = "keep-promoted-models"
+    status = "Enabled"
+
     filter {
-      prefix = "best/"
+      prefix = "models/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+
+    # No expiration - best models are kept indefinitely
+  }
+
+  # ---- Imitation learning data: One Zone-IA after 30d, Glacier IR after 90d ----
+  # Imitation data is reproducible (re-collect from Forge), so One Zone-IA
+  # is safe and ~20% cheaper than standard IA.
+  rule {
+    id     = "imitation-data-tiering"
+    status = "Enabled"
+
+    filter {
+      prefix = "imitation_data/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+
+    transition {
+      days          = 90
+      storage_class = "GLACIER_IR"
+    }
+  }
+
+  # ---- TensorBoard logs: delete after 60d ----
+  rule {
+    id     = "cleanup-tensorboard-logs"
+    status = "Enabled"
+
+    filter {
+      prefix = "tensorboard-logs/"
+    }
+
+    expiration {
+      days = 60
+    }
+  }
+
+  # ---- Abort incomplete multipart uploads after 7d ----
+  # Prevents accumulation of orphaned partial uploads.
+  rule {
+    id     = "abort-incomplete-multipart"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+
+  # ---- Clean up old noncurrent versions (from when versioning was Enabled) ----
+  # Versioning is now Suspended, but existing noncurrent versions remain.
+  # This rule deletes them after 7 days to reclaim storage.
+  rule {
+    id     = "expire-noncurrent-versions"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 7
     }
   }
 }
