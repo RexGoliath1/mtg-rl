@@ -821,6 +821,16 @@ PATTERNS = [
     (r"pay (\d+|x) life", [Mechanic.PAY_LIFE]),
     (r"pays? (\d+|x) life", [Mechanic.PAY_LIFE]),
 
+    # Toughness-matters — Assault Formation, Doran, defenders
+    (r"equal to .{0,30}toughness", [Mechanic.TOUGHNESS_MATTERS]),
+    (r"total toughness", [Mechanic.TOUGHNESS_MATTERS]),
+    (r"toughness among", [Mechanic.TOUGHNESS_MATTERS]),
+    (r"with the greatest toughness", [Mechanic.TOUGHNESS_MATTERS]),
+    (r"with the least toughness", [Mechanic.TOUGHNESS_MATTERS]),
+    (r"assign .{0,20}toughness", [Mechanic.TOUGHNESS_MATTERS]),
+    (r"toughness rather than.{0,10}power", [Mechanic.TOUGHNESS_MATTERS]),
+    (r"deals? combat damage equal to its toughness", [Mechanic.TOUGHNESS_MATTERS]),
+
     # Power/toughness condition (stat gate)
     (r"(?:power|toughness) \d+ or (?:greater|more|less)", [Mechanic.POWER_TOUGHNESS_CONDITION]),
     (r"with (?:power|toughness) \d+ or (?:greater|more|less)", [Mechanic.POWER_TOUGHNESS_CONDITION]),

@@ -5108,3 +5108,59 @@ class TestFaceDownMatters:
         )
         assert Mechanic.CLOAK in result.mechanics
         assert Mechanic.FACE_DOWN_MATTERS in result.mechanics
+
+
+# =============================================================================
+# TOUGHNESS MATTERS TESTS
+# =============================================================================
+
+class TestToughnessMatters:
+    """Tests for TOUGHNESS_MATTERS detection."""
+
+    def test_assault_formation(self):
+        """Assault Formation — 'assign combat damage equal to its toughness'."""
+        result = parse_oracle_text(
+            "Each creature you control assigns combat damage equal to its toughness rather than its power.",
+            "Enchantment",
+        )
+        assert Mechanic.TOUGHNESS_MATTERS in result.mechanics
+
+    def test_doran(self):
+        """Doran — 'toughness rather than power'."""
+        result = parse_oracle_text(
+            "Each creature assigns combat damage equal to its toughness rather than its power.",
+            "Creature — Treefolk Shaman",
+        )
+        assert Mechanic.TOUGHNESS_MATTERS in result.mechanics
+
+    def test_total_toughness(self):
+        """'total toughness' triggers TOUGHNESS_MATTERS."""
+        result = parse_oracle_text(
+            "Target creature gets -X/-X until end of turn, where X is the total toughness of creatures you control.",
+            "Instant",
+        )
+        assert Mechanic.TOUGHNESS_MATTERS in result.mechanics
+
+    def test_greatest_toughness(self):
+        """'with the greatest toughness' triggers TOUGHNESS_MATTERS."""
+        result = parse_oracle_text(
+            "Destroy target creature with the greatest toughness.",
+            "Sorcery",
+        )
+        assert Mechanic.TOUGHNESS_MATTERS in result.mechanics
+
+    def test_least_toughness(self):
+        """'with the least toughness' triggers TOUGHNESS_MATTERS."""
+        result = parse_oracle_text(
+            "Return target creature with the least toughness to its owner's hand.",
+            "Instant",
+        )
+        assert Mechanic.TOUGHNESS_MATTERS in result.mechanics
+
+    def test_power_toughness_condition_still_works(self):
+        """Generic POWER_TOUGHNESS_CONDITION patterns still fire."""
+        result = parse_oracle_text(
+            "Target creature with power 4 or greater.",
+            "Instant",
+        )
+        assert Mechanic.POWER_TOUGHNESS_CONDITION in result.mechanics
