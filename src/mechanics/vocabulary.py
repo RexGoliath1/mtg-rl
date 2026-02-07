@@ -583,6 +583,15 @@ class Mechanic(IntEnum):
     TUTOR_LAND = 1373                    # "search for a basic land" / land-specific tutoring (ramp)
     YOUR_TURN_CONDITION = 1374           # "if it's your turn" / "during your turn" timing condition
 
+    # ==========================================================================
+    # EMBLEMS (1375-1379)
+    # ==========================================================================
+    CREATE_EMBLEM = 1375                 # "you get an emblem with..." (permanent, irremovable effect)
+    EMBLEM_STATIC = 1376                 # Emblem with always-on ability (Domri Rade)
+    EMBLEM_TRIGGERED = 1377              # Emblem with triggered ability (Chandra, Torch of Defiance)
+    EMBLEM_ACTIVATED = 1378              # Emblem with activated ability (Karn, Living Legacy) — very rare
+    EMBLEM_OPPONENT = 1379               # "each opponent gets an emblem" (Chandra, Awakened Inferno)
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1

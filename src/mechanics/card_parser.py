@@ -1207,6 +1207,43 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
         if loyalty_count > 0:
             parameters["loyalty_ability_count"] = loyalty_count
 
+    # Emblem text sub-parsing
+    # Pattern: 'you get an emblem with "..."' or 'each opponent gets an emblem with "..."'
+    emblem_matches = re.finditer(
+        r'(?:you|each opponent) gets? an emblem with "([^"]+)"',
+        text
+    )
+    for emblem_match in emblem_matches:
+        emblem_text = emblem_match.group(1)
+        if Mechanic.CREATE_EMBLEM not in mechanics:
+            mechanics.append(Mechanic.CREATE_EMBLEM)
+        matched_spans.append(emblem_match.group())
+
+        # Detect opponent-targeted emblems
+        if "each opponent" in emblem_match.group():
+            if Mechanic.EMBLEM_OPPONENT not in mechanics:
+                mechanics.append(Mechanic.EMBLEM_OPPONENT)
+
+        # Classify emblem ability type
+        if re.search(r'^(whenever|when|at the beginning)', emblem_text):
+            if Mechanic.EMBLEM_TRIGGERED not in mechanics:
+                mechanics.append(Mechanic.EMBLEM_TRIGGERED)
+        elif ':' in emblem_text and re.search(r'\w+.*:.*\w', emblem_text):
+            if Mechanic.EMBLEM_ACTIVATED not in mechanics:
+                mechanics.append(Mechanic.EMBLEM_ACTIVATED)
+        else:
+            if Mechanic.EMBLEM_STATIC not in mechanics:
+                mechanics.append(Mechanic.EMBLEM_STATIC)
+
+        # Sub-parse emblem text for effects (same as saga/loyalty sub-parsing)
+        for pattern, mechs in PATTERNS:
+            sub_match = re.search(pattern, emblem_text)
+            if sub_match:
+                for m in mechs:
+                    if m not in mechanics:
+                        mechanics.append(m)
+                matched_spans.append(sub_match.group())
+
     # Calculate confidence based on how much text we parsed
     # Reminder text was already stripped at the top of this function
     stripped_text = text
