@@ -1708,7 +1708,10 @@ def main():
     print("Press Ctrl+C to stop")
     print(f"{'=' * 60}\n")
 
-    server = HTTPServer(("localhost", args.port), RecommenderHandler)
+    class ReusableHTTPServer(HTTPServer):
+        allow_reuse_address = True
+
+    server = ReusableHTTPServer(("localhost", args.port), RecommenderHandler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
