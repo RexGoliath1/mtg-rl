@@ -19,7 +19,7 @@ from dataclasses import dataclass
 
 # Import our vocabulary
 try:
-    from src.mechanics.vocabulary import Mechanic, CardEncoding, VOCAB_SIZE
+    from src.mechanics.vocabulary import Mechanic, CardEncoding
 except ImportError:
     from vocabulary import Mechanic, CardEncoding
 
