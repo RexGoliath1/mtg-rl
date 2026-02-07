@@ -650,10 +650,12 @@ PATTERNS = [
     (r"(for each|of that|of the chosen|from .{0,10}) color", [Mechanic.COLOR_CONDITION]),
 
     # Stats modification (digits or X)
-    (r"gets? \+(\d+|x)/\+(\d+|x)", [Mechanic.PLUS_POWER, Mechanic.PLUS_TOUGHNESS]),
-    (r"gets? -(\d+|x)/-(\d+|x)", [Mechanic.MINUS_POWER, Mechanic.MINUS_TOUGHNESS]),
+    (r"gets? \+([1-9]\d*|x)/\+([1-9]\d*|x)", [Mechanic.PLUS_POWER, Mechanic.PLUS_TOUGHNESS]),
+    (r"gets? -([1-9]\d*|x)/-([1-9]\d*|x)", [Mechanic.MINUS_POWER, Mechanic.MINUS_TOUGHNESS]),
     (r"gets? \+(\d+|x)/\+0", [Mechanic.PLUS_POWER]),
     (r"gets? \+0/\+(\d+|x)", [Mechanic.PLUS_TOUGHNESS]),
+    (r"gets? -(\d+|x)/-0", [Mechanic.MINUS_POWER]),
+    (r"gets? -0/-(\d+|x)", [Mechanic.MINUS_TOUGHNESS]),
     (r"(other )?(creatures|permanents) you control get \+", [Mechanic.ANTHEM_EFFECT]),
     (r"\+1/\+1 counter", [Mechanic.PLUS_ONE_COUNTER]),
     (r"-1/-1 counter", [Mechanic.MINUS_ONE_COUNTER]),
@@ -1224,8 +1226,12 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
                     parameters["power_mod"] = "x"
                     parameters["toughness_mod"] = "x"
                 else:
-                    parameters["power_mod"] = p_sign * int(stat_match.group(2))
-                    parameters["toughness_mod"] = t_sign * int(stat_match.group(4))
+                    p_val = p_sign * int(stat_match.group(2))
+                    t_val = t_sign * int(stat_match.group(4))
+                    if p_val != 0:
+                        parameters["power_mod"] = p_val
+                    if t_val != 0:
+                        parameters["toughness_mod"] = t_val
 
     # Saga chapter parsing (use original text for roman numeral case matching)
     if "saga" in card_type_lower or re.search(r'^[IV]+\s*[—–\-]', oracle_text, re.MULTILINE):

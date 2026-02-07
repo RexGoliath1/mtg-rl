@@ -5164,3 +5164,56 @@ class TestToughnessMatters:
             "Instant",
         )
         assert Mechanic.POWER_TOUGHNESS_CONDITION in result.mechanics
+
+
+# =============================================================================
+# ZERO STAT FIX TESTS
+# =============================================================================
+
+class TestZeroStatFix:
+    """Tests that +0 stat modifiers don't emit incorrect mechanics."""
+
+    def test_plus_power_only(self):
+        """+3/+0 should emit PLUS_POWER but NOT PLUS_TOUGHNESS."""
+        result = parse_oracle_text(
+            "Target creature gets +3/+0 until end of turn.",
+            "Instant",
+        )
+        assert Mechanic.PLUS_POWER in result.mechanics
+        assert Mechanic.PLUS_TOUGHNESS not in result.mechanics
+
+    def test_plus_toughness_only(self):
+        """+0/+3 should emit PLUS_TOUGHNESS but NOT PLUS_POWER."""
+        result = parse_oracle_text(
+            "Target creature gets +0/+3 until end of turn.",
+            "Instant",
+        )
+        assert Mechanic.PLUS_TOUGHNESS in result.mechanics
+        assert Mechanic.PLUS_POWER not in result.mechanics
+
+    def test_plus_both(self):
+        """+2/+2 should emit both PLUS_POWER and PLUS_TOUGHNESS."""
+        result = parse_oracle_text(
+            "Target creature gets +2/+2 until end of turn.",
+            "Instant",
+        )
+        assert Mechanic.PLUS_POWER in result.mechanics
+        assert Mechanic.PLUS_TOUGHNESS in result.mechanics
+
+    def test_zero_params_not_stored(self):
+        """+3/+0 should only store power_mod, not toughness_mod."""
+        result = parse_oracle_text(
+            "Target creature gets +3/+0 until end of turn.",
+            "Instant",
+        )
+        assert result.parameters.get("power_mod") == 3
+        assert "toughness_mod" not in result.parameters
+
+    def test_minus_power_only(self):
+        """-3/-0 should emit MINUS_POWER but NOT MINUS_TOUGHNESS."""
+        result = parse_oracle_text(
+            "Target creature gets -3/-0 until end of turn.",
+            "Instant",
+        )
+        assert Mechanic.MINUS_POWER in result.mechanics
+        assert Mechanic.MINUS_TOUGHNESS not in result.mechanics
