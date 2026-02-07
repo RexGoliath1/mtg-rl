@@ -188,7 +188,7 @@ class DaemonMTGEnvironment:
             return self._get_observation(), 0.0, True, False, {}
 
         # Track state before action to detect failed actions
-        prev_decision_count = self.decision_count
+
         prev_turn = self.current_state.turn if self.current_state else 0
         prev_phase = getattr(self.current_state, 'phase', '') if self.current_state else ''
 

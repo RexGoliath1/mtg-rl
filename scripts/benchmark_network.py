@@ -83,8 +83,8 @@ def benchmark_forward_pass(
         start = time.perf_counter()
 
         with torch.no_grad():
-            policy = network.policy_head(dummy_state, return_logits=True)
-            value = network.value_head(dummy_state)
+            _ = network.policy_head(dummy_state, return_logits=True)
+            _ = network.value_head(dummy_state)
 
         if device.type == "cuda":
             torch.cuda.synchronize()

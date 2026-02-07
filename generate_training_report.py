@@ -345,7 +345,7 @@ def compile_latex(tex_path: str, output_dir: str):
             check=True,
         )
         print(f"  Compiled LaTeX report to {output_dir}/training_report.pdf")
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         print("  Note: Could not compile LaTeX (pdflatex not installed)")
 
 

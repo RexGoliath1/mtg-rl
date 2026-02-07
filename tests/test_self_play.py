@@ -197,7 +197,7 @@ class TestModelPool:
 
     def test_checkpoint_persistence(self, model_pool, small_model, transformer_config, temp_dir):
         """Checkpoints should persist to disk."""
-        model_id = model_pool.add_checkpoint(
+        _ = model_pool.add_checkpoint(
             model=small_model,
             games_trained=1000,
             config=transformer_config,
@@ -237,7 +237,7 @@ class TestModelPool:
 
     def test_sample_excludes_current(self, model_pool, small_model, transformer_config):
         """Should exclude current model from sampling when there are others."""
-        id1 = model_pool.add_checkpoint(small_model, 1000, transformer_config)
+        _ = model_pool.add_checkpoint(small_model, 1000, transformer_config)
         id2 = model_pool.add_checkpoint(small_model, 2000, transformer_config)
 
         # Sample excluding id2
@@ -614,7 +614,6 @@ class TestIntegration:
     def test_model_weights_transfer(self, small_model, transformer_config):
         """Model weights should transfer correctly between pool and training."""
         # Get initial weights
-        initial_weights = {name: param.clone() for name, param in small_model.named_parameters()}
 
         # Modify weights
         with torch.no_grad():

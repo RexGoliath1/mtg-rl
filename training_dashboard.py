@@ -211,7 +211,6 @@ class TrainingDashboard:
         stats = self.metrics.get_stats()
 
         # Console output
-        elapsed = stats["elapsed_seconds"]
         rate = stats["games_per_second"]
         remaining = self.config.total_games - games
         eta = remaining / rate if rate > 0 else 0

@@ -234,7 +234,6 @@ class PolicyHead(nn.Module):
         # Apply action mask (set illegal actions to -inf before softmax)
         if action_mask is not None:
             # Ensure at least one action is legal
-            mask_valid = action_mask.sum(dim=-1, keepdim=True) > 0
             # Set illegal to -inf (becomes 0 after softmax)
             logits = logits.masked_fill(action_mask == 0, float('-inf'))
 

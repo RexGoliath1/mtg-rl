@@ -238,7 +238,6 @@ class HeuristicAgent:
 
         opp_blockers = [c for c in opp_player.battlefield
                        if c.is_creature and not c.tapped]
-        opp_toughness = sum(c.toughness or 0 for c in opp_blockers)
 
         # Decide which creatures to attack with
         attack_with = []
@@ -330,7 +329,6 @@ class HeuristicAgent:
             return "", {"reason": "no_cards"}
 
         min_cards = decision.raw_data.get("min", 0)
-        max_cards = decision.raw_data.get("max", len(cards))
 
         # For discard: discard highest CMC (lands first)
         # For other choices: pick lowest CMC (cheapest)

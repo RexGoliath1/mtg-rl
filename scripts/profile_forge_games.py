@@ -271,7 +271,6 @@ def run_profiling(
 
     # Estimate training throughput
     print("\n--- Training Throughput Estimate ---")
-    avg_decisions_per_game = total_decisions / len(all_stats)
     games_per_second = len(all_stats) / total_time
 
     # Each decision is roughly one training sample

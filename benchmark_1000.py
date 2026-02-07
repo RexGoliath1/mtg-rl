@@ -109,7 +109,7 @@ def run_benchmark():
 
         completed = 0
         for future in as_completed(futures):
-            game_id = futures[future]
+            _ = futures[future]
             result = future.result()
             results.append(result)
             completed += 1

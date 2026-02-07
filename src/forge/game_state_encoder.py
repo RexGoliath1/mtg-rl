@@ -940,7 +940,6 @@ class ForgeGameStateEncoder(nn.Module):
         """
         Convert parsed state to tensors for the network.
         """
-        batch_size = 1  # Single state encoding
 
         # Encode cards by zone for each player
         zone_cards = {}
@@ -996,7 +995,6 @@ class ForgeGameStateEncoder(nn.Module):
         stack_mask = torch.tensor(stack_mask).unsqueeze(0)
 
         # Global state
-        num_players = len(parsed_state["players"])
 
         life_totals = np.zeros((1, self.config.max_players), dtype=np.float32)
         mana_pools = np.zeros(

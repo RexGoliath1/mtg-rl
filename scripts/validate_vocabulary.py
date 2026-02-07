@@ -79,7 +79,7 @@ def analyze_card(card):
         }
 
     try:
-        encoding = parse_card(card)
+        _ = parse_card(card)  # Validate card is parseable
         result = parse_oracle_text(oracle_text, card.get("type_line", ""))
         return {
             "name": card.get("name", "Unknown"),

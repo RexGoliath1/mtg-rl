@@ -226,7 +226,7 @@ def encode_cards(cards: List[Dict], verbose: bool = True) -> Tuple[np.ndarray, n
             encoding = parse_card(card)
 
             # Get vector representation
-            vec = encode_card_to_vector(encoding)
+            _ = encode_card_to_vector(encoding)  # Validate encoding
 
             # Fill mechanics matrix (multi-hot)
             for m in encoding.mechanics:

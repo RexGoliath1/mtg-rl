@@ -980,8 +980,8 @@ def transfer_from_draft_encoder(
     entity_encoder = EntityEncoder(config)
 
     # Transfer identity encoder weights
-    draft_state = draft_checkpoint['state_dict']
-    entity_state = entity_encoder.state_dict()
+    _ = draft_checkpoint["state_dict"]
+    _ = entity_encoder.state_dict()
 
     # Map weights (this would need adjustment based on actual draft encoder architecture)
     # For now, just initialize fresh
@@ -1098,7 +1098,7 @@ def test_entity_encoder():
     # Test save/load
     print("\nTesting save/load...")
     encoder.save("/tmp/test_entity_encoder.pt")
-    loaded = EntityEncoder.load("/tmp/test_entity_encoder.pt")
+    _ = EntityEncoder.load("/tmp/test_entity_encoder.pt")
     print("Save/load successful!")
 
     # Test freezing

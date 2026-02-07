@@ -1335,7 +1335,7 @@ def main():
         checkpoint = torch.load(args.checkpoint, map_location=config.device)
         model.load_state_dict(checkpoint['model_state_dict'])
 
-        evaluator = DraftEvaluator(model, config)
+        _ = DraftEvaluator(model, config)  # Instantiate evaluator
         # Run evaluations...
 
     print("\nPipeline complete!")

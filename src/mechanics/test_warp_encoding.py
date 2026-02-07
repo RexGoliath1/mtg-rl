@@ -230,7 +230,7 @@ def analyze_warp_encoding():
     ]
 
     for card in cards:
-        vec = encode_card_to_vector(card)
+        _ = encode_card_to_vector(card)  # Validate encoding
         print(f"\n{card.name}:")
         print(f"  Types: {card.types}")
         print(f"  Cost: {card.mana_cost} (CMC {card.cmc})")

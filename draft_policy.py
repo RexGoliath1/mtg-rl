@@ -643,7 +643,7 @@ def test_draft_policy():
     # Test save/load
     print("\nTesting save/load...")
     policy.save("/tmp/test_draft_policy.pt")
-    loaded = DraftPolicyNetwork.load("/tmp/test_draft_policy.pt")
+    _ = DraftPolicyNetwork.load("/tmp/test_draft_policy.pt")
     print("  Save/load successful!")
 
     print("\n" + "=" * 60)

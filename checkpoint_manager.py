@@ -276,7 +276,7 @@ class CheckpointManager:
         Returns:
             TrainingState if checkpoint found, None otherwise
         """
-        latest_checkpoint = None
+
         latest_path = None
 
         # Check local checkpoints

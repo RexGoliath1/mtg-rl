@@ -760,7 +760,7 @@ class SelfPlayTrainer:
 
         start_time = time.time()
         games_since_checkpoint = 0
-        transitions_collected = 0
+
 
         try:
             while self.games_played < self.config.total_games:
@@ -785,13 +785,12 @@ class SelfPlayTrainer:
                 # Store transitions for training
                 if result.get('transitions'):
                     self._store_transitions(result['transitions'])
-                    transitions_collected += len(result['transitions'])
 
                 # Training step when buffer is full
                 if self.agent.buffer.ptr >= self.config.n_steps:
-                    train_metrics = self._training_step()
+                    self._training_step()
                     self.agent.num_updates += 1
-                    transitions_collected = 0
+            
 
                 # Checkpoint periodically
                 if games_since_checkpoint >= self.config.games_per_checkpoint:

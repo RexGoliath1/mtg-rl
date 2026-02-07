@@ -120,7 +120,6 @@ class DraftEmbeddingModel(nn.Module):
 
         # Cross attention: pack attends to pool
         # First, project pool context to embed_dim for attention
-        pool_emb = pool_context.expand(-1, 1, -1)  # [batch, 1, hidden_dim]
 
         # Simple approach: concatenate pool context to each pack card
         pool_expanded = pool_context.expand(-1, pack_size, -1)[:, :, :self.embed_dim]

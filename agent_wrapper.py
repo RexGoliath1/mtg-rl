@@ -265,10 +265,6 @@ class ForgeGame:
             "error": None
         }
 
-        agents = {
-            agent1.name: agent1,
-            agent2.name: agent2
-        }
 
         # Map player names to agents (will be set when we see first decision)
         player_to_agent: Dict[str, Agent] = {}

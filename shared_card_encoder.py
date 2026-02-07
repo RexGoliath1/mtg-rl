@@ -569,7 +569,7 @@ def test_shared_encoder():
     # Test save/load
     print("\nTesting save/load...")
     encoder.save("/tmp/test_encoder.pt")
-    loaded = SharedCardEncoder.load("/tmp/test_encoder.pt")
+    _ = SharedCardEncoder.load("/tmp/test_encoder.pt")
     print("Save/load successful!")
 
     print("\n" + "=" * 60)

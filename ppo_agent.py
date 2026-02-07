@@ -535,8 +535,6 @@ def train(
                 episode_reward = 0
                 episode_length = 0
                 obs, info = env.reset()
-            else:
-                obs = next_obs
 
         # Compute last value for bootstrapping
         game_state = {

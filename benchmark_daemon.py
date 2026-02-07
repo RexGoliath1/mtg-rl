@@ -113,17 +113,16 @@ def run_benchmark():
 
         completed = 0
         for future in as_completed(futures):
-            game_id = futures[future]
+            _ = futures[future]
             result = future.result()
             results.append(result)
             completed += 1
 
             if result["success"]:
                 wins[result["winner"]] += 1
-                status = f"Game {game_id}: {result['duration_ms']:.0f}ms - {result['winner']}"
             else:
                 errors.append(result)
-                status = f"Game {game_id}: ERROR - {result['error']}"
+                # Error already tracked in errors list
 
             # Progress update every 10 games
             if completed % 10 == 0:

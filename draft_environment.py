@@ -203,12 +203,12 @@ class DraftEnvironment:
 
         # Parse response
         lines = response.split("\n")
-        draft_info = None
+
         pack_data = None
 
         for line in lines:
             if line.startswith("DRAFT_STARTED "):
-                draft_info = json.loads(line[len("DRAFT_STARTED "):])
+                _ = json.loads(line[len("DRAFT_STARTED "):])
             elif line.startswith("PACK "):
                 pack_data = json.loads(line[len("PACK "):])
             elif line.startswith("ERROR"):
@@ -267,13 +267,13 @@ class DraftEnvironment:
 
         # Parse response
         lines = response.split("\n")
-        pick_result = None
+
         pack_data = None
         draft_complete = False
 
         for line in lines:
             if line.startswith("PICKED "):
-                pick_result = json.loads(line[len("PICKED "):])
+                _ = json.loads(line[len("PICKED "):])
             elif line.startswith("PACK "):
                 pack_data = json.loads(line[len("PACK "):])
             elif line.startswith("DRAFT_COMPLETE "):

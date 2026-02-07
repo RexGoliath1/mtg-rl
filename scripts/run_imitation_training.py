@@ -47,7 +47,6 @@ def generate_latex_report(
     avg_decisions = sum(decisions_list) / len(decisions_list) if decisions_list else 0
     avg_dpt = sum(all_dpt) / len(all_dpt) if all_dpt else 0
     max_dpt = max(all_dpt) if all_dpt else 0
-    min_dpt = min(all_dpt) if all_dpt else 0
 
     # Winners breakdown
     winners = {}

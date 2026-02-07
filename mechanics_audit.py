@@ -297,7 +297,6 @@ def main():
     other = []
 
     for kw in coverage['missing_from_ours']:
-        kw_cap = kw.title()
         if kw in ['absorb', 'amplify', 'battle cry', 'bushido', 'frenzy',
                   'rampage', 'skulk', 'provoke', 'melee']:
             combat_relevant.append(kw)

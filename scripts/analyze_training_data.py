@@ -49,7 +49,6 @@ def analyze_games(data: dict) -> dict:
     states = data['states']
     decision_types = data['decision_types']
     num_actions = data['num_actions']
-    choices = data['choices']
 
     # Detect game boundaries
     boundaries = detect_games(turns)

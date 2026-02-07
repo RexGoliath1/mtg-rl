@@ -336,7 +336,7 @@ class ParallelActor:
                 })
 
                 # Select and play action
-                action = torch.multinomial(mcts_policy, 1).item()
+                _ = torch.multinomial(mcts_policy, 1).item()
 
             with self.profiler.measure("forge_step"):
                 # Simulate Forge communication
