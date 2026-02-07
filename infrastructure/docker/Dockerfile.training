@@ -24,9 +24,6 @@ COPY src/ /app/src/
 COPY scripts/ /app/scripts/
 COPY decks/ /app/decks/
 
-# Copy root-level Python files
-COPY *.py /app/
-
 # Environment variables
 ENV DAEMON_HOST=localhost
 ENV DAEMON_PORT=17171

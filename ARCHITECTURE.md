@@ -377,7 +377,7 @@ The project splits naturally into three independent workstreams that can be deve
 - S3 data pipeline (collection → storage → training)
 - Monitoring and cost controls
 
-**Files:** `infrastructure/`, `scripts/deploy_*.sh`, `src/forge/forge_client.py`, `Dockerfile.*`
+**Files:** `infrastructure/`, `scripts/deploy_*.sh`, `src/forge/forge_client.py`, `infrastructure/docker/Dockerfile.*`
 
 ---
 

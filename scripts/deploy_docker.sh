@@ -104,10 +104,10 @@ if $BUILD; then
     fi
 
     echo "Building daemon image..."
-    docker build -t mtg-daemon:latest -f Dockerfile.daemon .
+    docker build -t mtg-daemon:latest -f infrastructure/docker/Dockerfile.daemon .
 
     echo "Building training image..."
-    docker build -t mtg-training:latest -f Dockerfile.training .
+    docker build -t mtg-training:latest -f infrastructure/docker/Dockerfile.training .
 
     echo "Images built successfully!"
     docker images | grep mtg-
@@ -123,12 +123,12 @@ if $LOCAL; then
 
     # Start daemon
     echo "Starting Forge daemon..."
-    docker-compose up -d daemon
+    docker-compose -f infrastructure/docker-compose.yml up -d daemon
 
     # Wait for daemon to be healthy
     echo "Waiting for daemon to be ready..."
     for i in {1..60}; do
-        if docker-compose exec -T daemon sh -c "echo 'STATUS' | nc -w 5 localhost 17171" 2>/dev/null | grep -q "OK"; then
+        if docker-compose -f infrastructure/docker-compose.yml exec -T daemon sh -c "echo 'STATUS' | nc -w 5 localhost 17171" 2>/dev/null | grep -q "OK"; then
             echo "Daemon is ready!"
             break
         fi
@@ -138,15 +138,15 @@ if $LOCAL; then
 
     # Run profiling
     echo "Running profiling with ${NUM_GAMES} games..."
-    docker-compose run --rm training python /app/scripts/profile_forge_games.py \
+    docker-compose -f infrastructure/docker-compose.yml run --rm training python /app/scripts/profile_forge_games.py \
         --host daemon --port 17171 --num-games ${NUM_GAMES} --verbose
 
     # Show logs
-    docker-compose logs daemon
+    docker-compose -f infrastructure/docker-compose.yml logs daemon
 
     # Cleanup
     echo "Stopping containers..."
-    docker-compose down
+    docker-compose -f infrastructure/docker-compose.yml down
 fi
 
 # ============================================================================

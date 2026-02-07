@@ -43,11 +43,11 @@ python training_pipeline.py --mode bc --sets FDN
 
 ```bash
 # Build images
-docker build -f Dockerfile.daemon -t mtg-daemon .
-docker build -f Dockerfile.training -t mtg-training .
+docker build -f infrastructure/docker/Dockerfile.daemon -t mtg-daemon .
+docker build -f infrastructure/docker/Dockerfile.training -t mtg-training .
 
 # Run locally
-docker-compose up
+docker-compose -f infrastructure/docker-compose.yml up
 ```
 
 ---

@@ -1,65 +1,121 @@
 # MTG RL Docker Compose
-# Run Forge daemon + Collection together
+# All services for Forge simulation, training, and data collection.
 #
-# Usage:
-#   docker-compose up -d forge-daemon      # Start Forge daemon
-#   docker-compose run collection          # Run collection
-#   docker-compose logs -f forge-daemon    # View daemon logs
+# Usage (from project root):
+#   docker-compose -f infrastructure/docker-compose.yml up -d daemon
+#   docker-compose -f infrastructure/docker-compose.yml run collection
+#   docker-compose -f infrastructure/docker-compose.yml --profile sim run forge-sim
+#   docker-compose -f infrastructure/docker-compose.yml --profile monitoring up tensorboard
 
 services:
-  # Forge game engine daemon
-  forge-daemon:
+  # Forge simulation (one-off game runs)
+  forge-sim:
     build:
-      context: .
-      dockerfile: Dockerfile.daemon
-    image: mtg-daemon:modern
+      context: ..
+      dockerfile: infrastructure/docker/Dockerfile.sim
+    container_name: forge-mtg-sim
+    volumes:
+      - ../decks:/forge/userdata/decks/constructed:ro
+      - forge-cache:/forge/cache
+    profiles:
+      - sim
+
+  # Forge daemon - persistent game engine for training/collection
+  daemon:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/Dockerfile.daemon
+    container_name: mtg-daemon
+    image: mtg-daemon:latest
     ports:
       - "17171:17171"
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "sh", "-c", "echo STATUS | nc -w 5 localhost 17171 | grep -q FORGE"]
+      test: ["CMD", "sh", "-c", "echo 'STATUS' | nc -w 5 localhost 17171 | grep -q 'FORGE'"]
       interval: 30s
       timeout: 10s
-      start_period: 120s
       retries: 3
+      start_period: 120s
     deploy:
       resources:
         limits:
           memory: 4G
+        reservations:
+          memory: 2G
 
-  # Python collection script
+  # RL training against Forge daemon
+  training:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/Dockerfile.training
+    container_name: mtg-training
+    depends_on:
+      daemon:
+        condition: service_healthy
+    environment:
+      - DAEMON_HOST=daemon
+      - DAEMON_PORT=17171
+      - S3_BUCKET=${S3_BUCKET:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - WANDB_API_KEY=${WANDB_API_KEY:-}
+      - WANDB_PROJECT=${WANDB_PROJECT:-mtg-rl}
+    volumes:
+      - ../checkpoints:/app/checkpoints
+      - ../logs:/app/logs
+    restart: "no"
+
+  # Data collection (imitation learning)
   collection:
     build:
-      context: .
-      dockerfile: Dockerfile.collection
+      context: ..
+      dockerfile: infrastructure/docker/Dockerfile.collection
+    container_name: mtg-collection
     image: mtg-collection:latest
     depends_on:
-      forge-daemon:
+      daemon:
         condition: service_healthy
     volumes:
-      - ./training_data:/app/training_data
+      - ../training_data:/app/training_data
     environment:
       - PYTHONUNBUFFERED=1
     command: >
       python -u scripts/collect_ai_training_data.py
       --games ${COLLECTION_GAMES:-1000}
       --workers ${COLLECTION_WORKERS:-8}
-      --host forge-daemon
+      --host daemon
       --output training_data/docker_run
       --save-interval 500
 
-  # Quick test mode
+  # Quick test collection (10 games)
   test-collection:
     build:
-      context: .
-      dockerfile: Dockerfile.collection
+      context: ..
+      dockerfile: infrastructure/docker/Dockerfile.collection
     depends_on:
-      forge-daemon:
+      daemon:
         condition: service_healthy
     volumes:
-      - ./training_data:/app/training_data
+      - ../training_data:/app/training_data
     command: >
       python -u scripts/collect_ai_training_data.py
       --games 10
       --workers 4
-      --host forge-daemon
+      --host daemon
       --output training_data/test
+
+  # TensorBoard monitoring
+  tensorboard:
+    image: tensorflow/tensorflow:latest
+    container_name: mtg-tensorboard
+    command: tensorboard --logdir=/logs --bind_all
+    ports:
+      - "6006:6006"
+    volumes:
+      - ../logs:/logs
+    profiles:
+      - monitoring
+
+volumes:
+  forge-cache:

@@ -585,7 +585,7 @@ def train_daemon(config: TrainingConfig, resume: bool = False):
     if status['status'] != 'running':
         print(f"ERROR: Daemon not running at {config.daemon_host}:{config.daemon_port}")
         print("Start the daemon first: java -jar forge.jar daemon -p 17171")
-        print("Or use docker-compose: docker-compose up daemon")
+        print("Or use docker-compose: docker-compose -f infrastructure/docker-compose.yml up daemon")
         return
 
     print(f"\nDaemon connected at {config.daemon_host}:{config.daemon_port}")

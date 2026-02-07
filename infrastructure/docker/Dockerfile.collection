@@ -24,8 +24,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
 COPY decks/ /app/decks/
-COPY *.py /app/
-
 # Set environment
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1

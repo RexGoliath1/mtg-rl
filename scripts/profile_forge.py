@@ -430,7 +430,7 @@ if __name__ == "__main__":
     if args.mode in ["init", "ai", "interactive", "all"]:
         if not check_docker_available():
             print("Error: Docker image 'forge-sim' not found.")
-            print("Build it first with: docker build -t forge-sim .")
+            print("Build it first with: docker build -f infrastructure/docker/Dockerfile.sim -t forge-sim .")
             exit(1)
 
     if args.mode == "init" or args.mode == "all":

@@ -234,7 +234,7 @@ Files created:
   - evaluate.py         : Evaluation framework
 
 To train with Forge:
-  1. Build Docker image: docker build -t forge-sim .
+  1. Build Docker image: docker build -f infrastructure/docker/Dockerfile.sim -t forge-sim .
   2. Run training: python3 train.py --mode single --timesteps 10000
   3. Evaluate: python3 evaluate.py --mode agent --agent checkpoints/final_model.pt
 

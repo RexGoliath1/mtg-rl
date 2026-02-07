@@ -250,7 +250,10 @@ mtg/
 │
 ├── tests/                    # Test suite (464 parser tests + encoder/pipeline/self-play tests)
 ├── research/                 # Experimental files
-├── infrastructure/           # Terraform (S3, ECR, IAM, EC2)
+├── infrastructure/           # Terraform, Docker, deployment configs
+│   ├── docker/              # Dockerfiles (sim, daemon, collection, training)
+│   ├── docker-compose.yml   # All services (daemon, training, collection, tensorboard)
+│   └── *.tf                 # Terraform (S3, ECR, IAM, EC2)
 ├── decks/                    # Deck files for training
 ├── docs/                     # MTG rules reference
 ├── data/                     # Training data, HDF5 embeddings, sidecar metadata (gitignored)

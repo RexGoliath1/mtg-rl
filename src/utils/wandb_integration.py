@@ -243,7 +243,7 @@ class ModelRegistry:
     Works with or without W&B - falls back to local JSON registry.
     """
 
-    def __init__(self, registry_path: str = "model_registry.json"):
+    def __init__(self, registry_path: str = "data/model_registry.json"):
         self.registry_path = Path(registry_path)
         self.registry = self._load_registry()
 
