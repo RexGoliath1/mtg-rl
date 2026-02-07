@@ -296,7 +296,7 @@ mtg/
 
 ## Known Issues / TODOs
 
-- [ ] Checkpoint pruning in CheckpointManager (keep last 3 + best)
+- [x] Checkpoint pruning in CheckpointManager (keep last 3 + best)
 - [ ] EntityEncoder dimension mismatch with training pipeline (use SharedCardEncoder for now)
 - [ ] Forge daemon integration (actual game simulation)
 - [x] UV + pyproject.toml packaging (all sys.path hacks removed)
