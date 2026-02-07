@@ -34,7 +34,7 @@ import math
 import torch
 
 from src.models.policy_network import MTGPolicyNetwork, TransformerConfig, StatePreprocessor
-from ppo_agent import PPOAgent, PPOConfig
+from src.agents.ppo_agent import PPOAgent, PPOConfig
 from src.environments.daemon_environment import DaemonMTGEnvironment
 
 logging.basicConfig(level=logging.INFO)

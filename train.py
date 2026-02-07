@@ -52,7 +52,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
-from checkpoint_manager import CheckpointManager, TrainingState
+from src.utils.checkpoint_manager import CheckpointManager, TrainingState
 from src.environments.daemon_environment import DaemonMTGEnvironment, check_daemon_status
 
 warnings.warn(

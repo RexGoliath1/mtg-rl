@@ -16,7 +16,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from replay_recorder import ReplayRecorder
+from src.utils.replay_recorder import ReplayRecorder
 
 
 def watch_replay(run: str, replay_dir: str = "replays", quiet: bool = False):

@@ -38,7 +38,7 @@ import time
 from src.environments.rl_environment import (
     GameState, Action, ActionType, RewardShaper
 )
-from replay_recorder import ReplayRecorder, GameReplay
+from src.utils.replay_recorder import ReplayRecorder, GameReplay
 
 
 class DaemonMTGEnvironment:

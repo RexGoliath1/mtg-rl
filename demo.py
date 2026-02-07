@@ -13,9 +13,9 @@ import numpy as np
 import torch
 
 from src.models.card_embeddings import CardEmbedding
-from evaluate import GameResult, EvalMetrics
+from src.utils.evaluate import GameResult, EvalMetrics
 from src.models.policy_network import MTGPolicyNetwork, TransformerConfig
-from ppo_agent import PPOAgent, PPOConfig
+from src.agents.ppo_agent import PPOAgent, PPOConfig
 print("="*60)
 print("MTG Reinforcement Learning Demo")
 print("="*60)

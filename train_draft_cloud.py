@@ -31,7 +31,7 @@ import torch
 from torch.utils.data import DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
 
-from data_loader_17lands import SeventeenLandsDataset, collate_picks
+from src.data.data_loader_17lands import SeventeenLandsDataset, collate_picks
 from train_draft import DraftEmbeddingModel, DraftTrainer
 
 

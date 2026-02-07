@@ -20,7 +20,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 
-from data_loader_17lands import (
+from src.data.data_loader_17lands import (
     SeventeenLandsDataset,
     collate_picks,
 )
