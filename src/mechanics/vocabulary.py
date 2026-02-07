@@ -577,6 +577,12 @@ class Mechanic(IntEnum):
     HAND_SIZE_MATTERS = 1371            # "for each card in your hand" / hand count relevant
     GRANTS_ABILITY = 1372               # "you control have/gain [keyword]" — lord/equipment grants
 
+    # ==========================================================================
+    # QUIZ ROUND 5 DESIGN DECISIONS (1373-1374)
+    # ==========================================================================
+    TUTOR_LAND = 1373                    # "search for a basic land" / land-specific tutoring (ramp)
+    YOUR_TURN_CONDITION = 1374           # "if it's your turn" / "during your turn" timing condition
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1
