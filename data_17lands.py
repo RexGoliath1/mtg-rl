@@ -34,24 +34,25 @@ on millions of human draft picks before fine-tuning with RL in Forge.
 Download data from: https://www.17lands.com/public_datasets
 """
 
+import csv
+import gzip
+import json
+import logging
+import os
 import warnings
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Iterator
+
+import numpy as np
+import torch
+from torch.utils.data import Dataset, DataLoader, IterableDataset
+
 warnings.warn(
     "data_17lands.py is deprecated. Use data_loader_17lands.py instead.",
     DeprecationWarning,
     stacklevel=2
 )
-
-import os
-import csv
-import gzip
-import json
-import numpy as np
-from typing import Dict, List, Optional, Tuple, Iterator
-from dataclasses import dataclass
-from collections import defaultdict
-import torch
-from torch.utils.data import Dataset, DataLoader, IterableDataset
-import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

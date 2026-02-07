@@ -12,6 +12,9 @@ Quick demonstration of the complete MTG RL pipeline:
 import numpy as np
 import torch
 
+from card_embeddings import CardEmbedding
+from evaluate import GameResult, EvalMetrics
+from policy_network import MTGPolicyNetwork, TransformerConfig
 print("="*60)
 print("MTG Reinforcement Learning Demo")
 print("="*60)
@@ -21,8 +24,6 @@ print("="*60)
 # =============================================================================
 print("\n1. CARD EMBEDDINGS")
 print("-"*60)
-
-from card_embeddings import CardEmbedding
 
 embedder = CardEmbedding(use_text_embeddings=False)
 
@@ -85,8 +86,6 @@ for i, c1 in enumerate(cards):
 print("\n2. POLICY NETWORK")
 print("-"*60)
 
-from policy_network import MTGPolicyNetwork, TransformerConfig
-
 config = TransformerConfig()
 network = MTGPolicyNetwork(config)
 
@@ -122,8 +121,6 @@ print(f"  State value: {value.item():.4f}")
 # =============================================================================
 print("\n3. PPO AGENT")
 print("-"*60)
-
-from ppo_agent import PPOAgent, PPOConfig
 
 ppo_config = PPOConfig(n_steps=16)
 agent = PPOAgent(ppo_config, config, torch.device('cpu'))
@@ -192,8 +189,6 @@ print(f"  Approx KL: {metrics['approx_kl']:.6f}")
 # =============================================================================
 print("\n5. EVALUATION (Mock)")
 print("-"*60)
-
-from evaluate import GameResult, EvalMetrics
 
 # Generate mock game results
 results = []

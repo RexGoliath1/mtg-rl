@@ -35,32 +35,31 @@ Usage:
     python train.py --mode daemon --resume
 """
 
-import warnings
-warnings.warn(
-    "train.py is deprecated. Use training_pipeline.py instead.",
-    DeprecationWarning,
-    stacklevel=2
-)
-
-import os
-import time
-import json
-import random
 import argparse
-import numpy as np
-from datetime import datetime
+import json
+import os
+import random
+import time
+import warnings
 from dataclasses import dataclass, asdict, field
-from typing import List, Optional, Tuple, Dict
+from datetime import datetime
 from pathlib import Path
+from typing import List, Optional, Tuple, Dict
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
-# Local imports
-from daemon_environment import DaemonMTGEnvironment, check_daemon_status
 from checkpoint_manager import CheckpointManager, TrainingState
+from daemon_environment import DaemonMTGEnvironment, check_daemon_status
+
+warnings.warn(
+    "train.py is deprecated. Use training_pipeline.py instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 
 @dataclass

@@ -10,22 +10,19 @@ Migration:
     python scripts/benchmark.py --games 1000 --parallel 10
 """
 
+import json
+import socket
+import statistics
+import time
 import warnings
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 warnings.warn(
     "benchmark_1000.py is deprecated. Use scripts/benchmark.py --games 1000 instead.",
     DeprecationWarning,
     stacklevel=2
 )
-
-# Original docstring for reference:
-# Benchmark 1000 games on the Forge daemon with 10 parallel connections.
-
-import socket
-import time
-import statistics
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from collections import defaultdict
-import json
 
 # Configuration
 DAEMON_HOST = "localhost"

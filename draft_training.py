@@ -44,22 +44,16 @@ This pipeline is inspired by:
 - Decision Transformer's offline RL
 """
 
-import warnings
-warnings.warn(
-    "draft_training.py is deprecated. Use train_draft.py or training_pipeline.py instead.",
-    DeprecationWarning,
-    stacklevel=2
-)
-
+import json
+import logging
 import os
 import time
-import json
-import numpy as np
-from datetime import datetime
+import warnings
 from dataclasses import dataclass, asdict
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
-import logging
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -67,13 +61,19 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from shared_card_encoder import CardFeatureExtractor
-from draft_policy import DraftPolicyNetwork, DraftPolicyConfig
 from data_17lands import (
     SeventeenLandsConfig, DraftDataset,
     CardDatabase, create_data_splits, create_synthetic_picks
 )
 from draft_environment import DraftEnvironment
+from draft_policy import DraftPolicyNetwork, DraftPolicyConfig
+from shared_card_encoder import CardFeatureExtractor
+
+warnings.warn(
+    "draft_training.py is deprecated. Use train_draft.py or training_pipeline.py instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

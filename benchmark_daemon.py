@@ -10,21 +10,18 @@ Migration:
     python scripts/benchmark.py --games 100 --parallel 10
 """
 
+import socket
+import statistics
+import time
 import warnings
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 warnings.warn(
     "benchmark_daemon.py is deprecated. Use scripts/benchmark.py instead.",
     DeprecationWarning,
     stacklevel=2
 )
-
-# Original docstring for reference:
-# Benchmark the Forge daemon with parallel game execution.
-
-import socket
-import time
-import statistics
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from collections import defaultdict
 
 # Configuration
 DAEMON_HOST = "localhost"
