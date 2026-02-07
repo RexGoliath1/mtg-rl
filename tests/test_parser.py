@@ -4946,3 +4946,105 @@ class TestQuizRound6Fixes:
         assert Mechanic.DESTROY in result.mechanics
         result2 = parse_oracle_text("Destroy all creatures.", "Sorcery")
         assert Mechanic.DESTROY in result2.mechanics
+
+
+class TestCreatureTypeDetection:
+    """Tests for context-filtered creature type tribal detection."""
+
+    def test_dracogenesis_dragon_spells(self):
+        """Dracogenesis — 'Dragon spells' fires CREATURE_TYPE_MATTERS."""
+        result = parse_oracle_text(
+            "You may cast Dragon spells without paying their mana costs.",
+            "Enchantment",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+        assert Mechanic.FREE_CAST_CONDITION in result.mechanics
+
+    def test_goblin_cost_reduction(self):
+        """'Goblin spells you cast cost {1} less' fires CREATURE_TYPE_MATTERS."""
+        result = parse_oracle_text(
+            "Goblin spells you cast cost {1} less to cast.",
+            "Creature — Goblin Warchief",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+        assert Mechanic.REDUCE_COST in result.mechanics
+
+    def test_zombie_trigger(self):
+        """'Whenever another Zombie enters' fires CREATURE_TYPE_MATTERS."""
+        result = parse_oracle_text(
+            "Whenever another Zombie enters the battlefield under your control, draw a card.",
+            "Creature — Zombie",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+
+    def test_sliver_tutor(self):
+        """'Search for a Sliver card' fires CREATURE_TYPE_MATTERS."""
+        result = parse_oracle_text(
+            "Search your library for a Sliver card, reveal it, put it into your hand, then shuffle.",
+            "Creature — Sliver",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+
+    def test_vampire_sacrifice(self):
+        """'Sacrifice a Vampire' fires CREATURE_TYPE_MATTERS."""
+        result = parse_oracle_text(
+            "Sacrifice a Vampire: Each opponent loses 1 life and you gain 1 life.",
+            "Creature — Vampire Noble",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+
+    def test_merfolk_targeting(self):
+        """'Target Merfolk' fires CREATURE_TYPE_MATTERS."""
+        result = parse_oracle_text(
+            "Target Merfolk gets +2/+2 and gains islandwalk until end of turn.",
+            "Instant",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+
+    def test_time_lord_multiword(self):
+        """Multi-word creature type 'Time Lord' triggers detection."""
+        result = parse_oracle_text(
+            "Whenever a Time Lord enters the battlefield under your control, scry 2.",
+            "Creature — Time Lord",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+
+    def test_no_false_positive_elf_token(self):
+        """Creating Elf tokens does NOT trigger CREATURE_TYPE_MATTERS."""
+        result = parse_oracle_text(
+            "Create three 1/1 green Elf Warrior creature tokens.",
+            "Sorcery",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS not in result.mechanics
+
+    def test_no_false_positive_dragon_token(self):
+        """Creating Dragon tokens does NOT trigger CREATURE_TYPE_MATTERS."""
+        result = parse_oracle_text(
+            "Create a 4/4 red Dragon creature token with flying.",
+            "Instant",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS not in result.mechanics
+
+    def test_no_false_positive_zombie_token(self):
+        """Creating Zombie tokens does NOT trigger CREATURE_TYPE_MATTERS."""
+        result = parse_oracle_text(
+            "Create two 2/2 black Zombie creature tokens.",
+            "Sorcery",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS not in result.mechanics
+
+    def test_no_false_positive_generic_creature(self):
+        """Generic creature text without type names does NOT trigger."""
+        result = parse_oracle_text(
+            "Destroy target creature.",
+            "Instant",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS not in result.mechanics
+
+    def test_existing_pattern_still_works(self):
+        """Existing '[type]s you control' pattern still fires alongside new detection."""
+        result = parse_oracle_text(
+            "Other Elves you control get +1/+1.",
+            "Creature — Elf Druid",
+        )
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics

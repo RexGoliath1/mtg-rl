@@ -395,6 +395,106 @@ TOKEN_IMPLICATIONS = {
 
 
 # =============================================================================
+# CREATURE TYPE DATABASE (from Scryfall catalog API)
+# =============================================================================
+# Complete list of all MTG creature types. Used for context-filtered detection
+# of tribal/creature-type-matters cards. All map to CREATURE_TYPE_MATTERS.
+# This is a reference database, NOT individual features in the vocabulary.
+# Source: https://api.scryfall.com/catalog/creature-types (302 types)
+
+ALL_CREATURE_TYPES = {
+    "advisor", "aetherborn", "alien", "ally", "angel", "antelope", "ape",
+    "archer", "archon", "armadillo", "army", "artificer", "assassin",
+    "assembly-worker", "astartes", "atog", "aurochs", "automaton", "avatar",
+    "azra", "badger", "balloon", "barbarian", "bard", "basilisk", "bat",
+    "bear", "beast", "beaver", "beeble", "beholder", "berserker", "bird",
+    "bison", "blinkmoth", "boar", "brainiac", "bringer", "brushwagg",
+    "c'tan", "camarid", "camel", "capybara", "caribou", "carrier", "cat",
+    "centaur", "chicken", "child", "chimera", "citizen", "cleric", "clown",
+    "cockatrice", "construct", "coward", "coyote", "crab", "crocodile",
+    "custodes", "cyberman", "cyclops", "dalek", "dauthi", "demigod",
+    "demon", "deserter", "detective", "devil", "dinosaur", "djinn",
+    "doctor", "dog", "dragon", "drake", "dreadnought", "drix", "drone",
+    "druid", "dryad", "dwarf", "echidna", "efreet", "egg", "elder",
+    "eldrazi", "elemental", "elephant", "elf", "elk", "employee", "eye",
+    "faerie", "ferret", "fish", "flagbearer", "fox", "fractal", "frog",
+    "fungus", "gamer", "gargoyle", "germ", "giant", "gith", "glimmer",
+    "gnoll", "gnome", "goat", "goblin", "god", "golem", "gorgon",
+    "graveborn", "gremlin", "griffin", "guest", "hag", "halfling",
+    "hamster", "harpy", "head", "hedgehog", "hellion", "hero", "hippo",
+    "hippogriff", "homarid", "homunculus", "horror", "horse", "human",
+    "hydra", "hyena", "illusion", "imp", "incarnation", "inkling",
+    "inquisitor", "insect", "jackal", "jellyfish", "juggernaut",
+    "kangaroo", "kavu", "kirin", "kithkin", "knight", "kobold", "kor",
+    "kraken", "lamia", "lammasu", "leech", "lemur", "leviathan",
+    "lhurgoyf", "licid", "lizard", "llama", "lobster", "manticore",
+    "masticore", "mercenary", "merfolk", "metathran", "minion", "minotaur",
+    "mite", "mole", "monger", "mongoose", "monk", "monkey", "moogle",
+    "moonfolk", "mount", "mouse", "mutant", "myr", "mystic", "naga",
+    "nautilus", "necron", "nephilim", "nightmare", "nightstalker", "ninja",
+    "noble", "noggle", "nomad", "nymph", "octopus", "ogre", "ooze", "orb",
+    "orc", "orgg", "otter", "ouphe", "ox", "oyster", "pangolin", "peasant",
+    "pegasus", "pentavite", "performer", "pest", "phelddagrif", "phoenix",
+    "phyrexian", "pilot", "pincher", "pirate", "plant", "platypus",
+    "porcupine", "possum", "praetor", "primarch", "prism", "processor",
+    "qu", "rabbit", "raccoon", "ranger", "rat", "rebel", "reflection",
+    "reveler", "rhino", "rigger", "robot", "rogue", "rukh", "sable",
+    "salamander", "samurai", "sand", "saproling", "satyr", "scarecrow",
+    "scientist", "scion", "scorpion", "scout", "sculpture", "seal", "serf",
+    "serpent", "servo", "shade", "shaman", "shapeshifter", "shark", "sheep",
+    "siren", "skeleton", "skrull", "skunk", "slith", "sliver", "sloth",
+    "slug", "snail", "snake", "soldier", "soltari", "sorcerer", "spawn",
+    "specter", "spellshaper", "sphinx", "spider", "spike", "spirit",
+    "splinter", "sponge", "spy", "squid", "squirrel", "starfish",
+    "surrakar", "survivor", "symbiote", "synth", "teddy", "tentacle",
+    "tetravite", "thalakos", "thopter", "thrull", "tiefling", "time lord",
+    "toy", "treefolk", "trilobite", "triskelavite", "troll", "turtle",
+    "tyranid", "unicorn", "urzan", "utrom", "vampire", "varmint",
+    "vedalken", "villain", "volver", "wall", "walrus", "warlock",
+    "warrior", "weasel", "weird", "werewolf", "whale", "wizard", "wolf",
+    "wolverine", "wombat", "worm", "wraith", "wurm", "yeti", "zombie",
+    "zubera",
+    # Plural forms for common types (oracle text uses both)
+    "elves",  # "Elves you control" (elf → elves)
+}
+
+# Pre-compile tribal context regex for creature type detection.
+# Only fires CREATURE_TYPE_MATTERS when a creature type appears in a
+# genuinely tribal context, NOT just in token creation text.
+# Examples that SHOULD match: "Dragon spells", "whenever a Goblin enters"
+# Examples that should NOT match: "create a 1/1 green Elf Warrior creature token"
+_CREATURE_TYPE_PATTERN_STR = "|".join(
+    re.escape(t) for t in sorted(ALL_CREATURE_TYPES, key=len, reverse=True)
+)
+TRIBAL_CONTEXT_PATTERNS = [
+    # "[Type] spell(s)" — "Dragon spells", "Goblin spell"
+    re.compile(r"\b(" + _CREATURE_TYPE_PATTERN_STR + r")\s+spells?\b"),
+    # "[Type] card(s)" — "search for a Dragon card"
+    re.compile(r"\b(" + _CREATURE_TYPE_PATTERN_STR + r")\s+cards?\b"),
+    # "cast a/an [Type]" — "whenever you cast a Dragon"
+    re.compile(r"cast\s+(?:a|an)\s+(" + _CREATURE_TYPE_PATTERN_STR + r")\b"),
+    # "whenever a/an [Type]" — tribal triggers
+    re.compile(r"whenever\s+(?:a|an|another)\s+(?:\w+\s+)?(" + _CREATURE_TYPE_PATTERN_STR + r")\b"),
+    # "each [Type]" — "each Goblin gets +1/+1"
+    re.compile(r"each\s+(" + _CREATURE_TYPE_PATTERN_STR + r")\b"),
+    # "number of [Type](s)" — "number of Zombies"
+    re.compile(r"number\s+of\s+(" + _CREATURE_TYPE_PATTERN_STR + r")s?\b"),
+    # "target [Type]" — type-specific targeting
+    re.compile(r"target\s+(" + _CREATURE_TYPE_PATTERN_STR + r")\b"),
+    # "sacrifice a/an [Type]" — tribal cost
+    re.compile(r"sacrifice\s+(?:a|an)\s+(" + _CREATURE_TYPE_PATTERN_STR + r")\b"),
+    # "[Type] creatures you control" — broader lord pattern
+    re.compile(r"\b(" + _CREATURE_TYPE_PATTERN_STR + r")\s+creatures?\s+you\s+control"),
+    # "[Type] you control" — already caught by existing pattern, but reinforces
+    re.compile(r"\b(" + _CREATURE_TYPE_PATTERN_STR + r")s?\s+you\s+control"),
+    # "is a [Type]" / "becomes a [Type]" — type assignment
+    re.compile(r"(?:is|becomes?)\s+(?:a|an)\s+(" + _CREATURE_TYPE_PATTERN_STR + r")\b"),
+    # "choose a [Type]" / "chosen [Type]" — type selection
+    re.compile(r"(?:choose|chosen|named)\s+(?:a\s+)?(" + _CREATURE_TYPE_PATTERN_STR + r")\b"),
+]
+
+
+# =============================================================================
 # NAMED MECHANIC UNDERLYING EFFECTS
 # =============================================================================
 # Maps ability words (named mechanics) to their actual underlying effects.
@@ -1012,6 +1112,15 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
             for effect in underlying_effects:
                 if effect not in mechanics:
                     mechanics.append(effect)
+
+    # Creature type tribal detection (context-filtered)
+    # Only fires when a creature type appears in a genuinely tribal context,
+    # NOT in token creation text like "create a 1/1 green Elf Warrior creature token"
+    if Mechanic.CREATURE_TYPE_MATTERS not in mechanics:
+        for tribal_pattern in TRIBAL_CONTEXT_PATTERNS:
+            if tribal_pattern.search(text):
+                mechanics.append(Mechanic.CREATURE_TYPE_MATTERS)
+                break
 
     # Extract numeric parameters from keyword abilities
     # Ward N
