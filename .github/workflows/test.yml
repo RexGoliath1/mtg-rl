@@ -17,3 +17,14 @@ jobs:
 
       - name: Test
         run: uv run python3 -m pytest tests/test_parser.py -v
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Dockerfile.collection
+        run: docker build -f infrastructure/docker/Dockerfile.collection .
+
+      - name: Build Dockerfile.training
+        run: docker build -f infrastructure/docker/Dockerfile.training .

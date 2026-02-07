@@ -50,7 +50,7 @@ fi
 echo ""
 echo "[3/5] Pulling Forge daemon from ECR..."
 aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin $ECR_REPO
-docker pull $ECR_REPO:forge-daemon-amd64
+docker pull $ECR_REPO:daemon-latest
 
 # Clone code using GitHub token from Secrets Manager
 echo ""
@@ -88,7 +88,7 @@ WORKERS="${workers}"
 
 # Start Forge daemon (amd64 version for EC2)
 echo "Starting Forge daemon..."
-docker run -d --name forge-daemon -p 17171:17171 ${ecr_repo}:forge-daemon-amd64
+docker run -d --name forge-daemon -p 17171:17171 ${ecr_repo}:daemon-latest
 
 # Wait for daemon to be ready
 echo "Waiting for daemon to initialize..."
