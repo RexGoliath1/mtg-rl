@@ -11,12 +11,7 @@ Usage:
 """
 
 import argparse
-import os
-import sys
 import time
-
-# Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.training.self_play import SelfPlayTrainer, SelfPlayConfig
 

@@ -6,12 +6,7 @@ Simplified test that doesn't use threading to verify the core training works.
 Uses a simple test network instead of the full AlphaZero architecture.
 """
 
-import os
-import sys
 import time
-
-# Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import torch
 import torch.nn as nn

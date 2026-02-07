@@ -17,7 +17,6 @@ import os
 import sys
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, PROJECT_ROOT)
 
 from src.mechanics.card_parser import TRIBAL_CONTEXT_PATTERNS  # noqa: E402
 

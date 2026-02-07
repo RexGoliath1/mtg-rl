@@ -13,8 +13,6 @@ For imitation learning bootstrapping:
 - Target 50,000+ games for robust training
 """
 
-import os
-import sys
 import json
 import socket
 import h5py
@@ -27,8 +25,6 @@ from typing import List, Tuple
 import itertools
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 # Deck directories

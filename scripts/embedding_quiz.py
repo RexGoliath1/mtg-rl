@@ -19,14 +19,11 @@ import argparse
 import json
 import os
 import re
-import sys
 import time
 import urllib.request
 import urllib.parse
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.mechanics.card_parser import parse_oracle_text
 

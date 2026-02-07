@@ -12,15 +12,10 @@ Usage:
     python scripts/run_imitation_training.py --games 20 --output reports/
 """
 
-import os
-import sys
 import json
 import argparse
 from pathlib import Path
 from datetime import datetime
-
-# Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.training.forge_imitation import (
     ImitationDataCollector

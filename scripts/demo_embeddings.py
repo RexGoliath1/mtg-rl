@@ -9,11 +9,6 @@ This script addresses specific concerns:
 4. Semantic clustering of similar mechanics
 """
 
-import os
-import sys
-
-# Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 from src.models.text_embeddings import PretrainedTextEmbedder, TextEmbeddingConfig

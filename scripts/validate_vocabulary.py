@@ -18,9 +18,6 @@ import sys
 import urllib.request
 import urllib.error
 from collections import Counter
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.mechanics.card_parser import parse_card, parse_oracle_text
 from src.mechanics.vocabulary import Mechanic

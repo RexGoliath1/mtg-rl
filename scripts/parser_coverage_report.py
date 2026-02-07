@@ -16,15 +16,12 @@ Usage:
 
 import argparse
 import json
-import os
 import sys
 import time
 from collections import Counter
 from typing import Dict, List, Optional
 
 import requests
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.mechanics.card_parser import parse_oracle_text
 

@@ -9,11 +9,6 @@ Quick demonstration of the complete MTG RL pipeline:
 4. Evaluation (mock)
 """
 
-import os
-import sys
-
-# Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 import torch

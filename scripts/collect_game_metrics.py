@@ -5,16 +5,12 @@ Collect Game Metrics
 Run multiple games with the simple agent and collect metrics for the report.
 """
 
-import os
-import sys
 import json
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass, field
 from typing import List
 from collections import defaultdict
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.forge.forge_client import ForgeClient
 from src.training.aggressive_agent import AggressiveAgent

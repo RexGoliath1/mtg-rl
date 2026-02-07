@@ -20,7 +20,6 @@ import argparse
 import json
 import os
 import re
-import sys
 import time
 import urllib.parse
 import urllib.request
@@ -36,7 +35,6 @@ import h5py
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, PROJECT_ROOT)
 
 from src.mechanics.vocabulary import Mechanic  # noqa: E402
 

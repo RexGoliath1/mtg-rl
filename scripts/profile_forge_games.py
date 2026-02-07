@@ -13,15 +13,11 @@ Usage:
     python scripts/profile_forge_games.py --games 10 --deck1 deck1.dck --deck2 deck2.dck
 """
 
-import os
-import sys
 import time
 import argparse
 import json
 from collections import defaultdict
 from dataclasses import dataclass, field
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.forge.forge_client import ForgeClient, Decision, DecisionType
 from src.training.profiler import TrainingProfiler

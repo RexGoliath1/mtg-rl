@@ -6,11 +6,8 @@ Run a game and dump all available actions to understand what Forge is offering.
 """
 
 import os
-import sys
 import json
 from collections import defaultdict
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.forge.forge_client import ForgeClient, DecisionType
 

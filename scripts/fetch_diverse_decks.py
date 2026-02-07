@@ -7,11 +7,8 @@ Single format keeps things consistent.
 """
 
 import os
-import sys
 import re
 from pathlib import Path
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data.mtggoldfish_decks import MTGGoldfishScraper, save_decks
 
