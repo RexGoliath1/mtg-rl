@@ -170,3 +170,7 @@ ssh_keys/
 training_data/
 training_output/
 reports/
+
+# User conversation buffer (notes, screenshots, inspiration docs)
+ClaudeConversation.txt
+ClaudeConversation/
