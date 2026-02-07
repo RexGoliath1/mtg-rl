@@ -318,6 +318,9 @@ def analyze_deck(card_names: list[str]) -> dict:
         deck_creature_types.update(meta.get("creature_subtypes", []))
         deck_creature_types.update(meta.get("tribal_types", []))
 
+    # Deck statistics (mana curve, land count, avg CMC)
+    deck_stats = compute_deck_stats(resolved)
+
     return {
         "found": found,
         "missing": missing,
@@ -327,6 +330,74 @@ def analyze_deck(card_names: list[str]) -> dict:
         "themes": themes,
         "vecs": vecs,
         "creature_types": deck_creature_types,
+        "deck_stats": deck_stats,
+    }
+
+
+def compute_deck_stats(resolved: list[str]) -> dict:
+    """Compute mana curve, land count, avg CMC, and recommended land count."""
+    if not resolved:
+        return {"curve": {}, "avg_cmc": 0, "land_count": 0, "nonland_count": 0,
+                "total": 0, "ramp_count": 0, "recommended_lands": 0, "curve_max": 0}
+
+    # Classify cards and build mana curve
+    lands = 0
+    nonland_cmcs = []
+    ramp_count = 0
+    curve = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0}  # 7 = "7+"
+
+    # Ramp-related mechanic indices
+    ramp_mechs = set()
+    for name in ("ADD_MANA", "TUTOR_LAND", "MANA_FIXING", "EXTRA_LAND_PLAY"):
+        m = getattr(Mechanic, name, None)
+        if m and m.value < DB_VOCAB_SIZE:
+            ramp_mechs.add(m.value)
+
+    for card_name in resolved:
+        meta = METADATA.get(card_name, {})
+        is_land = meta.get("is_land", False)
+        cmc = meta.get("cmc", 0)
+
+        if is_land:
+            lands += 1
+            continue
+
+        # Track nonland CMC for curve
+        cmc_int = int(cmc)
+        bucket = min(cmc_int, 7)
+        curve[bucket] = curve.get(bucket, 0) + 1
+        nonland_cmcs.append(cmc)
+
+        # Check if card provides ramp
+        if card_name in CARD_INDEX:
+            vec = MECHANICS[CARD_INDEX[card_name]]
+            if any(vec[m] for m in ramp_mechs if m < len(vec)):
+                ramp_count += 1
+
+    avg_cmc = sum(nonland_cmcs) / len(nonland_cmcs) if nonland_cmcs else 0
+    total = len(resolved)
+    nonland_count = len(nonland_cmcs)
+
+    # Recommended land count (Commander heuristic: 42 - floor(ramp/3), min 37)
+    # For 60-card: Karsten formula: 19.59 + 1.90 * avg_cmc
+    if total > 80:
+        # Commander (99-card deck)
+        rec_lands = max(37, 42 - ramp_count // 3)
+    else:
+        # 60-card format
+        rec_lands = round(19.59 + 1.90 * avg_cmc)
+
+    curve_max = max(curve.values()) if any(curve.values()) else 1
+
+    return {
+        "curve": curve,
+        "avg_cmc": round(avg_cmc, 2),
+        "land_count": lands,
+        "nonland_count": nonland_count,
+        "total": total,
+        "ramp_count": ramp_count,
+        "recommended_lands": rec_lands,
+        "curve_max": curve_max,
     }
 
 
@@ -860,6 +931,44 @@ HTML_PAGE = r"""<!DOCTYPE html>
     font-style: italic; opacity: 0.85;
   }
 
+  /* Mana curve histogram */
+  .curve-chart {
+    display: flex; align-items: flex-end; gap: 4px;
+    height: 80px; padding-top: 4px;
+  }
+  .curve-col {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; gap: 2px; min-width: 0;
+  }
+  .curve-bar {
+    width: 100%; min-height: 2px; border-radius: 3px 3px 0 0;
+    background: var(--accent); transition: height 0.3s;
+  }
+  .curve-count {
+    font-size: 0.65rem; color: var(--text); font-weight: 600;
+  }
+  .curve-label {
+    font-size: 0.6rem; color: var(--text-muted); margin-top: 2px;
+  }
+
+  /* Deck stats */
+  .stat-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0; font-size: 0.82rem;
+  }
+  .stat-label { color: var(--text-muted); }
+  .stat-value { font-weight: 700; }
+  .stat-value.good { color: var(--good); }
+  .stat-value.bad { color: var(--bad); }
+  .stat-value.neutral { color: var(--text); }
+  .land-rec {
+    margin-top: 8px; padding: 8px 10px; border-radius: 6px;
+    font-size: 0.78rem; line-height: 1.5;
+  }
+  .land-rec.over { background: rgba(224,80,80,0.12); border: 1px solid rgba(224,80,80,0.25); color: var(--bad); }
+  .land-rec.under { background: rgba(0,184,148,0.12); border: 1px solid rgba(0,184,148,0.25); color: var(--good); }
+  .land-rec.ok { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); }
+
   .rank-badge {
     position: absolute; top: -4px; left: -4px;
     width: 24px; height: 24px; background: var(--accent); color: #fff;
@@ -937,6 +1046,61 @@ def _mech_bars_html(profile: dict, max_count: int | None = None) -> str:
           <div class="mech-bar-count">{count}</div>
         </div>"""
     return html
+
+
+def _deck_stats_html(stats: dict) -> str:
+    """Render mana curve histogram and deck statistics."""
+    if not stats or stats["total"] == 0:
+        return '<span style="color:var(--text-muted);font-size:0.8rem">No deck data</span>'
+
+    curve = stats["curve"]
+    curve_max = stats["curve_max"] or 1
+
+    # Build curve histogram bars
+    bars_html = ""
+    labels = ["0", "1", "2", "3", "4", "5", "6", "7+"]
+    for i, label in enumerate(labels):
+        count = curve.get(i, 0)
+        height_pct = (count / curve_max) * 100 if curve_max > 0 else 0
+        bars_html += f"""<div class="curve-col">
+          <div class="curve-count">{count if count > 0 else ''}</div>
+          <div class="curve-bar" style="height:{max(height_pct, 3):.0f}%"></div>
+          <div class="curve-label">{label}</div>
+        </div>"""
+
+    # Land recommendation
+    land_count = stats["land_count"]
+    rec_lands = stats["recommended_lands"]
+    diff = land_count - rec_lands
+    if abs(diff) <= 1:
+        land_class = "ok"
+        land_msg = f"Land count looks good ({land_count} lands)"
+    elif diff > 1:
+        land_class = "over"
+        land_msg = f"Consider cutting {diff} lands ({land_count} → {rec_lands} recommended)"
+    else:
+        land_class = "under"
+        land_msg = f"Consider adding {-diff} more lands ({land_count} → {rec_lands} recommended)"
+
+    ramp_note = f" ({stats['ramp_count']} ramp spells detected)" if stats["ramp_count"] > 0 else ""
+
+    return f"""
+    <div class="curve-chart">{bars_html}</div>
+    <div style="margin-top:10px">
+      <div class="stat-row">
+        <span class="stat-label">Avg CMC (nonland)</span>
+        <span class="stat-value neutral">{stats['avg_cmc']:.2f}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Lands / Spells</span>
+        <span class="stat-value neutral">{stats['land_count']} / {stats['nonland_count']}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Total Cards</span>
+        <span class="stat-value neutral">{stats['total']}</span>
+      </div>
+    </div>
+    <div class="land-rec {land_class}">{land_msg}{ramp_note}</div>"""
 
 
 def _card_html(card_info: dict, rank: int, score: float, mechanics: list[str],
@@ -1149,6 +1313,7 @@ Example:
         # Deck analysis panel
         colors_html = _color_pips_html(colors)
         profile_html = _mech_bars_html(analysis["mechanics_profile"])
+        stats_html_panel = _deck_stats_html(analysis.get("deck_stats", {}))
 
         # Themes summary for analysis
         themes_summary = ""
@@ -1161,18 +1326,20 @@ Example:
           <h2>Deck Analysis</h2>
           <div class="analysis-grid">
             <div class="analysis-section">
-              <h3>Color Identity</h3>
-              <div class="color-pips">{colors_html}</div>
-              <div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted)">
-                {len(found)} cards found, {len(missing)} missing
-              </div>
+              <h3>Mana Curve</h3>
+              {stats_html_panel}
             </div>
             <div class="analysis-section">
               <h3>Top Mechanics</h3>
               {profile_html}
             </div>
             <div class="analysis-section">
-              <h3>Detected Themes</h3>
+              <h3>Color Identity</h3>
+              <div class="color-pips">{colors_html}</div>
+              <div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted)">
+                {len(found)} cards found, {len(missing)} missing
+              </div>
+              <h3 style="margin-top:16px">Detected Themes</h3>
               {themes_summary or '<span style="color:var(--text-muted)">Not enough cards for theme detection</span>'}
             </div>
           </div>
@@ -1370,6 +1537,7 @@ Example:
             "deck_colors": list(analysis["colors"]),
             "themes": [{"label": t["label"], "cards": t["cards"],
                         "top_mechanics": t["top_mechanics"]} for t in analysis["themes"]],
+            "deck_stats": analysis.get("deck_stats", {}),
         })
 
 
