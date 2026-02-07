@@ -597,6 +597,13 @@ def find_cuts(analysis: dict, limit: int = 5) -> list[dict]:
         # Skip basic lands
         if name in BASIC_LANDS:
             continue
+        # Protect non-basic lands from cuts (mana base is structural)
+        if name in CARD_INDEX and IS_LAND[CARD_INDEX[name]]:
+            continue
+        # Protect adventure/MDFC cards (dual utility makes them harder to evaluate)
+        card_layout = METADATA.get(name, {}).get("layout", "normal")
+        if card_layout in ("adventure", "modal_dfc"):
+            continue
         # Centroid of all other cards
         other_vecs = np.delete(vecs_float, i, axis=0)
         centroid = other_vecs.mean(axis=0)
