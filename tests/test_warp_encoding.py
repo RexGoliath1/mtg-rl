@@ -13,9 +13,6 @@ WARP mechanic:
 This is similar to Dash/Blitz but with exile-and-return.
 """
 
-import sys
-sys.path.insert(0, '/Users/stevengonciar/git/mtg')
-
 from src.mechanics.vocabulary import (
     Mechanic, CardEncoding, encode_card_to_vector
 )

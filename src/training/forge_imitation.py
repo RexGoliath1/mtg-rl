@@ -16,8 +16,6 @@ Usage:
     python src/training/forge_imitation.py --games 100 --epochs 10
 """
 
-import os
-import sys
 import time
 import random
 import argparse
@@ -30,9 +28,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-
-# Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.forge.forge_client import (
     ForgeClient, Decision, DecisionType, ActionOption

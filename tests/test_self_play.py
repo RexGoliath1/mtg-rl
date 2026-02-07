@@ -14,7 +14,6 @@ Run with: pytest tests/test_self_play.py -v
 """
 
 import os
-import sys
 import time
 import tempfile
 import shutil
@@ -23,9 +22,6 @@ from pathlib import Path
 import pytest
 import numpy as np
 import torch
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.agents.self_play import (
     EloTracker, ModelPool, ModelCheckpoint,

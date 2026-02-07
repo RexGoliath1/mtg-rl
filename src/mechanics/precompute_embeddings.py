@@ -19,7 +19,6 @@ Usage:
 import argparse
 import json
 import os
-import sys
 import time
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
@@ -32,9 +31,6 @@ try:
 except ImportError:
     HAS_H5PY = False
     print("Warning: h5py not installed. Install with: pip install h5py")
-
-# Add parent to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.mechanics.vocabulary import VOCAB_SIZE, encode_card_to_vector
 from src.mechanics.card_parser import parse_card

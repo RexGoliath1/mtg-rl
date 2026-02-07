@@ -35,10 +35,6 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 
-# Local imports
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 from src.forge.game_state_encoder import ForgeGameStateEncoder, GameStateConfig
 from src.forge.policy_value_heads import (
     PolicyHead, ValueHead, PolicyValueConfig, ActionConfig,
