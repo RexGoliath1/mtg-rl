@@ -118,12 +118,18 @@ def generate_metadata(cards: list[dict]) -> dict:
 
         creature_subtypes = extract_creature_subtypes(type_line)
         tribal_types = extract_tribal_types(oracle_text)
-        is_land = "Land" in type_line
+
+        # Check front face only for is_land (MDFCs with land backs are spells, not lands)
+        front_type = type_line.split("//")[0] if "//" in type_line else type_line
+        is_land = "Land" in front_type
 
         metadata[name] = {
             "creature_subtypes": creature_subtypes,
             "tribal_types": tribal_types,
             "is_land": is_land,
+            "edhrec_rank": card.get("edhrec_rank"),
+            "layout": card.get("layout", "normal"),
+            "cmc": card.get("cmc", 0),
         }
 
     return metadata
@@ -150,12 +156,17 @@ def main():
     n_with_subtypes = sum(1 for v in metadata.values() if v["creature_subtypes"])
     n_with_tribal = sum(1 for v in metadata.values() if v["tribal_types"])
     n_lands = sum(1 for v in metadata.values() if v["is_land"])
+    n_with_rank = sum(1 for v in metadata.values() if v.get("edhrec_rank") is not None)
+    n_adventure = sum(1 for v in metadata.values() if v.get("layout") == "adventure")
+    n_mdfc = sum(1 for v in metadata.values() if v.get("layout") == "modal_dfc")
 
     print("\nMetadata generated:")
     print(f"  Total cards: {len(metadata)}")
     print(f"  With creature subtypes: {n_with_subtypes}")
     print(f"  With tribal references: {n_with_tribal}")
     print(f"  Lands: {n_lands}")
+    print(f"  With EDHREC rank: {n_with_rank}")
+    print(f"  Adventures: {n_adventure}, MDFCs: {n_mdfc}")
 
     with open(args.output, "w") as f:
         json.dump(metadata, f, separators=(",", ":"))
