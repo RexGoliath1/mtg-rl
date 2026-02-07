@@ -760,7 +760,8 @@ class SelfPlayTrainer:
 
         start_time = time.time()
         games_since_checkpoint = 0
-
+        consecutive_errors = 0
+        max_consecutive_errors = 20
 
         try:
             while self.games_played < self.config.total_games:
@@ -768,8 +769,14 @@ class SelfPlayTrainer:
                 result = self._play_training_game()
 
                 if 'error' in result:
-                    logger.warning(f"Game error: {result['error']}")
+                    consecutive_errors += 1
+                    logger.warning(f"Game error ({consecutive_errors}/{max_consecutive_errors}): {result['error']}")
+                    if consecutive_errors >= max_consecutive_errors:
+                        logger.error(f"Too many consecutive errors ({consecutive_errors}), stopping training")
+                        break
                     continue
+
+                consecutive_errors = 0
 
                 self.games_played += 1
                 games_since_checkpoint += 1
