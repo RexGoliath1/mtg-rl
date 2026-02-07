@@ -3479,3 +3479,87 @@ class TestQuizRound3Fixes:
         assert Mechanic.ONCE_PER_TURN in result.mechanics
         assert Mechanic.ACTIVATED_ABILITY in result.mechanics
         assert Mechanic.DRAW in result.mechanics
+
+    # --- Beginning of combat trigger ---
+
+    def test_beginning_of_combat_trigger(self):
+        """'at the beginning of combat on your turn' should fire."""
+        result = parse_oracle_text(
+            "At the beginning of combat on your turn, you may have "
+            "target opponent gain control of target permanent you control.",
+            "Creature",
+        )
+        assert Mechanic.BEGINNING_OF_COMBAT_TRIGGER in result.mechanics
+
+    def test_beginning_of_combat_howlsquad(self):
+        """Howlsquad Heavy — beginning of combat token creation."""
+        result = parse_oracle_text(
+            "Other Goblins you control have haste. "
+            "At the beginning of combat on your turn, create a 1/1 "
+            "red Goblin creature token. That token attacks this combat if able.",
+            "Creature",
+        )
+        assert Mechanic.BEGINNING_OF_COMBAT_TRIGGER in result.mechanics
+        assert Mechanic.HASTE in result.mechanics
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+
+    # --- Dealt damage condition ---
+
+    def test_dealt_damage_this_turn(self):
+        """Stingblade Assassin — 'was dealt damage this turn'."""
+        result = parse_oracle_text(
+            "When this creature enters, destroy target creature an "
+            "opponent controls that was dealt damage this turn.",
+            "Creature",
+        )
+        assert Mechanic.DEALT_DAMAGE_CONDITION in result.mechanics
+        assert Mechanic.DESTROY in result.mechanics
+        assert Mechanic.TARGET_OPPONENT_CREATURE in result.mechanics
+        assert Mechanic.ETB_TRIGGER in result.mechanics
+
+    # --- Threshold condition ---
+
+    def test_threshold_control_count(self):
+        """Tend the Sprigs — 'if you control seven or more'."""
+        result = parse_oracle_text(
+            "Search your library for a basic land card, put it onto "
+            "the battlefield tapped, then shuffle. Then if you control "
+            "seven or more lands and/or Treefolk, create a 3/4 green "
+            "Treefolk creature token with reach.",
+            "Sorcery",
+        )
+        assert Mechanic.THRESHOLD_CONDITION in result.mechanics
+        assert Mechanic.TUTOR_TO_BATTLEFIELD in result.mechanics
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+
+    def test_threshold_three_or_more(self):
+        """Generic 'if you control three or more' threshold."""
+        result = parse_oracle_text(
+            "If you control three or more artifacts, draw a card.",
+            "Instant",
+        )
+        assert Mechanic.THRESHOLD_CONDITION in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+
+    # --- Target opponent permanent ---
+
+    def test_target_opponent_permanent(self):
+        """Web Up — 'target nonland permanent an opponent controls'."""
+        result = parse_oracle_text(
+            "When this enchantment enters, exile target nonland "
+            "permanent an opponent controls until this enchantment "
+            "leaves the battlefield.",
+            "Enchantment",
+        )
+        assert Mechanic.TARGET_OPPONENT_PERMANENT in result.mechanics
+        assert Mechanic.TARGET_PERMANENT in result.mechanics
+        assert Mechanic.EXILE_TEMPORARY in result.mechanics
+
+    def test_opponent_permanent_no_target(self):
+        """'permanent an opponent controls' without 'target' keyword."""
+        result = parse_oracle_text(
+            "Destroy target permanent an opponent controls.",
+            "Instant",
+        )
+        assert Mechanic.TARGET_OPPONENT_PERMANENT in result.mechanics
+        assert Mechanic.TARGET_PERMANENT in result.mechanics

@@ -558,6 +558,14 @@ class Mechanic(IntEnum):
     PAY_LIFE = 1361                 # "pay N life" as cost or condition
     POWER_TOUGHNESS_CONDITION = 1362  # "power 4 or greater" / "toughness 3 or less" stat gate
 
+    # ==========================================================================
+    # QUIZ ROUND 3 MEDIUM FIXES (1363-1366)
+    # ==========================================================================
+    BEGINNING_OF_COMBAT_TRIGGER = 1363  # "at the beginning of combat on your turn"
+    DEALT_DAMAGE_CONDITION = 1364       # "was dealt damage this turn" conditional
+    THRESHOLD_CONDITION = 1365          # "if you control N or more" count-based gate
+    TARGET_OPPONENT_PERMANENT = 1366    # "target nonland permanent an opponent controls"
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1

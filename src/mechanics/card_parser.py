@@ -234,6 +234,8 @@ PATTERNS = [
     (r"target creature", [Mechanic.TARGET_CREATURE]),
     (r"target player", [Mechanic.TARGET_PLAYER]),
     (r"target opponent", [Mechanic.TARGET_OPPONENT]),
+    (r"target .{0,20}permanent an opponent controls", [Mechanic.TARGET_PERMANENT, Mechanic.TARGET_OPPONENT_PERMANENT]),
+    (r"permanent an opponent controls", [Mechanic.TARGET_OPPONENT_PERMANENT]),
     (r"target permanent", [Mechanic.TARGET_PERMANENT]),
     (r"target spell", [Mechanic.TARGET_SPELL]),
     (r"target artifact", [Mechanic.TARGET_ARTIFACT]),
@@ -301,6 +303,7 @@ PATTERNS = [
     (r"when(ever)? you cast", [Mechanic.CAST_TRIGGER]),
     (r"when(ever)? an opponent casts", [Mechanic.OPPONENT_CASTS]),
     (r"at the beginning of your upkeep", [Mechanic.UPKEEP_TRIGGER]),
+    (r"at the beginning of combat on your turn", [Mechanic.BEGINNING_OF_COMBAT_TRIGGER]),
     (r"at the beginning of (each|your) end step", [Mechanic.END_STEP_TRIGGER]),
     (r"when(ever)? you draw", [Mechanic.DRAW_TRIGGER]),
     (r"when(ever)? you gain life", [Mechanic.GAIN_LIFE_TRIGGER]),
@@ -317,6 +320,8 @@ PATTERNS = [
     (r"if a creature (entered|died)", [Mechanic.IF_CREATURE_ENTERED]),
     (r"if you('ve)? gained.+life", [Mechanic.IF_LIFE_GAINED]),
     (r"unless (that player|they) pays?", [Mechanic.UNLESS_PAYS]),
+    (r"was dealt damage this turn", [Mechanic.DEALT_DAMAGE_CONDITION]),
+    (r"if you control (\w+) or more", [Mechanic.THRESHOLD_CONDITION]),
 
     # Stats modification
     (r"gets? \+\d+/\+\d+", [Mechanic.PLUS_POWER, Mechanic.PLUS_TOUGHNESS]),
