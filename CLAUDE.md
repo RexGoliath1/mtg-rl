@@ -54,7 +54,7 @@ python training_pipeline.py --mode play --num-games 3
 
 | File | Purpose | Params |
 |------|---------|--------|
-| `src/mechanics/vocabulary.py` | Mechanics primitives (VOCAB_SIZE=1363) | - |
+| `src/mechanics/vocabulary.py` | Mechanics primitives (VOCAB_SIZE=1373) | - |
 | `src/mechanics/card_parser.py` | Oracle text → mechanics | - |
 | `src/mechanics/precompute_embeddings.py` | Pre-compute HDF5 embeddings | - |
 | `src/forge/game_state_encoder.py` | Forge JSON → tensor | 5.8M |
@@ -134,11 +134,22 @@ git push origin feature/rl-daemon-mode
 
 ## Key Design Decisions
 
-1. **Mechanics-Based Card Encoding**: Cards are multi-hot vectors over ~1354 primitives, not opaque embeddings
+1. **Mechanics-Based Card Encoding**: Cards are multi-hot vectors over ~1373 primitives, not opaque embeddings
 2. **AlphaZero Architecture**: Policy + Value networks with MCTS, trained via self-play
 3. **Forge as Simulator**: Official MTG rules engine for game tree exploration
 4. **No Meta Features**: Self-play learns optimal play, not human imitation
 5. **HDF5 Storage**: Pre-computed card encodings (~5-10MB for all Commander cards)
+
+### MTG Rules Reference
+
+Full comprehensive rules: `MagicCompRules 20260116.txt` (932KB, project root)
+Distilled reference for parser work: `docs/MTG_RULES_REFERENCE.md`
+
+The reference doc covers:
+- **Cost taxonomy**: additional costs vs alternative costs vs cost reduction (with all keywords categorized)
+- **All 189 keyword abilities** organized by category
+- **Key rules concepts**: triggers, replacement effects, static abilities, layers
+- **Common text patterns** for "as an additional cost" / "rather than pay" / cost reduction
 
 ### Mechanics Vocabulary Approach (NEW)
 
@@ -153,7 +164,7 @@ Instead of text embeddings or one-hot card IDs, we decompose cards into **mechan
 ```
 
 **Key files:**
-- `src/mechanics/vocabulary.py` - ~1354 mechanics primitives (VOCAB_SIZE)
+- `src/mechanics/vocabulary.py` - ~1373 mechanics primitives (VOCAB_SIZE)
 - `src/mechanics/card_parser.py` - Oracle text → mechanics sequence
 - `research/alphazero_mtg_architecture.md` - Full architecture design
 
@@ -523,7 +534,7 @@ When W&B is configured:
 - [x] Forge daemon integrated with observation mode (-o flag)
 - [x] AWS cost controls configured ($100/month limit)
 - [x] v2 hybrid encoder architecture implemented (hybrid_card_encoder.py)
-- [x] Mechanics vocabulary defined (VOCAB_SIZE=1363) - src/mechanics/vocabulary.py
+- [x] Mechanics vocabulary defined (VOCAB_SIZE=1373) - src/mechanics/vocabulary.py
 - [x] Card text parser implemented - src/mechanics/card_parser.py
 - [x] Pre-embed all MTG cards to HDF5 format (data/card_mechanics_commander.h5)
 - [x] Forge game state encoder (src/forge/game_state_encoder.py, 5.8M params)
