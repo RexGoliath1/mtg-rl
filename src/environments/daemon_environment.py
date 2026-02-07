@@ -35,7 +35,7 @@ import numpy as np
 from typing import Tuple, Dict, List, Optional
 import time
 
-from rl_environment import (
+from src.environments.rl_environment import (
     GameState, Action, ActionType, RewardShaper
 )
 from replay_recorder import ReplayRecorder, GameReplay

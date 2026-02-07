@@ -33,7 +33,7 @@ from self_play import (
 )
 from src.models.policy_network import MTGPolicyNetwork, TransformerConfig
 from ppo_agent import PPOConfig
-from rl_environment import GameState, CardState
+from src.environments.rl_environment import GameState, CardState
 
 
 # =============================================================================

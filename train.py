@@ -53,7 +53,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 from checkpoint_manager import CheckpointManager, TrainingState
-from daemon_environment import DaemonMTGEnvironment, check_daemon_status
+from src.environments.daemon_environment import DaemonMTGEnvironment, check_daemon_status
 
 warnings.warn(
     "train.py is deprecated. Use training_pipeline.py instead.",

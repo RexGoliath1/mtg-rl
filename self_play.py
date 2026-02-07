@@ -35,7 +35,7 @@ import torch
 
 from src.models.policy_network import MTGPolicyNetwork, TransformerConfig, StatePreprocessor
 from ppo_agent import PPOAgent, PPOConfig
-from daemon_environment import DaemonMTGEnvironment
+from src.environments.daemon_environment import DaemonMTGEnvironment
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
