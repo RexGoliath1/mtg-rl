@@ -4270,3 +4270,157 @@ class TestKeywordCostTaxonomy:
         assert Mechanic.ADDITIONAL_COST not in result.mechanics
         assert Mechanic.ALTERNATIVE_COST not in result.mechanics
         assert Mechanic.REDUCE_COST not in result.mechanics
+
+
+# =============================================================================
+# QUIZ ROUND 5 FIXES
+# =============================================================================
+
+class TestQuizRound5Fixes:
+    """Fixes from quiz round 5 (quiz_2026-02-06_220330.json)."""
+
+    # Fix 1: DESTROY with "another"
+    def test_destroy_another_target(self):
+        """'Destroy another target artifact' — DESTROY should fire."""
+        result = parse_oracle_text(
+            "Flying, vigilance\n{2}, {T}, Sacrifice this creature: Destroy another target artifact. Activate only as a sorcery.",
+            "Artifact Creature",
+        )
+        assert Mechanic.DESTROY in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+        assert Mechanic.TARGET_ARTIFACT in result.mechanics
+
+    # Fix 2: "activate only as a sorcery"
+    def test_activate_only_as_sorcery(self):
+        """'Activate only as a sorcery' → SORCERY_SPEED."""
+        result = parse_oracle_text(
+            "{2}, {T}: Destroy another target artifact. Activate only as a sorcery.",
+            "Artifact Creature",
+        )
+        assert Mechanic.SORCERY_SPEED in result.mechanics
+
+    # Fix 3: CHARGE_COUNTER
+    def test_charge_counter(self):
+        """'charge counter' should fire CHARGE_COUNTER."""
+        result = parse_oracle_text(
+            "Whenever you gain life, put a charge counter on Excalibur II.\nEquipped creature gets +1/+1 for each charge counter on Excalibur II.\nEquip {3}",
+            "Artifact — Equipment",
+        )
+        assert Mechanic.CHARGE_COUNTER in result.mechanics
+        assert Mechanic.GAIN_LIFE_TRIGGER in result.mechanics
+        assert Mechanic.EQUIP in result.mechanics
+
+    # Fix 4: IMPULSE_DRAW broadened
+    def test_impulse_draw_they_may_play(self):
+        """'They may play those cards' should fire IMPULSE_DRAW (not just 'you may')."""
+        result = parse_oracle_text(
+            "Whenever a creature is dealt damage, its controller may exile that many cards from the top of their library. They may play those cards until the end of their next turn.",
+            "Enchantment",
+        )
+        assert Mechanic.IMPULSE_DRAW in result.mechanics
+        assert Mechanic.DAMAGE_RECEIVED_TRIGGER in result.mechanics
+
+    # Fix 5: TO_BATTLEFIELD_TAPPED for "onto"
+    def test_onto_battlefield_tapped(self):
+        """'put them onto the battlefield tapped' → TO_BATTLEFIELD_TAPPED."""
+        result = parse_oracle_text(
+            "Whenever one or more land cards are put into your graveyard from your library, put them onto the battlefield tapped.\nCrew 1",
+            "Artifact — Vehicle",
+        )
+        assert Mechanic.TO_BATTLEFIELD_TAPPED in result.mechanics
+        assert Mechanic.CREW in result.mechanics
+
+    # Fix 6: TARGET_YOU_CONTROL
+    def test_target_creature_you_control(self):
+        """'target creature you control' → TARGET_CREATURE + TARGET_YOU_CONTROL."""
+        result = parse_oracle_text(
+            "{1}{U}, {T}: Return another target creature you control to its owner's hand.",
+            "Creature",
+        )
+        assert Mechanic.TARGET_CREATURE in result.mechanics
+        assert Mechanic.TARGET_YOU_CONTROL in result.mechanics
+
+    def test_target_creature_you_control_kindle(self):
+        """Kindle the Inner Flame: 'target creature you control'."""
+        result = parse_oracle_text(
+            "Create a token that's a copy of target creature you control, except it has haste.",
+            "Sorcery",
+        )
+        assert Mechanic.TARGET_YOU_CONTROL in result.mechanics
+        assert Mechanic.CREATE_TOKEN in result.mechanics
+
+    # Fix 7: "for each" variable P/T
+    def test_for_each_variable_pt(self):
+        """'+1/+1 for each charge counter' → power_mod/toughness_mod should be 'x'."""
+        result = parse_oracle_text(
+            "Equipped creature gets +1/+1 for each charge counter on Excalibur II.\nEquip {3}",
+            "Artifact — Equipment",
+        )
+        assert result.parameters.get("power_mod") == "x"
+        assert result.parameters.get("toughness_mod") == "x"
+
+    def test_fixed_pt_still_works(self):
+        """'+3/+3 until end of turn' → power_mod=3, toughness_mod=3 (not variable)."""
+        result = parse_oracle_text(
+            "Target creature gets +3/+3 until end of turn.",
+            "Instant",
+        )
+        assert result.parameters.get("power_mod") == 3
+        assert result.parameters.get("toughness_mod") == 3
+
+    def test_equal_to_variable_pt(self):
+        """'+X/+X equal to' → variable."""
+        result = parse_oracle_text(
+            "Target creature gets +1/+1 equal to the number of cards in your hand.",
+            "Instant",
+        )
+        assert result.parameters.get("power_mod") == "x"
+
+    # Fix 8: TARGET_OPPONENT_CONTROLS compound
+    def test_target_artifact_opponent_controls(self):
+        """'target artifact or creature an opponent controls' → TARGET_OPPONENT_PERMANENT."""
+        result = parse_oracle_text(
+            "When this enchantment enters, exile target artifact or creature an opponent controls until this enchantment leaves the battlefield.",
+            "Enchantment",
+        )
+        assert Mechanic.TARGET_OPPONENT_PERMANENT in result.mechanics
+        assert Mechanic.EXILE in result.mechanics
+        assert Mechanic.EXILE_TEMPORARY in result.mechanics
+
+    # Fix 9: Void + Room + Behold
+    def test_void_keyword(self):
+        """'Void —' triggers VOID mechanic."""
+        result = parse_oracle_text(
+            "Surveil 1, then you draw a card and lose 1 life.\nVoid — If a nonland permanent left the battlefield this turn, draw another card.",
+            "Sorcery",
+        )
+        assert Mechanic.VOID in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+        assert Mechanic.SURVEIL in result.mechanics
+
+    def test_room_keyword(self):
+        """'room' keyword detected for DSK room enchantments."""
+        result = parse_oracle_text(
+            "You may unlock a room of this door.",
+            "Enchantment — Room",
+        )
+        assert Mechanic.ROOM in result.mechanics
+
+    def test_behold_keyword(self):
+        """'behold' triggers REVEAL + CREATURE_TYPE_MATTERS."""
+        result = parse_oracle_text(
+            "Flashback—{1}{R}, Behold three Elementals.",
+            "Sorcery",
+        )
+        assert Mechanic.REVEAL in result.mechanics
+        assert Mechanic.CREATURE_TYPE_MATTERS in result.mechanics
+
+    # Fix 10: "you may pay" conditional
+    def test_you_may_pay_conditional(self):
+        """'you may pay {G}. If you do' — word-consuming pattern."""
+        result = parse_oracle_text(
+            "When this Vehicle enters, you may pay {G}. If you do, search your library for a basic land card, reveal it, put it into your hand, then shuffle.\nCrew 2",
+            "Artifact — Vehicle",
+        )
+        assert Mechanic.TUTOR_TO_HAND in result.mechanics
+        assert Mechanic.CREW in result.mechanics

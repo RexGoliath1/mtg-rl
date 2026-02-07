@@ -362,12 +362,14 @@ PATTERNS = [
     (r"target creature an opponent controls", [Mechanic.TARGET_CREATURE, Mechanic.TARGET_OPPONENT_CREATURE]),
     (r"creature an opponent controls", [Mechanic.TARGET_OPPONENT_CREATURE]),
     (r"target creature you don't control", [Mechanic.TARGET_CREATURE, Mechanic.TARGET_OPPONENT_CREATURE]),
+    (r"target creature you control", [Mechanic.TARGET_CREATURE, Mechanic.TARGET_YOU_CONTROL]),
+    (r"target (permanent|artifact|enchantment) you control", [Mechanic.TARGET_PERMANENT, Mechanic.TARGET_YOU_CONTROL]),
     (r"target creature", [Mechanic.TARGET_CREATURE]),
     (r"target planeswalker", [Mechanic.TARGET_PLANESWALKER]),
     (r"target player", [Mechanic.TARGET_PLAYER]),
     (r"target opponent", [Mechanic.TARGET_OPPONENT]),
-    (r"target .{0,20}permanent an opponent controls", [Mechanic.TARGET_PERMANENT, Mechanic.TARGET_OPPONENT_PERMANENT]),
-    (r"permanent an opponent controls", [Mechanic.TARGET_OPPONENT_PERMANENT]),
+    (r"target .{0,30}(artifact|creature|permanent|enchantment).+opponent controls", [Mechanic.TARGET_PERMANENT, Mechanic.TARGET_OPPONENT_PERMANENT]),
+    (r"(artifact|creature|permanent|enchantment) an opponent controls", [Mechanic.TARGET_OPPONENT_PERMANENT]),
     (r"target permanent", [Mechanic.TARGET_PERMANENT]),
     (r"target spell", [Mechanic.TARGET_SPELL]),
     (r"target artifact", [Mechanic.TARGET_ARTIFACT]),
@@ -381,7 +383,7 @@ PATTERNS = [
     (r"each player", [Mechanic.TARGETS_EACH, Mechanic.TARGET_PLAYER]),
 
     # Removal patterns
-    (r"destroy target", [Mechanic.DESTROY]),
+    (r"destroy (another )?(target|all|each)", [Mechanic.DESTROY]),
     (r"destroys? (it|that|this|target)", [Mechanic.DESTROY]),
     (r"exile target", [Mechanic.EXILE]),
     (r"exiles? (it|that|this|target)", [Mechanic.EXILE]),
@@ -500,9 +502,10 @@ PATTERNS = [
     (r"exchange control", [Mechanic.GAIN_CONTROL]),
     (r"(?:return|put).{0,80}under your control", [Mechanic.GAIN_CONTROL]),  # theft, not "entered under your control"
     (r"crew\s+\d+", [Mechanic.CREW]),
-    (r"exile the top.+you may (play|cast)", [Mechanic.IMPULSE_DRAW]),
-    (r"exile.+from the top.+you may (play|cast)", [Mechanic.IMPULSE_DRAW]),
+    (r"exile the top.+(you|they|that player) may (play|cast)", [Mechanic.IMPULSE_DRAW]),
+    (r"exile.+from the top.+(you|they|that player) may (play|cast)", [Mechanic.IMPULSE_DRAW]),
     (r"exile the top.+until end of turn", [Mechanic.IMPULSE_DRAW]),
+    (r"exile.+cards?.+(you|they|that player) may (play|cast) (those|them|that)", [Mechanic.IMPULSE_DRAW]),
     (r"phases? out", [Mechanic.PHASE_OUT]),
     (r"take an extra turn", [Mechanic.EXTRA_TURN]),
     (r"extra turn after this one", [Mechanic.EXTRA_TURN]),
@@ -533,6 +536,7 @@ PATTERNS = [
     (r"exile.+until", [Mechanic.EXILE_TEMPORARY]),
     (r"you may cast.+from exile", [Mechanic.CAST_FROM_EXILE]),
     (r"enters (the battlefield )?tapped", [Mechanic.TO_BATTLEFIELD_TAPPED]),
+    (r"onto the battlefield tapped", [Mechanic.TO_BATTLEFIELD_TAPPED]),
 
     # =========================================================================
     # MODAL / CHOICE
@@ -572,6 +576,9 @@ PATTERNS = [
     (r"\bcycling\b", [Mechanic.CYCLING, Mechanic.DRAW, Mechanic.DISCARD]),
     (r"\bexert\b", [Mechanic.EXERT]),
     (r"play an additional land", [Mechanic.EXTRA_LAND_PLAY]),
+    (r"\bvoid\b\s*—", [Mechanic.VOID]),
+    (r"\broom\b", [Mechanic.ROOM]),
+    (r"\bbehold\b", [Mechanic.REVEAL, Mechanic.CREATURE_TYPE_MATTERS]),
 
     # Unnamed cost patterns (not keyword-specific)
     (r"as an additional cost.+discard", [Mechanic.ADDITIONAL_COST, Mechanic.DISCARD]),
@@ -580,6 +587,7 @@ PATTERNS = [
     (r"as an additional cost.+tap", [Mechanic.ADDITIONAL_COST, Mechanic.TAP]),
     (r"rather than pay (this spell's|its) mana cost", [Mechanic.ALTERNATIVE_COST]),
     (r"you may pay .+ rather than", [Mechanic.ALTERNATIVE_COST]),
+    (r"you may pay \{[^}]+\}\.\s*if you do", []),  # word-consuming: conditional pay
 
     # =========================================================================
     # QUIZ ROUND 2 DESIGN DECISIONS
@@ -601,6 +609,7 @@ PATTERNS = [
     (r"activate .{0,20}only once each turn", [Mechanic.ONCE_PER_TURN]),
     (r"activate .{0,30}only once\b", [Mechanic.ONCE_PER_TURN]),  # exhaust reminder text
     (r"\bexhaust\b.{0,5}—", [Mechanic.ONCE_PER_TURN, Mechanic.ACTIVATED_ABILITY]),  # exhaust keyword ability
+    (r"activate.+only as a sorcery", [Mechanic.SORCERY_SPEED]),
 
     # Pay life as cost/condition
     (r"pay (\d+|x) life", [Mechanic.PAY_LIFE]),
@@ -694,6 +703,7 @@ PATTERNS = [
     (r"\{e\}|energy counter", [Mechanic.ENERGY_COUNTER]),
     (r"shield counter", [Mechanic.SHIELD_COUNTER]),
     (r"oil counter", [Mechanic.OIL_COUNTER]),
+    (r"charge counter", [Mechanic.CHARGE_COUNTER]),
     (r"(flying|first strike|double strike|deathtouch|lifelink|vigilance|reach|trample|haste|menace|hexproof|indestructible) counter", [Mechanic.KEYWORD_COUNTER]),
 
     # =========================================================================
@@ -944,8 +954,16 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
             if stat_match:
                 p_sign = 1 if stat_match.group(1) == '+' else -1
                 t_sign = 1 if stat_match.group(3) == '+' else -1
-                parameters["power_mod"] = p_sign * int(stat_match.group(2))
-                parameters["toughness_mod"] = t_sign * int(stat_match.group(4))
+                # Check if this stat modification is variable ("for each" / "equal to")
+                # Look at surrounding text since "for each" may be outside the match group
+                stat_pos = text.find(stat_match.group())
+                nearby_text = text[max(0, stat_pos):stat_pos + len(stat_match.group()) + 40] if stat_pos >= 0 else match.group()
+                if re.search(r'(for each|equal to)', nearby_text):
+                    parameters["power_mod"] = "x"
+                    parameters["toughness_mod"] = "x"
+                else:
+                    parameters["power_mod"] = p_sign * int(stat_match.group(2))
+                    parameters["toughness_mod"] = t_sign * int(stat_match.group(4))
 
     # Saga chapter parsing (use original text for roman numeral case matching)
     if "saga" in card_type_lower or re.search(r'^[IV]+\s*[—–\-]', oracle_text, re.MULTILINE):
