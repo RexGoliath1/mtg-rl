@@ -15,6 +15,7 @@ import torch
 from card_embeddings import CardEmbedding
 from evaluate import GameResult, EvalMetrics
 from policy_network import MTGPolicyNetwork, TransformerConfig
+from ppo_agent import PPOAgent, PPOConfig
 print("="*60)
 print("MTG Reinforcement Learning Demo")
 print("="*60)
