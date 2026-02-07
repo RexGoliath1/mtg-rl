@@ -42,11 +42,11 @@ def test_ai_game():
                 print("Connection closed")
                 break
             if line.startswith("GAME_RESULT"):
-                print(f"\n=== GAME RESULT ===")
+                print("\n=== GAME RESULT ===")
                 print(line)
                 break
             if line.startswith("GAME_TIMEOUT"):
-                print(f"\n=== GAME TIMEOUT ===")
+                print("\n=== GAME TIMEOUT ===")
                 print(line)
                 break
 

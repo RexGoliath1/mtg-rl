@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import List
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -293,7 +293,7 @@ def main():
     print(f"Running {args.games} games...")
     metrics = run_games(args.games)
 
-    print(f"\nGenerating report...")
+    print("\nGenerating report...")
     generate_report(metrics, args.output)
 
 

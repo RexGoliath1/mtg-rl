@@ -10,8 +10,7 @@ Key changes from SimpleAgent:
 4. Attack with all creatures every turn
 """
 
-import random
-from typing import Tuple, Dict, Any, List
+from typing import Tuple, Dict, Any
 
 from src.forge.forge_client import Decision, DecisionType, ActionOption
 
@@ -281,10 +280,10 @@ def test_agent():
         print(f"Game completed: {decisions} decisions")
         print(f"Turns: {max(turn_decisions.keys()) if turn_decisions else 0}")
         print(f"Winner: {result.winner if result else 'unknown'}")
-        print(f"\nDecisions per turn:")
+        print("\nDecisions per turn:")
         for t in sorted(turn_decisions.keys())[:10]:
             print(f"  Turn {t}: {turn_decisions[t]}")
-        print(f"\nAction reasons:")
+        print("\nAction reasons:")
         for r, c in sorted(reasons.items(), key=lambda x: -x[1]):
             print(f"  {r}: {c}")
 

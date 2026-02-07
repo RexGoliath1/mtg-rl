@@ -29,7 +29,6 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.mechanics.card_parser import parse_oracle_text
-from src.mechanics.vocabulary import Mechanic
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPORTS_DIR = os.path.join(PROJECT_ROOT, "data", "quiz_reports")
@@ -1056,7 +1055,7 @@ def main():
     print(f"Embedding Quiz running at http://localhost:{args.port}")
     print(f"Sampling from: {label}")
     print(f"Reports save to: {REPORTS_DIR}")
-    print(f"Press Ctrl+C to stop.\n")
+    print("Press Ctrl+C to stop.\n")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

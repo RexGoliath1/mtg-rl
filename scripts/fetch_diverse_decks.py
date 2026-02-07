@@ -9,7 +9,6 @@ Single format keeps things consistent.
 import os
 import sys
 import re
-import time
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -110,12 +109,12 @@ def main():
     archetypes = {}
     for d in decks:
         archetypes[d.archetype] = archetypes.get(d.archetype, 0) + 1
-    print(f"\nArchetype distribution:")
+    print("\nArchetype distribution:")
     for arch, count in sorted(archetypes.items(), key=lambda x: -x[1]):
         print(f"  {arch}: {count}")
 
     # Print deck names
-    print(f"\nDecks fetched:")
+    print("\nDecks fetched:")
     for i, d in enumerate(decks[:20]):
         print(f"  {i+1}. {d.name} ({d.total_cards} cards)")
     if len(decks) > 20:

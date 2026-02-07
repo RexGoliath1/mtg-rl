@@ -376,5 +376,5 @@ if __name__ == "__main__":
     print("=" * 50)
     print(f"\nCard mechanics sequence: {saw_in_half_mechanics}")
     print(f"Vocabulary size: {len(MECHANICS_VOCABULARY)} primitives")
-    print(f"\nThis would feed into a transformer/GNN card encoder")
-    print(f"Combined with game state for AlphaZero policy/value heads")
+    print("\nThis would feed into a transformer/GNN card encoder")
+    print("Combined with game state for AlphaZero policy/value heads")

@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, '/Users/stevengonciar/git/mtg')
 
 from src.mechanics.vocabulary import (
-    Mechanic, CardEncoding, encode_card_to_vector, VOCAB_SIZE
+    Mechanic, CardEncoding, encode_card_to_vector
 )
 
 

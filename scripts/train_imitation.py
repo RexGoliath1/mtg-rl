@@ -5,8 +5,6 @@ Train imitation learning model on collected Forge AI data.
 Uses a simple MLP policy network to learn from expert decisions.
 """
 
-import os
-import sys
 import h5py
 import numpy as np
 import torch
@@ -276,7 +274,7 @@ def main():
     model.load_state_dict(checkpoint['model_state_dict'])
     _, final_acc, final_top3 = evaluate(model, val_loader, criterion, device)
 
-    print(f"\nFinal model performance:")
+    print("\nFinal model performance:")
     print(f"  Top-1 Accuracy: {final_acc*100:.1f}%")
     print(f"  Top-3 Accuracy: {final_top3*100:.1f}%")
 

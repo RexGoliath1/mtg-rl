@@ -119,7 +119,7 @@ def run_debug_game(host: str = "localhost", port: int = 17171, max_decisions: in
                     print(f"  -> Attacking with: {response}")
                 else:
                     response = ""
-                    print(f"  -> No attackers")
+                    print("  -> No attackers")
                 client.send_response(response)
 
             elif decision.decision_type == DecisionType.DECLARE_BLOCKERS:
@@ -143,12 +143,12 @@ def run_debug_game(host: str = "localhost", port: int = 17171, max_decisions: in
 
         result = client.get_result()
         print(f"\n{'='*60}")
-        print(f"GAME RESULT")
+        print("GAME RESULT")
         print(f"{'='*60}")
         print(f"Winner: {result.winner if result else 'unknown'}")
         print(f"Total decisions: {decisions}")
 
-        print(f"\nDecision type counts:")
+        print("\nDecision type counts:")
         for dt, count in sorted(decision_counts.items()):
             print(f"  {dt}: {count}")
 

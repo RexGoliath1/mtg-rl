@@ -21,10 +21,9 @@ import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 
 def parse_training_log(log_path: str) -> Dict:
@@ -347,7 +346,7 @@ def compile_latex(tex_path: str, output_dir: str):
         )
         print(f"  Compiled LaTeX report to {output_dir}/training_report.pdf")
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        print(f"  Note: Could not compile LaTeX (pdflatex not installed)")
+        print("  Note: Could not compile LaTeX (pdflatex not installed)")
 
 
 def main():

@@ -6,8 +6,6 @@ Since the collected data only distinguishes pass (-1) from play (0+),
 this trains a binary classifier to predict when to pass priority.
 """
 
-import os
-import sys
 import h5py
 import numpy as np
 import torch
@@ -268,7 +266,7 @@ def main():
     model.load_state_dict(checkpoint['model_state_dict'])
     final_metrics = evaluate(model, val_loader, criterion, device)
 
-    print(f"\nFinal model performance:")
+    print("\nFinal model performance:")
     print(f"  Overall Accuracy: {final_metrics['acc']*100:.1f}%")
     print(f"  Pass Accuracy: {final_metrics['pass_acc']*100:.1f}%")
     print(f"  Play Accuracy: {final_metrics['play_acc']*100:.1f}%")

@@ -3,7 +3,6 @@
 Analyze collected imitation learning training data and generate LaTeX report.
 """
 
-import os
 import sys
 import h5py
 import numpy as np

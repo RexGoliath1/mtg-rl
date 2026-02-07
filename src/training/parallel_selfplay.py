@@ -35,15 +35,14 @@ import queue
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Any
 import numpy as np
 
 import torch
 import torch.nn as nn
-import torch.multiprocessing as mp
 
-from src.training.profiler import TrainingProfiler, get_gpu_info
+from src.training.profiler import TrainingProfiler
 
 
 # =============================================================================

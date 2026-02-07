@@ -20,9 +20,7 @@ Usage:
 
 import argparse
 import json
-import os
 import signal
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -30,7 +28,6 @@ from typing import Dict, Optional
 
 import requests
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
 
@@ -414,7 +411,7 @@ def main():
             "config": config,
         }
 
-        results_path = f"checkpoints/final_results.json"
+        results_path = "checkpoints/final_results.json"
         with open(results_path, "w") as f:
             json.dump(results, f, indent=2)
 
@@ -426,7 +423,7 @@ def main():
         print("=" * 60)
         print(f"Best Validation Accuracy: {best_val_accuracy:.4f}")
         print(f"Held-out Test Accuracy:   {test_metrics['accuracy']:.4f}")
-        print(f"Model saved to: checkpoints/draft_best.pt")
+        print("Model saved to: checkpoints/draft_best.pt")
         if args.s3_bucket:
             print(f"S3 location: s3://{args.s3_bucket}/checkpoints/")
         print("=" * 60)

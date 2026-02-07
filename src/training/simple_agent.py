@@ -16,8 +16,7 @@ The goal is to produce games that complete in reasonable time (< 20 turns,
 < 100 decisions per turn) for training data collection.
 """
 
-import random
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Any
 
 from src.forge.forge_client import Decision, DecisionType, ActionOption
 

@@ -19,12 +19,11 @@ Usage:
 import os
 import sys
 import time
-import json
 import random
 import argparse
 from dataclasses import dataclass, field
 from typing import Optional, Tuple, List, Dict, Any
-from collections import defaultdict, deque
+from collections import defaultdict
 from pathlib import Path
 
 import torch
@@ -36,7 +35,7 @@ from torch.utils.data import Dataset, DataLoader
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.forge.forge_client import (
-    ForgeClient, Decision, DecisionType, ActionOption, GameState
+    ForgeClient, Decision, DecisionType, ActionOption
 )
 
 

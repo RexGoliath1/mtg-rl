@@ -651,7 +651,7 @@ def test_policy_value_heads():
     config = PolicyValueConfig()
 
     print(f"\nAction space size: {config.action_dim}")
-    print(f"Action breakdown:")
+    print("Action breakdown:")
     for action_type in ActionType:
         start, end = config.action_config.get_action_indices(action_type)
         print(f"  {action_type.name}: indices {start}-{end} ({end - start} actions)")

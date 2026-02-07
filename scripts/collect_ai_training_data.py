@@ -23,7 +23,7 @@ from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 import itertools
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -419,18 +419,18 @@ Avg Duration (ms) & {avg_duration:.0f} \\\\
     for dtype, count in sorted(stats.decision_counts.items()):
         latex += f"{dtype} & {count:,} \\\\\n"
 
-    latex += f"""\\bottomrule
-\\end{{tabular}}
-\\caption{{Decisions by Type}}
-\\end{{table}}
+    latex += """\\bottomrule
+\\end{tabular}
+\\caption{Decisions by Type}
+\\end{table}
 
-\\section{{Deck Coverage}}
+\\section{Deck Coverage}
 
-\\begin{{table}}[h]
+\\begin{table}[h]
 \\centering
-\\begin{{tabular}}{{lr}}
+\\begin{tabular}{lr}
 \\toprule
-\\textbf{{Deck Pair}} & \\textbf{{Games}} \\\\
+\\textbf{Deck Pair} & \\textbf{Games} \\\\
 \\midrule
 """
     for pair, count in sorted(stats.deck_pairs_played.items(), key=lambda x: -x[1])[:15]:
@@ -505,16 +505,16 @@ def collect_training_batch(
     import threading
     stats_lock = threading.Lock()
 
-    print(f"=" * 60)
+    print("=" * 60)
     print("AI TRAINING DATA COLLECTION")
-    print(f"=" * 60)
+    print("=" * 60)
     print(f"Target games: {num_games:,}")
     print(f"Deck pool: {len(decks)} decks")
     print(f"Unique matchups: {len(set(deck_pairs))}")
     print(f"Output: {output_path}")
     print(f"Save interval: every {save_interval} games")
     print(f"Parallel workers: {workers}")
-    print(f"=" * 60)
+    print("=" * 60)
     print()
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -631,7 +631,7 @@ def collect_training_batch(
     if hdf5_file.exists():
         print(f"  Compressed size: {hdf5_file.stat().st_size / (1024*1024):.2f} MB")
     else:
-        print(f"  WARNING: No data collected (0 decisions). File not created.")
+        print("  WARNING: No data collected (0 decisions). File not created.")
 
     # Generate report
     report_path = generate_report(stats, output_path, timestamp)
@@ -655,7 +655,7 @@ def collect_training_batch(
     print(f"\nCollection time: {elapsed/60:.1f} minutes ({elapsed/3600:.2f} hours)")
     print(f"Rate: {num_games/elapsed:.1f} games/sec")
 
-    print(f"\nDecisions by type:")
+    print("\nDecisions by type:")
     for dtype, count in sorted(stats.decision_counts.items()):
         print(f"  {dtype}: {count:,}")
 

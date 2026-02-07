@@ -78,22 +78,22 @@ def test_raw():
                             print(f"  -> Playing land: {response}")
                             break
                     else:
-                        print(f"  -> Passing: -1")
+                        print("  -> Passing: -1")
 
                     # Small delay before sending
                     time.sleep(0.01)
                     send(response)
 
                 elif dtype == "declare_attackers":
-                    print(f"  -> No attackers: (empty)")
+                    print("  -> No attackers: (empty)")
                     send("")
 
                 elif dtype == "declare_blockers":
-                    print(f"  -> No blockers: (empty)")
+                    print("  -> No blockers: (empty)")
                     send("")
 
                 else:
-                    print(f"  -> Default: 0")
+                    print("  -> Default: 0")
                     send("0")
 
             elif line.startswith("GAME_RESULT"):

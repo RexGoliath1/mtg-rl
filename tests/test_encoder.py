@@ -1,6 +1,5 @@
 """Tests for card encoders."""
 import torch
-import numpy as np
 from shared_card_encoder import SharedCardEncoder, CardEncoderConfig, CardFeatureExtractor
 from hybrid_card_encoder import (
     HybridCardEncoder,

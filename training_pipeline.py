@@ -44,7 +44,6 @@ from text_embeddings import PretrainedTextEmbedder, TextEmbeddingConfig
 from hybrid_card_encoder import (
     HybridCardEncoder,
     HybridEncoderConfig,
-    HybridCardDatabase,
     StructuralFeatureExtractor,
 )
 

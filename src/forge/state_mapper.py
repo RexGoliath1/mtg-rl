@@ -9,7 +9,6 @@ This module converts the JSON decision format to that structure.
 """
 
 import torch
-import numpy as np
 from typing import Optional
 from dataclasses import dataclass, field
 
@@ -23,7 +22,6 @@ from src.forge.forge_client import (
 from src.forge.game_state_encoder import (
     ForgeGameStateEncoder,
     GameStateConfig,
-    Zone,
     Phase,
 )
 

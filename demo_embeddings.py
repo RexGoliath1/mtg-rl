@@ -56,7 +56,7 @@ def demo_parameterized_abilities():
 
     diff = np.linalg.norm(mill3 - mill5)
     print(f"  L2 distance between Mill 3 and Mill 5: {diff:.4f}")
-    print(f"  (For reference, identical texts would have distance 0.0)")
+    print("  (For reference, identical texts would have distance 0.0)")
 
     # Compare mill to completely different abilities
     destroy = embedder.embed("Destroy target creature.", "")
@@ -271,8 +271,8 @@ def main():
         demo_completely_novel()
         demo_embedding_arithmetic()
     except Exception as e:
-        print(f"\nNote: Full demo requires sentence-transformers.")
-        print(f"Install with: pip install sentence-transformers")
+        print("\nNote: Full demo requires sentence-transformers.")
+        print("Install with: pip install sentence-transformers")
         print(f"Error: {e}")
         return
 

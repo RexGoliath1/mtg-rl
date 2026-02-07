@@ -15,11 +15,9 @@ Reports:
 
 import json
 import sys
-import os
-import io
 import urllib.request
 import urllib.error
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -198,7 +196,7 @@ def main():
             if get_format_legality(card, fmt):
                 formats[fmt].append(card)
 
-    print(f"\nCard counts by format:")
+    print("\nCard counts by format:")
     print(f"  Total unique cards: {len(real_cards)}")
     for fmt, cards in formats.items():
         print(f"  {fmt.title()}: {len(cards)}")
@@ -290,7 +288,7 @@ def main():
     print(f"  Primitives used: {len(used_mechanics)} ({len(used_mechanics)/len(all_mechanics)*100:.1f}%)")
     print(f"  Primitives unused: {len(unused_mechanics)}")
 
-    print(f"\n  Top 30 most used mechanics:")
+    print("\n  Top 30 most used mechanics:")
     for mech, count in mechanic_counts.most_common(30):
         pct = count / total_nv * 100
         bar = "#" * max(1, int(pct / 2))

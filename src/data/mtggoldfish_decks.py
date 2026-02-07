@@ -87,7 +87,7 @@ class Deck:
 
     def to_forge_format(self) -> str:
         """Convert to Forge deck format."""
-        lines = [f"[metadata]", f"Name={self.name}", f"[Main]"]
+        lines = ["[metadata]", f"Name={self.name}", "[Main]"]
         for card in self.mainboard:
             lines.append(f"{card.quantity} {card.name}")
         lines.append("[Sideboard]")

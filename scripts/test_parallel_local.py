@@ -18,7 +18,7 @@ import torch.nn as nn
 import numpy as np
 from collections import deque
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Tuple
 
 from src.training.profiler import TrainingProfiler, compare_configurations
 
@@ -201,7 +201,7 @@ def main():
         mcts_simulations=10,
     )
 
-    print(f"Config:")
+    print("Config:")
     print(f"  Actors: {config.num_actors}")
     print(f"  Games/iteration: {config.games_per_iteration}")
     print(f"  MCTS sims: {config.mcts_simulations}")
@@ -286,7 +286,7 @@ def main():
 
     # Memory info
     if device.type == "cuda":
-        print(f"\nGPU Memory:")
+        print("\nGPU Memory:")
         print(f"  Allocated: {torch.cuda.memory_allocated()/1e6:.1f} MB")
         print(f"  Max allocated: {torch.cuda.max_memory_allocated()/1e6:.1f} MB")
         print(f"  Reserved: {torch.cuda.memory_reserved()/1e6:.1f} MB")

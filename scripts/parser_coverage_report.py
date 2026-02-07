@@ -20,14 +20,13 @@ import os
 import sys
 import time
 from collections import Counter
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import requests
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.mechanics.card_parser import parse_card, parse_oracle_text
-from src.mechanics.vocabulary import Mechanic
+from src.mechanics.card_parser import parse_oracle_text
 
 SCRYFALL_SEARCH_URL = "https://api.scryfall.com/cards/search"
 REQUEST_DELAY = 0.1  # 100ms between requests
@@ -282,7 +281,7 @@ def print_report(report: Dict):
 
     b = report["confidence_buckets"]
     total = report["cards_with_text"]
-    print(f"\n  Confidence Distribution:")
+    print("\n  Confidence Distribution:")
     print(f"    90%+  : {b['high_90plus']:5d}  "
           f"({'#' * min(b['high_90plus'] * 50 // max(total, 1), 50)})")
     print(f"    70-90%: {b['good_70_90']:5d}  "
@@ -295,7 +294,7 @@ def print_report(report: Dict):
           f"({'#' * min(b['very_low_sub30'] * 50 // max(total, 1), 50)})")
 
     if report.get("per_set"):
-        print(f"\n  Per-Set Breakdown:")
+        print("\n  Per-Set Breakdown:")
         print(f"    {'Set':6s} {'Cards':>6s} {'Avg Conf':>9s} {'≥50%':>6s} {'<30%':>6s}")
         print(f"    {'─' * 35}")
         for s, data in sorted(report["per_set"].items(),
@@ -304,7 +303,7 @@ def print_report(report: Dict):
                   f"{data['avg_confidence']:8.1%} "
                   f"{data['above_50pct']:6d} {data['below_30pct']:6d}")
 
-    print(f"\n  Bottom 20 Cards (Lowest Confidence):")
+    print("\n  Bottom 20 Cards (Lowest Confidence):")
     print(f"    {'Card':40s} {'Set':5s} {'Conf':>6s} Mechanics Found")
     print(f"    {'─' * 75}")
     for card in report["bottom_50"][:20]:
@@ -315,11 +314,11 @@ def print_report(report: Dict):
               f"{card['confidence']:5.0%}  {mechs}")
 
     if report.get("common_unparsed_phrases"):
-        print(f"\n  Top Unparsed Phrases (appearing 2+ times):")
+        print("\n  Top Unparsed Phrases (appearing 2+ times):")
         for item in report["common_unparsed_phrases"][:25]:
             print(f"    [{item['count']:3d}x] {item['phrase']}")
 
-    print(f"\n  Top 20 Mechanics by Frequency:")
+    print("\n  Top 20 Mechanics by Frequency:")
     for mech, count in list(report["top_mechanics"].items())[:20]:
         bar = "#" * min(count * 40 // max(total, 1), 40)
         print(f"    {mech:30s} {count:5d}  {bar}")
@@ -361,7 +360,7 @@ def main():
 
     if verbose:
         print(f"Query: {query}", file=sys.stderr)
-        print(f"Fetching cards from Scryfall...", file=sys.stderr)
+        print("Fetching cards from Scryfall...", file=sys.stderr)
 
     cards = fetch_all_cards(query, verbose=verbose)
     if not cards:

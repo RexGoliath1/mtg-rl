@@ -36,7 +36,7 @@ except ImportError:
 # Add parent to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.mechanics.vocabulary import Mechanic, VOCAB_SIZE, encode_card_to_vector
+from src.mechanics.vocabulary import VOCAB_SIZE, encode_card_to_vector
 from src.mechanics.card_parser import parse_card
 
 

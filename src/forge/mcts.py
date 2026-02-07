@@ -25,11 +25,10 @@ Usage:
 """
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 import torch
-import torch.nn.functional as F
 
 
 # =============================================================================
@@ -694,7 +693,7 @@ def test_mcts():
         print(f"  Action {idx}: prob={action_probs[idx]:.4f}")
 
     # Check root statistics
-    print(f"\nRoot node statistics:")
+    print("\nRoot node statistics:")
     print(f"  Visit count: {mcts.root.visit_count}")
     print(f"  Value: {mcts.root.value:.4f}")
     print(f"  Children: {len(mcts.root.children)}")

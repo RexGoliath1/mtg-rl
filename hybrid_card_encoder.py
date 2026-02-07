@@ -69,15 +69,13 @@ import json
 import numpy as np
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple, Union
-from dataclasses import dataclass, field
-from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 # Import text embedding components
 from text_embeddings import (
     PretrainedTextEmbedder,
     TextEmbeddingConfig,
-    MTGTextPreprocessor,
 )
 
 
@@ -835,7 +833,7 @@ def test_hybrid_encoder():
     print("=" * 70)
 
     config = HybridEncoderConfig()
-    print(f"\nConfig:")
+    print("\nConfig:")
     print(f"  Text embedding dim: {config.text_embedding_dim}")
     print(f"  Structural dim: {config.structural_dim}")
     print(f"  Fusion input dim: {config.fusion_input_dim}")
@@ -847,7 +845,7 @@ def test_hybrid_encoder():
     # Count parameters
     total_params = sum(p.numel() for p in encoder.parameters())
     trainable_params = sum(p.numel() for p in encoder.parameters() if p.requires_grad)
-    print(f"\nParameters:")
+    print("\nParameters:")
     print(f"  Total: {total_params:,}")
     print(f"  Trainable: {trainable_params:,}")
 
@@ -869,7 +867,7 @@ def test_hybrid_encoder():
     mask = torch.ones(batch_size, num_cards)
     mask[:, 10:] = 0
 
-    print(f"  Input shapes:")
+    print("  Input shapes:")
     print(f"    Text embeddings: {text_emb.shape}")
     print(f"    Structural features: {struct_feat.shape}")
     print(f"    Mask: {mask.shape}")
@@ -880,7 +878,7 @@ def test_hybrid_encoder():
         embeddings = encoder(text_emb, struct_feat, mask)
         pooled = encoder.get_pooled_representation(text_emb, struct_feat, mask, "mean")
 
-    print(f"  Output shapes:")
+    print("  Output shapes:")
     print(f"    Card embeddings: {embeddings.shape}")
     print(f"    Pooled representation: {pooled.shape}")
 

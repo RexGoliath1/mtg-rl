@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import torch
 import numpy as np
 
-from src.training.profiler import TrainingProfiler, get_gpu_info, estimate_batch_memory
+from src.training.profiler import get_gpu_info, estimate_batch_memory
 
 
 def benchmark_forward_pass(

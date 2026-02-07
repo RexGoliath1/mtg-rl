@@ -14,7 +14,7 @@ Design principles:
 The network learns how primitives INTERACT through self-play, not pre-coding.
 """
 
-from enum import IntEnum, auto
+from enum import IntEnum
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 

@@ -619,7 +619,7 @@ def main():
     print("=" * 60)
     print(f"Best Val: {best_val_acc:.4f}")
     print(f"Test: {test_metrics['accuracy']:.4f}")
-    print(f"Model: checkpoints/draft_v2_best.pt")
+    print("Model: checkpoints/draft_v2_best.pt")
     if args.s3_bucket:
         print(f"S3: s3://{args.s3_bucket}/checkpoints/")
 

@@ -14,16 +14,14 @@ This is NOT meant to be exhaustive from day 1. We iterate:
 """
 
 import re
-import json
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any
 from dataclasses import dataclass
-from enum import Enum
 
 # Import our vocabulary
 try:
     from src.mechanics.vocabulary import Mechanic, CardEncoding, VOCAB_SIZE
 except ImportError:
-    from vocabulary import Mechanic, CardEncoding, VOCAB_SIZE
+    from vocabulary import Mechanic, CardEncoding
 
 
 # =============================================================================
