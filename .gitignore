@@ -174,3 +174,21 @@ reports/
 # User conversation buffer (notes, screenshots, inspiration docs)
 ClaudeConversation.txt
 ClaudeConversation/
+
+# Archived documentation (key insights preserved in Claude memory)
+CARD_ENCODING.md
+FORGE_AI_ANALYSIS.md
+FORGE_PERFORMANCE_ANALYSIS.md
+PROFILING_ANALYSIS.md
+SELF_PLAY_README.md
+TRAINING_ANALYSIS.md
+TRAINING_REPORT.md
+TRAINING_SPEEDUP.md
+TRAINING_STRATEGY.md
+TRANSFER_LEARNING.md
+WHITEPAPER.md
+research/alphazero_mtg_architecture.md
+infrastructure/TERRAFORM_VS_AWSCLI.md
+
+# Full rules text (large reference file, not code)
+MagicCompRules*.txt
