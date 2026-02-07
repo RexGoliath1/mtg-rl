@@ -346,6 +346,62 @@ KEYWORD_IMPLICATIONS = {
 
 
 # =============================================================================
+# TOKEN IMPLIED EFFECTS
+# =============================================================================
+# Maps token types to their inherent mechanical effects.
+# When a card creates/mentions these tokens, the token's built-in abilities
+# are added so the network understands what the token actually does.
+# (Token abilities are in reminder text which gets stripped.)
+
+TOKEN_IMPLICATIONS = {
+    "food": [Mechanic.GAIN_LIFE, Mechanic.SACRIFICE],           # {2}, {T}, Sacrifice: Gain 3 life
+    "clue": [Mechanic.DRAW, Mechanic.SACRIFICE],                # {2}, Sacrifice: Draw a card
+    "treasure": [Mechanic.ADD_MANA, Mechanic.SACRIFICE],    # Sacrifice: Add one mana of any color
+    "blood": [Mechanic.DRAW, Mechanic.DISCARD, Mechanic.SACRIFICE],  # {1}, {T}, Discard, Sacrifice: Draw
+    "map": [Mechanic.EXPLORE, Mechanic.SACRIFICE],              # {1}, {T}, Sacrifice: Target creature explores
+    "powerstone": [Mechanic.ADD_MANA],                      # {T}: Add {C} (can't cast nonartifact)
+    "incubator": [Mechanic.CREATE_TOKEN, Mechanic.TRANSFORM],   # {2}: Transform into Phyrexian token
+    "shard": [Mechanic.ADD_MANA, Mechanic.SACRIFICE],       # {2}, Sacrifice: Add 3 mana of one color
+    "gold": [Mechanic.ADD_MANA, Mechanic.SACRIFICE],        # Sacrifice: Add one mana of any color
+    "junk": [Mechanic.DRAW, Mechanic.SACRIFICE],                # {2}, {T}, Sacrifice: Draw (same as Clue)
+}
+
+
+# =============================================================================
+# NAMED MECHANIC UNDERLYING EFFECTS
+# =============================================================================
+# Maps ability words (named mechanics) to their actual underlying effects.
+# These names appear in oracle text but their meaning isn't parseable from the name.
+# "Commit a crime" = target something an opponent controls/owns → TARGET_OPPONENT
+# "Celebration" = two+ nonland permanents entered this turn → ETB_TRIGGER
+# We prefer mapping to underlying effects so set-unique names transfer knowledge.
+
+NAMED_MECHANIC_EFFECTS = {
+    "commit a crime": [Mechanic.TARGET_OPPONENT],               # OTJ — target opponent's stuff
+    "celebration": [Mechanic.ETB_TRIGGER],                      # WOE — two+ nonland permanents ETB'd
+    "raid": [Mechanic.ATTACK_TRIGGER],                          # KTK — attacked with a creature this turn
+    "revolt": [Mechanic.LTB_TRIGGER],                           # AER — permanent left battlefield
+    "morbid": [Mechanic.DEATH_TRIGGER],                         # ISD — a creature died this turn
+    "eerie": [Mechanic.ETB_TRIGGER],                            # DSK — enchantment/room enters
+    "survival": [Mechanic.DEATH_TRIGGER],                       # DSK — two+ creatures died this turn
+    "valiant": [Mechanic.TARGET_CREATURE],                      # BLB — targeted 2+ times
+    "landfall": [Mechanic.ETB_TRIGGER],                         # ZEN — land entered under your control
+    "constellation": [Mechanic.ETB_TRIGGER],                    # JOU — enchantment enters
+    "heroic": [Mechanic.TARGET_CREATURE],                       # THS — you cast a spell targeting this
+    "magecraft": [Mechanic.COPY_SPELL],                         # STX — you cast/copy an instant/sorcery
+    "corrupted": [Mechanic.POISON_COUNTER],                     # ONE — opponent has 3+ poison
+    "domain": [Mechanic.COLOR_CONDITION],                       # INV — count basic land types
+    "threshold": [Mechanic.FROM_GRAVEYARD],                     # ODY — 7+ cards in graveyard
+    "delirium": [Mechanic.FROM_GRAVEYARD],                      # SOI — 4+ card types in graveyard
+    "metalcraft": [Mechanic.TARGET_ARTIFACT],                   # SOM — control 3+ artifacts
+    "ferocious": [Mechanic.POWER_TOUGHNESS_CONDITION],          # KTK — control creature with power 4+
+    "hellbent": [Mechanic.HAND_SIZE_MATTERS],                   # DIS — no cards in hand
+    "descend 4": [Mechanic.FROM_GRAVEYARD],                     # LCI — 4+ permanent cards in GY
+    "descend 8": [Mechanic.FROM_GRAVEYARD],                     # LCI — 8+ permanent cards in GY
+}
+
+
+# =============================================================================
 # TEXT PATTERN MATCHING
 # =============================================================================
 
@@ -579,6 +635,19 @@ PATTERNS = [
     (r"\bvoid\b\s*—", [Mechanic.VOID]),
     (r"\broom\b", [Mechanic.ROOM]),
     (r"\bbehold\b", [Mechanic.REVEAL, Mechanic.CREATURE_TYPE_MATTERS]),
+
+    # Land tutoring / ramp
+    (r"search.{0,30}(for|your library).{0,30}basic land", [Mechanic.TUTOR_LAND]),
+    (r"search.{0,30}(for|your library).{0,30}(land card|forest|plains|island|swamp|mountain)", [Mechanic.TUTOR_LAND]),
+
+    # Your-turn condition
+    (r"if it's your turn", [Mechanic.YOUR_TURN_CONDITION]),
+    (r"during your turn", [Mechanic.YOUR_TURN_CONDITION]),
+    (r"on your turn", [Mechanic.YOUR_TURN_CONDITION]),
+    (r"only during your turn", [Mechanic.YOUR_TURN_CONDITION]),
+
+    # Spacecraft → word-consuming (artifact creature subtype, no special mechanic)
+    (r"\bspacecraft\b", []),
 
     # Unnamed cost patterns (not keyword-specific)
     (r"as an additional cost.+discard", [Mechanic.ADDITIONAL_COST, Mechanic.DISCARD]),
@@ -829,19 +898,41 @@ class ParseResult:
     unparsed_text: str  # Text we couldn't parse (for LLM fallback)
 
 
-def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
+def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = "") -> ParseResult:
     """
     Parse oracle text into mechanics sequence.
 
     Args:
         oracle_text: The card's oracle text
         card_type: The card's type line (e.g., "Instant", "Creature — Human Wizard")
+        card_name: The card's name (for self-reference stripping)
 
     Returns:
         ParseResult with mechanics, parameters, and confidence
     """
     text = oracle_text.lower()
     text = strip_reminder_text(text)
+
+    # Strip card self-references to reduce unparsed noise
+    # "Atraxa, Grand Unifier enters" → "this creature enters"
+    if card_name:
+        card_name_lower = card_name.lower()
+        # Handle DFC names ("Front // Back")
+        for name_part in card_name_lower.split(" // "):
+            name_part = name_part.strip()
+            if len(name_part) > 2:  # Avoid stripping tiny names like "It"
+                # Determine replacement based on card type
+                if "creature" in card_type.lower():
+                    replacement = "this creature"
+                elif "instant" in card_type.lower() or "sorcery" in card_type.lower():
+                    replacement = "this spell"
+                elif "planeswalker" in card_type.lower():
+                    replacement = "this planeswalker"
+                elif "land" in card_type.lower():
+                    replacement = "this land"
+                else:
+                    replacement = "this permanent"
+                text = text.replace(name_part, replacement)
     mechanics = []
     parameters = {}
     matched_spans = []
@@ -878,6 +969,21 @@ def parse_oracle_text(oracle_text: str, card_type: str = "") -> ParseResult:
                 for implied in KEYWORD_IMPLICATIONS[keyword]:
                     if implied not in mechanics:
                         mechanics.append(implied)
+
+    # Fire token implied effects (Food → GAIN_LIFE+SACRIFICE, etc.)
+    for token_type, implied_effects in TOKEN_IMPLICATIONS.items():
+        if re.search(r'\b' + re.escape(token_type) + r'\b', text):
+            matched_spans.append(token_type)
+            for implied in implied_effects:
+                if implied not in mechanics:
+                    mechanics.append(implied)
+
+    # Fire named mechanic underlying effects (commit a crime → TARGET_OPPONENT, etc.)
+    for mechanic_name, underlying_effects in NAMED_MECHANIC_EFFECTS.items():
+        if re.search(r'\b' + re.escape(mechanic_name) + r'\b', text):
+            for effect in underlying_effects:
+                if effect not in mechanics:
+                    mechanics.append(effect)
 
     # Extract numeric parameters from keyword abilities
     # Ward N
@@ -1199,8 +1305,8 @@ def parse_card(card_data: Dict[str, Any]) -> CardEncoding:
     if not types:
         types = [t.strip().lower() for t in type_line.split() if t.strip()]
 
-    # Parse oracle text
-    result = parse_oracle_text(oracle_text, type_line)
+    # Parse oracle text (pass name for self-reference stripping)
+    result = parse_oracle_text(oracle_text, type_line, card_name=name)
 
     # Get power/toughness if creature
     power = None
