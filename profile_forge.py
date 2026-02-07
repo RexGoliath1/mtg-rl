@@ -361,7 +361,7 @@ def check_docker_available() -> bool:
             capture_output=True, text=True, timeout=10
         )
         return "forge-sim" in result.stdout
-    except:
+    except Exception:
         return False
 
 

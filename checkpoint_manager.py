@@ -125,7 +125,7 @@ class CheckpointManager:
             )
             if response.status_code == 200:
                 return True
-        except:
+        except Exception:
             pass
         return False
 

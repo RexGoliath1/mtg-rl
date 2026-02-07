@@ -455,14 +455,14 @@ class DaemonMTGEnvironment:
         if self.reader:
             try:
                 self.reader.close()
-            except:
+            except Exception:
                 pass
             self.reader = None
 
         if self.socket:
             try:
                 self.socket.close()
-            except:
+            except Exception:
                 pass
             self.socket = None
 

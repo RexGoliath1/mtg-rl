@@ -185,7 +185,7 @@ def main():
                 for line in stdout.split("\n"):
                     if "game result" in line.lower() or "has won" in line.lower():
                         print(line)
-        except:
+        except Exception:
             process.kill()
 
     print(f"\nTotal decisions made: {decision_count}")

@@ -619,7 +619,7 @@ class MTGEnvironment:
         while self.process.poll() is None:
             try:
                 line = self.process.stdout.readline()
-            except:
+            except Exception:
                 break
 
             if not line:

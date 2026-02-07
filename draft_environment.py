@@ -133,7 +133,7 @@ class DraftEnvironment:
             try:
                 self.socket.sendall(b"QUIT\n")
                 self.socket.close()
-            except:
+            except Exception:
                 pass
             self.socket = None
 

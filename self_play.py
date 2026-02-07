@@ -295,7 +295,7 @@ class ModelPool:
                 # Delete file
                 try:
                     os.remove(cp.path)
-                except:
+                except Exception:
                     pass
 
         self.checkpoints = [cp for i, cp in enumerate(self.checkpoints) if i not in to_remove]
