@@ -122,10 +122,17 @@ def generate_metadata(cards: list[dict]) -> dict:
         front_type = type_line.split("//")[0] if "//" in type_line else type_line
         is_land = "Land" in front_type
 
+        # Detect MDFCs where the back face is a land (spell // land cards)
+        is_mdfc_land = False
+        if card.get("layout") == "modal_dfc" and "//" in type_line and not is_land:
+            back_type = type_line.split("//")[1].strip()
+            is_mdfc_land = "Land" in back_type
+
         metadata[name] = {
             "creature_subtypes": creature_subtypes,
             "tribal_types": tribal_types,
             "is_land": is_land,
+            "is_mdfc_land": is_mdfc_land,
             "edhrec_rank": card.get("edhrec_rank"),
             "layout": card.get("layout", "normal"),
             "cmc": card.get("cmc", 0),

@@ -360,6 +360,7 @@ def compute_deck_stats(resolved: list[str]) -> dict:
 
     # Classify cards and build mana curve
     lands = 0
+    mdfc_lands = 0
     nonland_cmcs = []
     ramp_count = 0
     curve = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0}  # 7 = "7+"
@@ -374,11 +375,17 @@ def compute_deck_stats(resolved: list[str]) -> dict:
     for card_name in resolved:
         meta = METADATA.get(card_name, {})
         is_land = meta.get("is_land", False)
+        layout = meta.get("layout", "")
         cmc = meta.get("cmc", 0)
 
         if is_land:
             lands += 1
             continue
+
+        # Count MDFCs with land backs (they function as partial mana sources)
+        if layout == "modal_dfc" and " // " in card_name:
+            if meta.get("is_mdfc_land", False):
+                mdfc_lands += 1
 
         # Track nonland CMC for curve
         cmc_int = int(cmc)
@@ -396,6 +403,9 @@ def compute_deck_stats(resolved: list[str]) -> dict:
     total = len(resolved)
     nonland_count = len(nonland_cmcs)
 
+    # Effective land count: full lands + MDFC lands count as ~0.5 each (can't play both sides)
+    effective_lands = lands + mdfc_lands * 0.5
+
     # Recommended land count (Commander heuristic: 42 - floor(ramp/3), min 37)
     # For 60-card: Karsten formula: 19.59 + 1.90 * avg_cmc
     if total > 80:
@@ -407,15 +417,29 @@ def compute_deck_stats(resolved: list[str]) -> dict:
 
     curve_max = max(curve.values()) if any(curve.values()) else 1
 
+    # Compute per-bucket curve boost multipliers for UI display
+    ideal = IDEAL_CURVE_COMMANDER if total > 80 else IDEAL_CURVE_60
+    bucket_boosts = {}
+    if nonland_count >= 5:
+        for bucket in range(8):
+            actual_prop = curve.get(bucket, 0) / nonland_count
+            gap = ideal[bucket] - actual_prop
+            bucket_boosts[bucket] = round(1.0 + max(-0.15, min(0.25, gap * 2.5)), 2)
+    else:
+        bucket_boosts = {b: 1.0 for b in range(8)}
+
     return {
         "curve": curve,
         "avg_cmc": round(avg_cmc, 2),
         "land_count": lands,
+        "mdfc_land_count": mdfc_lands,
+        "effective_lands": effective_lands,
         "nonland_count": nonland_count,
         "total": total,
         "ramp_count": ramp_count,
         "recommended_lands": rec_lands,
         "curve_max": curve_max,
+        "bucket_boosts": bucket_boosts,
     }
 
 
@@ -998,22 +1022,31 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
   /* Mana curve histogram */
   .curve-chart {
-    display: flex; align-items: flex-end; gap: 4px;
-    height: 80px; padding-top: 4px;
+    display: flex; align-items: flex-end; gap: 3px;
+    height: 120px; padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
   }
   .curve-col {
     flex: 1; display: flex; flex-direction: column;
-    align-items: center; gap: 2px; min-width: 0;
+    align-items: center; min-width: 0;
+  }
+  .curve-bar-wrap {
+    flex: 1; width: 100%; display: flex; align-items: flex-end;
   }
   .curve-bar {
-    width: 100%; min-height: 2px; border-radius: 3px 3px 0 0;
+    width: 100%; border-radius: 3px 3px 0 0;
     background: var(--accent); transition: height 0.3s;
+    min-height: 0;
   }
+  .curve-bar.boosted { background: var(--good); }
+  .curve-bar.penalized { background: var(--bad); opacity: 0.7; }
   .curve-count {
     font-size: 0.65rem; color: var(--text); font-weight: 600;
+    height: 16px; display: flex; align-items: center; justify-content: center;
   }
   .curve-label {
-    font-size: 0.6rem; color: var(--text-muted); margin-top: 2px;
+    font-size: 0.6rem; color: var(--text-muted); height: 16px;
+    display: flex; align-items: center; justify-content: center;
   }
 
   /* Deck stats */
@@ -1121,31 +1154,48 @@ def _deck_stats_html(stats: dict) -> str:
     curve = stats["curve"]
     curve_max = stats["curve_max"] or 1
 
-    # Build curve histogram bars
+    # Build curve histogram bars with boost/penalty indicators
     bars_html = ""
     labels = ["0", "1", "2", "3", "4", "5", "6", "7+"]
+    bucket_boosts = stats.get("bucket_boosts", {})
     for i, label in enumerate(labels):
         count = curve.get(i, 0)
         height_pct = (count / curve_max) * 100 if curve_max > 0 else 0
+        boost = bucket_boosts.get(i, 1.0)
+        if boost >= 1.10:
+            bar_class = "curve-bar boosted"
+            boost_label = f"+{(boost - 1) * 100:.0f}%"
+        elif boost <= 0.92:
+            bar_class = "curve-bar penalized"
+            boost_label = f"{(boost - 1) * 100:.0f}%"
+        else:
+            bar_class = "curve-bar"
+            boost_label = ""
+        count_display = f"{count}" if count > 0 else ""
+        if boost_label and count > 0:
+            count_display = f"{count} <span style='font-size:0.5rem;opacity:0.7'>{boost_label}</span>"
         bars_html += f"""<div class="curve-col">
-          <div class="curve-count">{count if count > 0 else ''}</div>
-          <div class="curve-bar" style="height:{max(height_pct, 3):.0f}%"></div>
+          <div class="curve-count">{count_display}</div>
+          <div class="curve-bar-wrap"><div class="{bar_class}" style="height:{max(height_pct, 2):.0f}%"></div></div>
           <div class="curve-label">{label}</div>
         </div>"""
 
-    # Land recommendation
+    # Land recommendation (use effective_lands which counts MDFCs as ~0.5)
     land_count = stats["land_count"]
+    mdfc_lands = stats.get("mdfc_land_count", 0)
+    effective = stats.get("effective_lands", land_count)
     rec_lands = stats["recommended_lands"]
-    diff = land_count - rec_lands
+    diff = effective - rec_lands
+    mdfc_note = f" (+{mdfc_lands} MDFC)" if mdfc_lands > 0 else ""
     if abs(diff) <= 1:
         land_class = "ok"
-        land_msg = f"Land count looks good ({land_count} lands)"
+        land_msg = f"Land count looks good ({land_count}{mdfc_note} lands)"
     elif diff > 1:
         land_class = "over"
-        land_msg = f"Consider cutting {diff} lands ({land_count} → {rec_lands} recommended)"
+        land_msg = f"Consider cutting {diff:.0f} lands ({land_count}{mdfc_note} → {rec_lands} recommended)"
     else:
         land_class = "under"
-        land_msg = f"Consider adding {-diff} more lands ({land_count} → {rec_lands} recommended)"
+        land_msg = f"Consider adding {-diff:.0f} more lands ({land_count}{mdfc_note} → {rec_lands} recommended)"
 
     ramp_note = f" ({stats['ramp_count']} ramp spells detected)" if stats["ramp_count"] > 0 else ""
 
@@ -1158,7 +1208,7 @@ def _deck_stats_html(stats: dict) -> str:
       </div>
       <div class="stat-row">
         <span class="stat-label">Lands / Spells</span>
-        <span class="stat-value neutral">{stats['land_count']} / {stats['nonland_count']}</span>
+        <span class="stat-value neutral">{stats['land_count']}{f" (+{mdfc_lands} MDFC)" if mdfc_lands > 0 else ""} / {stats['nonland_count']}</span>
       </div>
       <div class="stat-row">
         <span class="stat-label">Total Cards</span>
