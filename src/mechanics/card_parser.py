@@ -370,6 +370,9 @@ KEYWORD_IMPLICATIONS = {
     "learn": [Mechanic.DRAW, Mechanic.DISCARD],  # Draw a Lesson or loot
     "transmute": [Mechanic.TUTOR_TO_HAND, Mechanic.DISCARD],
     "forecast": [Mechanic.FROM_HAND],
+    "converge": [Mechanic.MANA_FIXING],
+    "goad": [Mechanic.ATTACKS_EACH_COMBAT],
+    "provoke": [Mechanic.MUST_BE_BLOCKED],
 }
 
 
@@ -943,6 +946,14 @@ PATTERNS = [
     (r"can't attack or block", [Mechanic.CANT_ATTACK, Mechanic.CANT_BLOCK]),
     (r"can't attack\b", [Mechanic.CANT_ATTACK]),
     (r"can't block\b", [Mechanic.CANT_BLOCK]),
+    # Forced combat patterns
+    (r"attacks each (combat|turn) if able", [Mechanic.ATTACKS_EACH_COMBAT, Mechanic.MUST_ATTACK]),
+    (r"must attack\b", [Mechanic.MUST_ATTACK, Mechanic.ATTACKS_EACH_COMBAT]),
+    (r"must be blocked\b", [Mechanic.MUST_BE_BLOCKED]),
+    (r"blocks?.{0,20}if able", [Mechanic.MUST_BE_BLOCKED]),
+    (r"all creatures.{0,20}attack each", [Mechanic.ATTACKS_EACH_COMBAT]),
+    (r"is goaded", [Mechanic.GOAD, Mechanic.ATTACKS_EACH_COMBAT]),
+    (r"goaded", [Mechanic.GOAD, Mechanic.ATTACKS_EACH_COMBAT]),
     (r"base power and toughness (\d+)/(\d+)", [Mechanic.SET_POWER, Mechanic.SET_TOUGHNESS]),
     (r"loses all (other )?abilities", [Mechanic.LOSES_ABILITIES]),
 
@@ -1030,7 +1041,7 @@ PATTERNS = [(re.compile(p), m) for p, m in PATTERNS]
 
 # Pre-compile keyword ability patterns (dynamic word-boundary patterns)
 _COMPILED_KEYWORD_PATTERNS: list[tuple[re.Pattern, str, 'Mechanic']] = [
-    (re.compile(r'(?<!without )\b' + re.escape(kw) + r'\b'), kw, mech)
+    (re.compile(r'(?<!without )(?<!lose )(?<!loses )\b' + re.escape(kw) + r'\b'), kw, mech)
     for kw, mech in KEYWORD_ABILITIES.items()
 ]
 
@@ -1127,7 +1138,12 @@ def parse_oracle_text(oracle_text: str, card_type: str = "", card_name: str = ""
 
     # Check for keyword abilities (pre-compiled patterns)
     for kw_pattern, keyword, mechanic in _COMPILED_KEYWORD_PATTERNS:
-        if kw_pattern.search(text):
+        match = kw_pattern.search(text)
+        if match:
+            # Check if keyword is in a "lose/loses" clause (e.g. "lose hexproof and indestructible")
+            preceding = text[max(0, match.start() - 50):match.start()]
+            if re.search(r'\bloses?\s+(?:\w+[\s,]+(?:and\s+)?)*$', preceding):
+                continue
             mechanics.append(mechanic)
             matched_spans.append(keyword)
 

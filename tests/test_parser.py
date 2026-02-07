@@ -4898,8 +4898,8 @@ class TestQuizRound6Fixes:
         assert Mechanic.ALTERNATIVE_COST in result.mechanics
         assert Mechanic.BOUNCE_TO_HAND in result.mechanics
 
-    def test_witchs_vanity_no_chapter_enums(self):
-        """Witch's Vanity — chapter_count param without CHAPTER_I/II/III enums."""
+    def test_witchs_vanity_chapter_count(self):
+        """Witch's Vanity — chapter_count param from saga parsing."""
         result = parse_oracle_text(
             "I — Destroy target creature an opponent controls with mana value 2 or less.\n"
             "II — Create a Food token.\n"
@@ -4908,10 +4908,6 @@ class TestQuizRound6Fixes:
         )
         assert Mechanic.SAGA in result.mechanics
         assert result.parameters.get("chapter_count") == 3
-        # Chapter enums should NOT be present
-        assert Mechanic.CHAPTER_I not in result.mechanics
-        assert Mechanic.CHAPTER_II not in result.mechanics
-        assert Mechanic.CHAPTER_III not in result.mechanics
         # Sub-effects should still parse
         assert Mechanic.DESTROY in result.mechanics
         assert Mechanic.CREATE_FOOD in result.mechanics
@@ -5399,3 +5395,124 @@ class TestCardLayout:
         )
         enc = parse_card(card)
         assert_lacks_mechanics(enc, [Mechanic.ADVENTURE_SPELL, Mechanic.MDFC], "Lightning Bolt")
+
+
+# =============================================================================
+# KEYWORD LOOKBEHIND REGRESSION TESTS
+# =============================================================================
+
+class TestKeywordLoseFalsePositive:
+    """Regression tests: 'loses flying' should NOT emit FLYING."""
+
+    def test_colossus_hammer_no_flying(self):
+        """Colossus Hammer — 'equipped creature loses flying' should not emit FLYING."""
+        result = parse_oracle_text(
+            "Equipped creature gets +10/+10 and loses flying.\nEquip {8}",
+            "Artifact — Equipment",
+        )
+        assert Mechanic.EQUIP in result.mechanics
+        assert Mechanic.FLYING not in result.mechanics
+
+    def test_shadowspear_no_hexproof_indestructible(self):
+        """Shadowspear — 'lose hexproof and indestructible' should not emit those keywords."""
+        result = parse_oracle_text(
+            "Equipped creature gets +1/+1 and has trample and lifelink.\n"
+            "{1}: Permanents your opponents control lose hexproof and indestructible until end of turn.",
+            "Legendary Artifact — Equipment",
+        )
+        assert Mechanic.TRAMPLE in result.mechanics
+        assert Mechanic.LIFELINK in result.mechanics
+        assert Mechanic.HEXPROOF not in result.mechanics
+        assert Mechanic.INDESTRUCTIBLE not in result.mechanics
+
+    def test_without_still_blocked(self):
+        """'without flying' should still not emit FLYING (existing lookbehind)."""
+        result = parse_oracle_text(
+            "Target creature without flying gets -3/-3 until end of turn.",
+            "Instant",
+        )
+        assert Mechanic.FLYING not in result.mechanics
+
+    def test_has_flying_still_emits(self):
+        """'has flying' should still emit FLYING (not blocked by lookbehind)."""
+        result = parse_oracle_text(
+            "Flying\nWhen this creature enters, draw a card.",
+            "Creature — Bird",
+        )
+        assert Mechanic.FLYING in result.mechanics
+
+
+# =============================================================================
+# FORCED COMBAT PATTERN TESTS
+# =============================================================================
+
+class TestForcedCombat:
+    """Tests for MUST_ATTACK, ATTACKS_EACH_COMBAT, MUST_BE_BLOCKED, and GOAD patterns."""
+
+    def test_berserker_attacks_each_combat(self):
+        """Generic 'attacks each combat if able' text."""
+        result = parse_oracle_text(
+            "Haste\nThis creature attacks each combat if able.",
+            "Creature — Berserker",
+        )
+        assert Mechanic.ATTACKS_EACH_COMBAT in result.mechanics
+        assert Mechanic.MUST_ATTACK in result.mechanics
+
+    def test_must_attack_text(self):
+        """'must attack' text triggers MUST_ATTACK."""
+        result = parse_oracle_text(
+            "This creature must attack each turn if able.",
+            "Creature — Ogre",
+        )
+        assert Mechanic.MUST_ATTACK in result.mechanics
+
+    def test_lure_must_be_blocked(self):
+        """Lure — 'must be blocked if able'."""
+        result = parse_oracle_text(
+            "All creatures able to block enchanted creature must do so.\nEnchanted creature must be blocked if able.",
+            "Enchantment — Aura",
+        )
+        assert Mechanic.MUST_BE_BLOCKED in result.mechanics
+
+    def test_blocks_if_able(self):
+        """'blocks this creature if able' triggers MUST_BE_BLOCKED."""
+        result = parse_oracle_text(
+            "Whenever this creature attacks, target creature blocks it this turn if able.",
+            "Creature — Beast",
+        )
+        assert Mechanic.MUST_BE_BLOCKED in result.mechanics
+
+    def test_goaded_text(self):
+        """'goaded' in oracle text triggers GOAD + ATTACKS_EACH_COMBAT."""
+        result = parse_oracle_text(
+            "When this creature enters, target creature an opponent controls becomes goaded.",
+            "Creature — Devil",
+        )
+        assert Mechanic.GOAD in result.mechanics
+        assert Mechanic.ATTACKS_EACH_COMBAT in result.mechanics
+
+    def test_goad_keyword(self):
+        """Goad as a keyword ability triggers via KEYWORD_ABILITIES + KEYWORD_IMPLICATIONS."""
+        result = parse_oracle_text(
+            "When this creature enters, goad target creature.",
+            "Creature — Goblin",
+        )
+        assert Mechanic.GOAD in result.mechanics
+        assert Mechanic.ATTACKS_EACH_COMBAT in result.mechanics
+
+    def test_provoke_keyword(self):
+        """Provoke keyword implies MUST_BE_BLOCKED."""
+        result = parse_oracle_text(
+            "Provoke\nWhenever this creature attacks, untap target creature.",
+            "Creature — Beast",
+        )
+        assert Mechanic.PROVOKE in result.mechanics
+        assert Mechanic.MUST_BE_BLOCKED in result.mechanics
+
+    def test_all_creatures_attack(self):
+        """'All creatures attack each combat' triggers ATTACKS_EACH_COMBAT."""
+        result = parse_oracle_text(
+            "All creatures attack each combat if able.",
+            "Enchantment",
+        )
+        assert Mechanic.ATTACKS_EACH_COMBAT in result.mechanics

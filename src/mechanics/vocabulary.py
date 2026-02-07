@@ -387,7 +387,7 @@ class Mechanic(IntEnum):
     UNDAUNTED = 1240
     ASSIST = 1241
     ENCORE = 1242
-    DEMONSTATE = 1243
+    # 1243 reserved (was DEMONSTATE, removed — typo for DEMONSTRATE, zero references)
     CLEAVE = 1244
     CASUALTY = 1245
     BLITZ_DRAW = 1246
@@ -477,16 +477,13 @@ class Mechanic(IntEnum):
     UNTIL_END_OF_TURN = 1315
     UNTIL_YOUR_NEXT_TURN = 1316
     AS_LONG_AS = 1317
-    PERPETUAL = 1318
+    # 1318 reserved (was PERPETUAL, removed — digital-only Alchemy mechanic, zero references)
 
     # ==========================================================================
-    # SAGA / CHAPTER (1319-1323)
+    # SAGA (1319)
     # ==========================================================================
     SAGA = 1319
-    CHAPTER_I = 1320
-    CHAPTER_II = 1321
-    CHAPTER_III = 1322
-    CHAPTER_IV = 1323
+    # 1320-1323 reserved (was CHAPTER_I-IV, removed — chapter_count param suffices)
 
     # ==========================================================================
     # LIFE EFFECTS (1324)
@@ -605,6 +602,7 @@ class Mechanic(IntEnum):
     GRAVEYARD_SHUFFLE = 1383             # "shuffle graveyard into library" (Blessed Respite, Eldrazi titans)
     ADVENTURE_SPELL = 1384               # Card has Adventure layout (two modes: creature + spell)
     MDFC = 1385                          # Modal double-faced card (two usable faces)
+    MUST_BE_BLOCKED = 1386               # "must be blocked" / "must be blocked if able" (Lure, Provoke)
 
 
 # Total vocabulary size
