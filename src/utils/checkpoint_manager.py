@@ -60,6 +60,7 @@ class CheckpointManager:
         s3_prefix: str = "mtg-rl/checkpoints",
         save_interval_episodes: int = 1000,
         save_interval_seconds: int = 3600,  # 1 hour
+        keep_last_n: int = 3,
     ):
         self.local_dir = Path(local_dir)
         self.local_dir.mkdir(parents=True, exist_ok=True)
@@ -68,6 +69,7 @@ class CheckpointManager:
         self.s3_prefix = s3_prefix
         self.save_interval_episodes = save_interval_episodes
         self.save_interval_seconds = save_interval_seconds
+        self.keep_last_n = keep_last_n
 
         self.last_save_time = time.time()
         self.last_save_episode = 0
@@ -262,6 +264,26 @@ class CheckpointManager:
         # Update tracking
         self.last_save_time = time.time()
         self.last_save_episode = training_state.episode
+
+        # Prune old checkpoints (keep last N + best + emergency)
+        if not is_emergency:
+            self._prune_old_checkpoints()
+
+    def _prune_old_checkpoints(self):
+        """Delete old checkpoints, keeping last N + best + emergency."""
+        regular = sorted(
+            self.local_dir.glob("checkpoint_*.pt"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+
+        if len(regular) <= self.keep_last_n:
+            return
+
+        to_delete = regular[self.keep_last_n:]
+        for path in to_delete:
+            path.unlink()
+            print(f"Pruned old checkpoint: {path.name}")
 
     def load_latest(
         self,
