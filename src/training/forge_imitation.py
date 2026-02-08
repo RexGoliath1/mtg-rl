@@ -24,10 +24,13 @@ from typing import Optional, Tuple, List, Dict, Any
 from collections import defaultdict
 from pathlib import Path
 
+import json
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
+from safetensors.torch import save_file as safetensors_save
 
 from src.forge.forge_client import (
     ForgeClient, Decision, DecisionType, ActionOption
@@ -713,6 +716,11 @@ class ImitationDataset(Dataset):
 
     Uses ForgeGameStateEncoder to produce the same state encoding as
     self-play training, enabling direct weight transfer.
+
+    Caches encoded tensors by sample index so that repeated accesses
+    (across multiple training epochs) skip the expensive JSON-to-tensor
+    encoding step.  With 400K samples x 10 epochs this eliminates ~3.6M
+    redundant JSON parses.
     """
 
     def __init__(
@@ -725,6 +733,7 @@ class ImitationDataset(Dataset):
         self.encoder = encoder
         self.action_config = action_config or ActionConfig()
         self.action_dim = self.action_config.total_actions
+        self._tensor_cache: Dict[int, torch.Tensor] = {}
 
     def __len__(self):
         return len(self.samples)
@@ -733,8 +742,12 @@ class ImitationDataset(Dataset):
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         sample = self.samples[idx]
 
-        # Encode state using the same encoder as self-play
-        state = self._encode_state(sample.state_json)
+        # Return cached tensor if available, otherwise encode and cache
+        if idx in self._tensor_cache:
+            state = self._tensor_cache[idx]
+        else:
+            state = self._encode_state(sample.state_json)
+            self._tensor_cache[idx] = state
 
         # Action target (clamp to valid range)
         action = min(sample.action_index, self.action_dim - 1)
@@ -886,22 +899,47 @@ class ImitationTrainer:
         return self.training_history
 
     def save(self, path: str):
-        """Save model checkpoint.
+        """Save model checkpoint in SafeTensors format.
 
-        Uses a format compatible with AlphaZeroNetwork.load() so weights
-        can be loaded directly into self-play training.
+        Writes model weights to a ``.safetensors`` file and non-tensor
+        metadata (optimizer state, training history, encoder config) to a
+        companion ``.json`` file.  The layout is compatible with
+        ``AlphaZeroNetwork.load()`` so weights transfer directly into
+        self-play training.
+
+        Also writes a legacy ``.pt`` file so older code paths still work.
         """
-        save_dict = {
+        # --- SafeTensors path (weights) ---
+        st_path = path.replace(".pt", ".safetensors")
+        safetensors_save(self.network.state_dict(), st_path)
+
+        # --- JSON sidecar (non-tensor metadata) ---
+        meta: Dict[str, Any] = {
+            "training_history": self.training_history,
+        }
+        if isinstance(self.network, AlphaZeroNetwork):
+            # Serialize dataclass config to dict for JSON compatibility
+            enc_cfg = self.network.encoder_config
+            meta["encoder_config"] = {
+                k: getattr(enc_cfg, k)
+                for k in enc_cfg.__dataclass_fields__
+            }
+        json_path = path.replace(".pt", ".json")
+        with open(json_path, "w") as f:
+            json.dump(meta, f, indent=2, default=str)
+
+        # --- Legacy .pt (optimizer state + full checkpoint) ---
+        save_dict: Dict[str, Any] = {
             'model_state_dict': self.network.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'training_history': self.training_history,
         }
-        # If using AlphaZeroNetwork, also save in self-play compatible format
         if isinstance(self.network, AlphaZeroNetwork):
             save_dict['encoder_config'] = self.network.encoder_config
             save_dict['state_dict'] = self.network.state_dict()
         torch.save(save_dict, path)
-        print(f"Saved checkpoint to {path}")
+
+        print(f"Saved checkpoint to {st_path} (SafeTensors) + {path} (legacy)")
 
     def load(self, path: str):
         """Load model checkpoint."""
