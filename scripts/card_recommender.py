@@ -19,6 +19,7 @@ Then open http://localhost:8000 in your browser.
 
 import argparse
 import csv
+import hashlib
 import io
 import json
 import os
@@ -118,6 +119,38 @@ if os.path.exists(SAMPLE_COLLECTION_PATH):
     with open(SAMPLE_COLLECTION_PATH) as f:
         SAMPLE_COLLECTION_TEXT = f.read()
     print(f"Sample collection loaded: {SAMPLE_COLLECTION_PATH}")
+
+# ---------------------------------------------------------------------------
+# Image cache: map card name → Scryfall image URL from bulk JSON
+# ---------------------------------------------------------------------------
+
+IMAGE_CACHE_DIR = os.path.join(PROJECT_ROOT, "data", "card_images")
+os.makedirs(IMAGE_CACHE_DIR, exist_ok=True)
+
+SCRYFALL_BULK_PATH = os.path.join(PROJECT_ROOT, "data", "scryfall_bulk_cards.json")
+IMAGE_URLS: dict[str, str] = {}
+if os.path.exists(SCRYFALL_BULK_PATH):
+    print("Building image URL index from Scryfall bulk JSON...")
+    with open(SCRYFALL_BULK_PATH) as f:
+        _bulk_cards = json.load(f)
+    for _card in _bulk_cards:
+        _name = _card.get("name", "")
+        if not _name or _name in IMAGE_URLS:
+            continue
+        # DFCs: front face may have its own image_uris
+        _img_url = ""
+        if "card_faces" in _card and _card["card_faces"]:
+            _front = _card["card_faces"][0]
+            _img_url = _front.get("image_uris", {}).get("normal", "")
+        if not _img_url:
+            _img_url = _card.get("image_uris", {}).get("normal", "")
+        if _img_url:
+            IMAGE_URLS[_name] = _img_url
+    del _bulk_cards
+    _cached_count = len([f for f in os.listdir(IMAGE_CACHE_DIR) if f.endswith(".jpg")])
+    print(f"Image URL index: {len(IMAGE_URLS):,} cards | Cache: {_cached_count:,} images on disk")
+else:
+    print(f"Warning: {SCRYFALL_BULK_PATH} not found, image caching disabled (will use Scryfall API)")
 
 # Pre-compute CREATURE_TYPE_MATTERS index for tribal filtering
 CTM_IDX = Mechanic.CREATURE_TYPE_MATTERS.value if Mechanic.CREATURE_TYPE_MATTERS.value < len(MECHANICS[0]) else None
@@ -1585,8 +1618,10 @@ def _card_html(card_info: dict, rank: int, score: float, mechanics: list[str],
     mana_cost = card_info.get("mana_cost", "")
     scryfall_uri = card_info.get("scryfall_uri", "")
 
-    if image_uri:
-        img = f'<img class="card-img" src="{image_uri}" alt="{_html_escape(name)}" loading="lazy">'
+    # Use local image cache proxy if we have the URL index
+    if image_uri or name in IMAGE_URLS:
+        local_src = f"/card-image?name={urllib.parse.quote(name)}"
+        img = f'<img class="card-img" src="{local_src}" alt="{_html_escape(name)}" loading="lazy">'
         if scryfall_uri:
             img_html = f'<a href="{scryfall_uri}" target="_blank" style="cursor:pointer">{img}</a>'
         else:
@@ -1653,6 +1688,8 @@ class RecommenderHandler(BaseHTTPRequestHandler):
             self._serve_form()
         elif self.path == "/collection":
             self._serve_collection_form()
+        elif self.path.startswith("/card-image"):
+            self._serve_card_image()
         elif self.path == "/api/health":
             self._json_response({"status": "ok", "cards": len(CARD_INDEX), "vocab_size": DB_VOCAB_SIZE})
         else:
@@ -1700,6 +1737,65 @@ class RecommenderHandler(BaseHTTPRequestHandler):
         self.end_headers()
         html = HTML_PAGE.replace("__BODY__", body_html)
         self.wfile.write(html.encode())
+
+    def _serve_card_image(self):
+        """Serve a card image from local cache, fetching from Scryfall on first request."""
+        params = parse_qs(urllib.parse.urlparse(self.path).query)
+        name = params.get("name", [""])[0]
+        if not name:
+            self.send_error(400, "Missing 'name' parameter")
+            return
+
+        # Determine cache file path
+        name_hash = hashlib.md5(name.encode()).hexdigest()
+        cache_path = os.path.join(IMAGE_CACHE_DIR, f"{name_hash}.jpg")
+
+        # Serve from cache if available
+        if os.path.exists(cache_path):
+            self._serve_image_file(cache_path)
+            return
+
+        # Look up URL from bulk JSON index, fall back to Scryfall API
+        image_url = IMAGE_URLS.get(name)
+        if not image_url:
+            # Try front face for DFC names
+            front_name = name.split(" // ")[0] if " // " in name else name
+            image_url = IMAGE_URLS.get(front_name)
+
+        if not image_url:
+            # Last resort: try Scryfall API directly
+            info = scryfall_card_info(name)
+            if info:
+                image_url = info.get("image_uri", "")
+
+        if not image_url:
+            self.send_error(404, f"No image found for: {name}")
+            return
+
+        # Download and cache
+        try:
+            req = urllib.request.Request(image_url, headers={"User-Agent": "MTG-CardRecommender/1.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                image_data = resp.read()
+            with open(cache_path, "wb") as f:
+                f.write(image_data)
+            self._serve_image_file(cache_path)
+        except Exception:
+            self.send_error(502, f"Failed to fetch image for: {name}")
+
+    def _serve_image_file(self, path: str):
+        """Send an image file as HTTP response with caching headers."""
+        try:
+            with open(path, "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "image/jpeg")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "public, max-age=86400")
+            self.end_headers()
+            self.wfile.write(data)
+        except Exception:
+            self.send_error(500, "Failed to read cached image")
 
     def _serve_form(self):
         body = f"""
@@ -2397,6 +2493,8 @@ def main():
     print(f"Vocab: {DB_VOCAB_SIZE}")
     print(f"DFCs:  {len(FRONT_FACE_INDEX)}")
     print(f"Colors: {len(COLOR_IDENTITY):,} cards with color identity")
+    _img_cached = len([f for f in os.listdir(IMAGE_CACHE_DIR) if f.endswith(".jpg")])
+    print(f"Images: {len(IMAGE_URLS):,} URLs indexed | {_img_cached:,} cached on disk")
     print(f"Memory: {MECHANICS.nbytes / 1024 / 1024:.1f} MB")
     print(f"\nServer running at http://localhost:{args.port}")
     print("Press Ctrl+C to stop")
