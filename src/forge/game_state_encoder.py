@@ -69,15 +69,15 @@ class GameStateConfig:
     max_players: int = 4
 
     # Architecture
-    d_model: int = 256  # Internal embedding dimension
-    n_heads: int = 4
+    d_model: int = 384  # Internal embedding dimension
+    n_heads: int = 6
     n_layers: int = 3
-    d_ff: int = 512
+    d_ff: int = 768
     dropout: float = 0.1
 
     # Output dimensions
-    card_embedding_dim: int = 256  # Per-card encoding
-    zone_embedding_dim: int = 256  # Per-zone aggregated encoding
+    card_embedding_dim: int = 384  # Per-card encoding
+    zone_embedding_dim: int = 384  # Per-zone aggregated encoding
     global_embedding_dim: int = 128  # Game-level features
     output_dim: int = 512  # Final combined state embedding
 
@@ -499,6 +499,28 @@ def _parse_card(card_data: Dict, zone: Zone) -> CardState:
 # NEURAL NETWORK COMPONENTS
 # =============================================================================
 
+class CardEmbeddingMLP(nn.Module):
+    """Shared 2-layer MLP for projecting raw card features to d_model.
+
+    Replaces the per-zone single linear projection with a shared nonlinear
+    embedding that can learn mechanic interactions (e.g., FLYING + DEATHTOUCH).
+    """
+
+    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int, dropout: float = 0.1):
+        super().__init__()
+        self.mlp = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.GELU(),
+            nn.LayerNorm(hidden_dim),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, output_dim),
+            nn.LayerNorm(output_dim),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.mlp(x)
+
+
 class ZoneEncoder(nn.Module):
     """
     Encodes cards in a specific zone using self-attention.
@@ -506,38 +528,32 @@ class ZoneEncoder(nn.Module):
     Takes variable number of cards, outputs fixed-size zone embedding.
     """
 
-    def __init__(self, config: GameStateConfig):
+    def __init__(self, config: GameStateConfig, card_embedding: CardEmbeddingMLP):
         super().__init__()
         self.config = config
+        n_zone_layers = 2
 
-        # Card embedding projection (mechanics + params + state -> d_model)
-        input_dim = config.vocab_size + config.max_params + 32  # 32 = state features
-        self.card_proj = nn.Sequential(
-            nn.Linear(input_dim, config.d_model),
-            nn.LayerNorm(config.d_model),
-            nn.GELU(),
-            nn.Dropout(config.dropout),
-        )
+        # Shared card embedding projection (mechanics + params + state -> d_model)
+        self.card_embedding = card_embedding
 
-        # Self-attention for card interactions within zone
-        self.self_attn = nn.MultiheadAttention(
-            config.d_model,
-            config.n_heads,
-            dropout=config.dropout,
-            batch_first=True,
-        )
-
-        self.attn_norm = nn.LayerNorm(config.d_model)
-
-        # Feed-forward
-        self.ff = nn.Sequential(
-            nn.Linear(config.d_model, config.d_ff),
-            nn.GELU(),
-            nn.Dropout(config.dropout),
-            nn.Linear(config.d_ff, config.d_model),
-            nn.Dropout(config.dropout),
-        )
-        self.ff_norm = nn.LayerNorm(config.d_model)
+        # Stacked self-attention + feed-forward layers for card interactions
+        self.layers = nn.ModuleList()
+        for _ in range(n_zone_layers):
+            self.layers.append(nn.ModuleDict({
+                'attn': nn.MultiheadAttention(
+                    config.d_model, config.n_heads,
+                    dropout=config.dropout, batch_first=True,
+                ),
+                'attn_norm': nn.LayerNorm(config.d_model),
+                'ff': nn.Sequential(
+                    nn.Linear(config.d_model, config.d_ff),
+                    nn.GELU(),
+                    nn.Dropout(config.dropout),
+                    nn.Linear(config.d_ff, config.d_model),
+                    nn.Dropout(config.dropout),
+                ),
+                'ff_norm': nn.LayerNorm(config.d_model),
+            }))
 
         # Pooling to zone embedding
         self.pool_proj = nn.Sequential(
@@ -566,8 +582,8 @@ class ZoneEncoder(nn.Module):
         """
         batch_size = card_features.shape[0]
 
-        # Project cards
-        x = self.card_proj(card_features)
+        # Project cards through shared embedding
+        x = self.card_embedding(card_features)
 
         # Add CLS token
         cls = self.cls_token.expand(batch_size, -1, -1)
@@ -581,13 +597,13 @@ class ZoneEncoder(nn.Module):
         else:
             key_padding_mask = None
 
-        # Self-attention
-        attn_out, _ = self.self_attn(x, x, x, key_padding_mask=key_padding_mask)
-        x = self.attn_norm(x + attn_out)
+        # Apply stacked self-attention + feed-forward layers
+        for layer in self.layers:
+            attn_out, _ = layer['attn'](x, x, x, key_padding_mask=key_padding_mask)
+            x = layer['attn_norm'](x + attn_out)
 
-        # Feed-forward
-        ff_out = self.ff(x)
-        x = self.ff_norm(x + ff_out)
+            ff_out = layer['ff'](x)
+            x = layer['ff_norm'](x + ff_out)
 
         # Extract CLS for zone embedding, rest are card embeddings
         zone_emb = self.pool_proj(x[:, 0])
@@ -690,14 +706,16 @@ class StackEncoder(nn.Module):
     Uses positional encoding to maintain order.
     """
 
-    def __init__(self, config: GameStateConfig):
+    def __init__(self, config: GameStateConfig, card_embedding: CardEmbeddingMLP):
         super().__init__()
         self.config = config
 
-        # Card/ability embedding projection
-        input_dim = config.vocab_size + config.max_params + 32
+        # Shared card embedding projection
+        self.card_embedding = card_embedding
+
+        # Position projection: card embedding (d_model) + position (max_stack) -> d_model
         self.item_proj = nn.Sequential(
-            nn.Linear(input_dim + config.max_stack, config.d_model),  # + position
+            nn.Linear(config.d_model + config.max_stack, config.d_model),
             nn.LayerNorm(config.d_model),
             nn.GELU(),
         )
@@ -750,11 +768,14 @@ class StackEncoder(nn.Module):
                     device=stack_features.device
                 )
 
+        # Project card features through shared embedding first
+        x = self.card_embedding(stack_features)
+
         # Add positional encoding
         pos = self.pos_encoding.expand(batch_size, -1, -1)
-        x = torch.cat([stack_features, pos], dim=-1)
+        x = torch.cat([x, pos], dim=-1)
 
-        # Project
+        # Project combined embedding + position
         x = self.item_proj(x)
 
         # Self-attention (skip if all masked to avoid NaN)
@@ -787,37 +808,45 @@ class StackEncoder(nn.Module):
 
 class CrossZoneAttention(nn.Module):
     """
-    Models interactions between zones.
+    Models interactions between zones with multi-layer attention.
 
-    For example:
-    - Creature on battlefield -> equipment in hand (can equip)
-    - Graveyard cards -> battlefield (reanimation targets)
-    - Stack -> battlefield (counterspell targets)
+    Multiple layers enable multi-step cross-zone reasoning, e.g.:
+    - Layer 1: "reanimation target in graveyard"
+    - Layer 2: "reanimation spell in hand + target identified"
+    - Layer 3: "mana available to cast reanimation spell"
     """
 
     def __init__(self, config: GameStateConfig):
         super().__init__()
         self.config = config
+        n_cross_layers = 3
 
-        # Project zone embeddings to common space
-        self.zone_proj = nn.Linear(config.zone_embedding_dim, config.d_model)
+        # Input/output projections
+        self.input_proj = nn.Linear(config.zone_embedding_dim, config.d_model)
+        self.output_proj = nn.Linear(config.d_model, config.zone_embedding_dim)
 
-        # Cross-attention between zones
-        self.cross_attn = nn.MultiheadAttention(
-            config.d_model,
-            config.n_heads,
-            dropout=config.dropout,
-            batch_first=True,
-        )
-
-        self.norm = nn.LayerNorm(config.d_model)
-
-        # Final projection
-        self.out_proj = nn.Linear(config.d_model, config.zone_embedding_dim)
+        # Stack of cross-attention + feed-forward layers
+        self.layers = nn.ModuleList()
+        for _ in range(n_cross_layers):
+            self.layers.append(nn.ModuleDict({
+                'attn': nn.MultiheadAttention(
+                    config.d_model, config.n_heads,
+                    dropout=config.dropout, batch_first=True,
+                ),
+                'attn_norm': nn.LayerNorm(config.d_model),
+                'ff': nn.Sequential(
+                    nn.Linear(config.d_model, config.d_ff),
+                    nn.GELU(),
+                    nn.Dropout(config.dropout),
+                    nn.Linear(config.d_ff, config.d_model),
+                    nn.Dropout(config.dropout),
+                ),
+                'ff_norm': nn.LayerNorm(config.d_model),
+            }))
 
     def forward(self, zone_embeddings: torch.Tensor) -> torch.Tensor:
         """
-        Apply cross-zone attention.
+        Apply multi-layer cross-zone attention.
 
         Args:
             zone_embeddings: [batch, num_zones, zone_embedding_dim]
@@ -826,14 +855,20 @@ class CrossZoneAttention(nn.Module):
             updated_embeddings: [batch, num_zones, zone_embedding_dim]
         """
         # Project to common space
-        x = self.zone_proj(zone_embeddings)
+        x = self.input_proj(zone_embeddings)
 
-        # Cross-attention
-        attn_out, _ = self.cross_attn(x, x, x)
-        x = self.norm(x + attn_out)
+        # Apply each cross-attention + feed-forward layer
+        for layer in self.layers:
+            # Self-attention across zones
+            attn_out, _ = layer['attn'](x, x, x)
+            x = layer['attn_norm'](x + attn_out)
 
-        # Project back
-        return self.out_proj(x)
+            # Feed-forward
+            ff_out = layer['ff'](x)
+            x = layer['ff_norm'](x + ff_out)
+
+        # Project back to zone embedding dim
+        return self.output_proj(x)
 
 
 # =============================================================================
@@ -862,19 +897,25 @@ class ForgeGameStateEncoder(nn.Module):
         # Load mechanics cache
         self.mechanics_cache = MechanicsCache(self.config.mechanics_h5_path)
 
-        # Zone encoders (one per zone type)
+        # Shared card embedding MLP (used by all zone encoders and stack encoder)
+        input_dim = self.config.vocab_size + self.config.max_params + 32  # 32 = state features
+        self.card_embedding = CardEmbeddingMLP(
+            input_dim, 768, self.config.d_model, self.config.dropout
+        )
+
+        # Zone encoders (one per zone type, sharing card embedding)
         self.zone_encoders = nn.ModuleDict({
-            "hand": ZoneEncoder(self.config),
-            "battlefield": ZoneEncoder(self.config),
-            "graveyard": ZoneEncoder(self.config),
-            "exile": ZoneEncoder(self.config),
+            "hand": ZoneEncoder(self.config, self.card_embedding),
+            "battlefield": ZoneEncoder(self.config, self.card_embedding),
+            "graveyard": ZoneEncoder(self.config, self.card_embedding),
+            "exile": ZoneEncoder(self.config, self.card_embedding),
         })
 
         # Global encoder
         self.global_encoder = GlobalEncoder(self.config)
 
-        # Stack encoder
-        self.stack_encoder = StackEncoder(self.config)
+        # Stack encoder (shares card embedding)
+        self.stack_encoder = StackEncoder(self.config, self.card_embedding)
 
         # Cross-zone attention
         self.cross_zone_attn = CrossZoneAttention(self.config)

@@ -140,7 +140,7 @@ class PolicyValueConfig:
 
     # Policy head
     policy_hidden_dim: int = 256
-    policy_n_layers: int = 2
+    policy_n_layers: int = 3
     policy_dropout: float = 0.1
 
     # Value head
