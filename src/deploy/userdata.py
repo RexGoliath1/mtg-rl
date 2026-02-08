@@ -202,6 +202,9 @@ ${wandb_setup}
 
 uv sync --extra dev 2>/dev/null || pip install torch numpy h5py safetensors
 
+# Install TensorBoard for live monitoring
+pip install tensorboard 2>/dev/null || true
+
 # Download training data from S3
 echo "Downloading training data..."
 mkdir -p /home/ubuntu/training_data
@@ -214,6 +217,11 @@ echo "Found $$HDF5_COUNT HDF5 data files"
 
 # Create output directory
 mkdir -p /home/ubuntu/training_results
+
+# Start TensorBoard in the background for live monitoring
+echo "Starting TensorBoard on port 6006..."
+nohup tensorboard --logdir=/home/ubuntu/training_results/tensorboard --port=6006 --bind_all > /var/log/tensorboard.log 2>&1 &
+echo "TensorBoard running at http://$$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):6006"
 
 # Run training with optimizations
 echo "=========================================="

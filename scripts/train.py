@@ -17,7 +17,7 @@ Usage:
     python3 scripts/train.py train --epochs 300 --wandb --dry-run
     python3 scripts/train.py run --games 10000 --epochs 300 --notify --dry-run
     python3 scripts/train.py status
-    python3 scripts/train.py connect --tensorboard 6006
+    python3 scripts/train.py connect --tensorboard --jupyter
     python3 scripts/train.py kill
 """
 
@@ -439,31 +439,53 @@ def cmd_connect(args: argparse.Namespace) -> None:
     instance_id = inst["instance_id"]
     ip = inst.get("public_ip", "")
 
+    # Build list of port forwards
+    port_forwards = []
     if args.tensorboard:
-        port = args.tensorboard
-        print(_heading("TENSORBOARD PORT FORWARD"))
+        tb_port = args.tensorboard
+        port_forwards.append((tb_port, 6006, "TensorBoard"))
+    if args.jupyter:
+        jp_port = args.jupyter
+        port_forwards.append((jp_port, 8888, "Jupyter"))
+
+    if port_forwards:
+        # Port forwarding mode (SSH with -L flags)
+        services = ", ".join(name for _, _, name in port_forwards)
+        print(_heading(f"PORT FORWARD: {services}"))
         print(f"  Instance: {instance_id}")
-        print(f"  Local:    http://localhost:{port}")
+        for local_port, remote_port, name in port_forwards:
+            print(f"  {name:12s} http://localhost:{local_port} -> :{remote_port}")
         print("  Press Ctrl+C to stop\n")
-        # Prefer SSM, fall back to SSH
-        try:
-            subprocess.run([
-                "aws", "ssm", "start-session",
-                "--target", instance_id,
-                "--document-name", "AWS-StartPortForwardingSession",
-                "--parameters", f'{{"portNumber":["6006"],"localPortNumber":["{port}"]}}',
-                "--region", REGION,
-            ])
-        except FileNotFoundError:
-            key_file = Path.home() / ".ssh" / "mtg-rl-training.pem"
-            if key_file.exists() and ip:
+
+        key_file = Path.home() / ".ssh" / "mtg-rl-training.pem"
+        if key_file.exists() and ip:
+            ssh_cmd = ["ssh", "-i", str(key_file), "-N", "-o", "StrictHostKeyChecking=no"]
+            for local_port, remote_port, _ in port_forwards:
+                ssh_cmd.extend(["-L", f"{local_port}:localhost:{remote_port}"])
+            ssh_cmd.append(f"ubuntu@{ip}")
+
+            for local_port, _, name in port_forwards:
+                print(f"{name} available at http://localhost:{local_port}")
+
+            subprocess.run(ssh_cmd)
+        else:
+            # Fall back to SSM for single-port forward (SSM only supports one port)
+            if len(port_forwards) > 1:
+                print(_err("SSM port forwarding supports only one port at a time."))
+                print("  Set up SSH key (~/.ssh/mtg-rl-training.pem) for multi-port forwarding.")
+                sys.exit(1)
+            local_port, remote_port, name = port_forwards[0]
+            print(f"{name} available at http://localhost:{local_port}")
+            try:
                 subprocess.run([
-                    "ssh", "-i", str(key_file),
-                    "-N", "-L", f"{port}:localhost:6006",
-                    f"ubuntu@{ip}",
+                    "aws", "ssm", "start-session",
+                    "--target", instance_id,
+                    "--document-name", "AWS-StartPortForwardingSession",
+                    "--parameters", f'{{"portNumber":["{remote_port}"],"localPortNumber":["{local_port}"]}}',
+                    "--region", REGION,
                 ])
-            else:
-                print(_err("Neither SSM plugin nor SSH key available."))
+            except FileNotFoundError:
+                print(_err("SSM plugin not found and no SSH key available."))
                 sys.exit(1)
     elif args.ssh:
         key_file = Path.home() / ".ssh" / "mtg-rl-training.pem"
@@ -626,6 +648,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_connect = sub.add_parser("connect", help="Connect to running instance")
     p_connect.add_argument("--ssh", action="store_true", help="Use SSH instead of SSM")
     p_connect.add_argument("--tensorboard", type=int, nargs="?", const=6006, default=None, help="Port-forward TensorBoard (default 6006)")
+    p_connect.add_argument("--jupyter", type=int, nargs="?", const=8888, default=None, help="Port-forward Jupyter (default 8888)")
     p_connect.set_defaults(func=cmd_connect)
 
     # --- kill ---
