@@ -23,7 +23,10 @@ Usage:
 """
 
 import json
+import logging
 import os
+import platform
+import resource
 import time
 import random
 from collections import deque
@@ -36,6 +39,9 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from safetensors.torch import save_file as safetensors_save, load_file as safetensors_load
+
+LOG_FORMAT = "[%(asctime)s][%(levelname)s][%(name)s] %(message)s"
+logger = logging.getLogger("forgerl.selfplay")
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -236,6 +242,7 @@ class SelfPlayActor:
 
         # Game trajectory: (state_tensor, mcts_policy, player_to_move)
         trajectory = []
+        game_start = time.time()
 
         move_count = 0
         while not forge_client.is_game_over() and move_count < self.config.max_game_length:
@@ -287,6 +294,9 @@ class SelfPlayActor:
             move_count += 1
 
         # Game over - assign values
+        game_duration = time.time() - game_start
+        logger.debug("Game finished: %d moves in %.1fs, winner=%s",
+                      move_count, game_duration, forge_client.get_game_state().get("winner"))
         samples = []
         winner_player = forge_client.get_game_state().get("winner")
 
@@ -356,7 +366,7 @@ class Learner:
         self._scaler = torch.amp.GradScaler("cuda", enabled=self._use_amp)
 
         if self._use_amp:
-            print("[AMP] Mixed precision training enabled (self-play learner)")
+            logger.info("Mixed precision training (AMP) enabled for self-play learner")
 
     def train_on_batch(
         self,
@@ -585,9 +595,9 @@ class SelfPlayTrainer:
         self.tb_writer: Optional[SummaryWriter] = None
         if self.config.use_tensorboard and TB_AVAILABLE:
             self.tb_writer = SummaryWriter(log_dir=self.config.tb_log_dir)
-            print(f"[TensorBoard] Logging to {self.config.tb_log_dir}")
+            logger.info("TensorBoard logging to %s", self.config.tb_log_dir)
         elif self.config.use_tensorboard and not TB_AVAILABLE:
-            print("[TensorBoard] Not available (install tensorboard)")
+            logger.warning("TensorBoard not available (install tensorboard)")
 
         # --- Weights & Biases ---
         self.wandb_tracker: Optional[WandbTracker] = None
@@ -605,9 +615,9 @@ class SelfPlayTrainer:
                 tags=["self-play", "alphazero"],
                 notes="AlphaZero self-play training",
             )
-            print("[W&B] Logging enabled")
+            logger.info("W&B logging enabled")
         elif self.config.use_wandb and not WANDB_AVAILABLE:
-            print("[W&B] wandb not installed -- skipping")
+            logger.warning("wandb not installed -- skipping")
 
     def run_iteration(self) -> Dict[str, Any]:
         """
@@ -621,7 +631,8 @@ class SelfPlayTrainer:
         stats = {"iteration": self.iteration}
 
         # 1. Self-play phase
-        print(f"\n[Iteration {self.iteration}] Self-play phase...")
+        logger.info("[Iteration %d] Self-play phase (%d games)...",
+                     self.iteration, self.config.games_per_iteration)
         games_samples = []
         per_game_lengths = []
         for game_idx in range(self.config.games_per_iteration):
@@ -629,8 +640,8 @@ class SelfPlayTrainer:
             games_samples.extend(samples)
             per_game_lengths.append(len(samples))
             self.replay_buffer.add_game(samples)
-            print(f"  Game {game_idx + 1}/{self.config.games_per_iteration}: "
-                  f"{len(samples)} moves")
+            logger.info("  Game %d/%d: %d moves",
+                        game_idx + 1, self.config.games_per_iteration, len(samples))
 
         stats["games_played"] = self.config.games_per_iteration
         stats["samples_collected"] = len(games_samples)
@@ -639,14 +650,16 @@ class SelfPlayTrainer:
         self.total_samples += len(games_samples)
 
         # 2. Training phase
-        print(f"[Iteration {self.iteration}] Training phase...")
+        logger.info("[Iteration %d] Training phase (%d epochs, buffer=%d)...",
+                     self.iteration, self.config.epochs_per_iteration, len(self.replay_buffer))
         epoch_stats = []
         for epoch in range(self.config.epochs_per_iteration):
             losses = self.learner.train_epoch(self.replay_buffer)
             epoch_stats.append(losses)
             if "skipped" not in losses:
-                print(f"  Epoch {epoch + 1}: policy_loss={losses['policy_loss']:.4f}, "
-                      f"value_loss={losses['value_loss']:.4f}")
+                logger.info("  Epoch %d: policy_loss=%.4f, value_loss=%.4f, lr=%.2e",
+                            epoch + 1, losses['policy_loss'], losses['value_loss'],
+                            losses.get('lr', 0))
 
         if epoch_stats and "skipped" not in epoch_stats[-1]:
             stats["policy_loss"] = np.mean([e["policy_loss"] for e in epoch_stats])
@@ -698,30 +711,44 @@ class SelfPlayTrainer:
         Args:
             num_iterations: Number of iterations to run
         """
-        print("=" * 70)
-        print("AlphaZero Self-Play Training")
-        print("=" * 70)
-        print(f"Config: {self.config}")
-        print(f"Device: {self.config.device}")
-        print(f"Network parameters: {sum(p.numel() for p in self.network.parameters()):,}")
-        print()
+        logger.info("=" * 70)
+        logger.info("AlphaZero Self-Play Training")
+        logger.info("=" * 70)
+        logger.info("Python %s on %s", platform.python_version(), platform.platform())
+        logger.info("PyTorch %s | CUDA: %s", torch.__version__,
+                     torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A")
+        logger.info("Device: %s", self.config.device)
+        logger.info("Network parameters: %d", sum(p.numel() for p in self.network.parameters()))
+        logger.info("Config: games_per_iter=%d, mcts_sims=%d, batch=%d, lr=%s, buffer=%d",
+                     self.config.games_per_iteration, self.config.mcts_simulations,
+                     self.config.batch_size, self.config.learning_rate,
+                     self.config.replay_buffer_size)
 
         os.makedirs(self.config.checkpoint_dir, exist_ok=True)
+        training_start = time.time()
 
         for i in range(num_iterations):
             stats = self.run_iteration()
-            print(f"\n[Iteration {stats['iteration']}] Summary:")
-            print(f"  Games: {stats['games_played']}, Samples: {stats['samples_collected']}")
-            print(f"  Buffer size: {stats['buffer_size']}")
-            if "policy_loss" in stats:
-                print(f"  Policy loss: {stats['policy_loss']:.4f}, "
-                      f"Value loss: {stats['value_loss']:.4f}")
-            print(f"  Time: {stats['iteration_time']:.1f}s")
+            logger.info("[Iteration %d] Summary: games=%d, samples=%d, buffer=%d, time=%.1fs%s",
+                        stats['iteration'], stats['games_played'], stats['samples_collected'],
+                        stats['buffer_size'], stats['iteration_time'],
+                        f", policy_loss={stats['policy_loss']:.4f}, value_loss={stats['value_loss']:.4f}"
+                        if "policy_loss" in stats else "")
 
-        print("\n" + "=" * 70)
-        print(f"Training complete! Total games: {self.total_games}, "
-              f"Total samples: {self.total_samples}")
-        print("=" * 70)
+            # Memory check every 10 iterations
+            if (i + 1) % 10 == 0:
+                try:
+                    ru = resource.getrusage(resource.RUSAGE_SELF)
+                    rss = ru.ru_maxrss / (1024 * 1024) if platform.system() == "Darwin" else ru.ru_maxrss / 1024
+                    logger.info("MEMORY RSS=%.1f MB after %d iterations", rss, i + 1)
+                except Exception:
+                    pass
+
+        total_time = time.time() - training_start
+        logger.info("=" * 70)
+        logger.info("Training complete! Total games: %d, Total samples: %d, Total time: %.1fs",
+                     self.total_games, self.total_samples, total_time)
+        logger.info("=" * 70)
 
         # Final checkpoint
         self._save_checkpoint()
@@ -743,7 +770,8 @@ class SelfPlayTrainer:
             "network_state": self.network.state_dict(),
             "config": self.config,
         }, path)
-        print(f"Saved checkpoint: {path}")
+        logger.info("Saved checkpoint: %s (iter=%d, games=%d, samples=%d)",
+                     path, self.iteration, self.total_games, self.total_samples)
 
     def close(self):
         """Flush and close TensorBoard writer and W&B tracker."""

@@ -71,6 +71,34 @@ fi
 
 echo "Forge JAR: $$FORGE_JAR"
 
+# Log instance metadata at startup
+echo "--- Instance Metadata ---"
+INSTANCE_TYPE=$$(curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/instance-type 2>/dev/null || echo "unknown")
+INSTANCE_ID=$$(curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "unknown")
+AZ=$$(curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/placement/availability-zone 2>/dev/null || echo "unknown")
+SPOT_PRICE=$$(curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/spot/instance-action 2>/dev/null || echo "N/A")
+echo "Instance type: $$INSTANCE_TYPE"
+echo "Instance ID: $$INSTANCE_ID"
+echo "Availability zone: $$AZ"
+echo "Spot info: $$SPOT_PRICE"
+echo "CPU cores: $$(nproc)"
+echo "Memory: $$(free -h | awk '/Mem:/ {print $$2}')"
+echo "Disk: $$(df -h / | awk 'NR==2 {print $$2}')"
+echo "--- End Instance Metadata ---"
+
+# Start background log uploader (pushes logs to S3 every 5 minutes)
+(
+    while true; do
+        sleep 300
+        aws s3 cp /var/log/data-collection.log \
+            s3://${s3_bucket}/imitation_data/${run_id}/live_log.txt 2>/dev/null || true
+        aws s3 cp /var/log/forge-daemon.log \
+            s3://${s3_bucket}/imitation_data/${run_id}/forge_daemon_live.log 2>/dev/null || true
+    done
+) &
+LOG_UPLOADER_PID=$$!
+echo "Background log uploader started (PID: $$LOG_UPLOADER_PID, interval: 5min)"
+
 # Start virtual display (Forge GUI needs X11 even in daemon mode)
 echo "Starting Xvfb..."
 Xvfb :99 -screen 0 1024x768x24 &
@@ -129,12 +157,17 @@ python3 scripts/collect_ai_training_data.py \
     --port ${forge_port} \
     --workers ${num_workers} \
     --timeout ${game_timeout} \
-    --save-interval ${save_interval}
+    --save-interval ${save_interval} \
+    --log-level INFO \
+    --log-file /var/log/collection_structured.log
 
 echo "=========================================="
 echo "COLLECTION COMPLETE"
 echo "=========================================="
 date
+
+# Stop background log uploader
+kill $$LOG_UPLOADER_PID 2>/dev/null || true
 
 # Upload results to S3
 echo "Uploading results to S3..."
@@ -142,11 +175,13 @@ aws s3 sync /home/ubuntu/training_data/ \
     s3://${s3_bucket}/imitation_data/${run_id}/ \
     --exclude "*.tex"
 
-# Upload logs
+# Upload logs (final versions overwrite live versions)
 aws s3 cp /var/log/data-collection.log \
     s3://${s3_bucket}/imitation_data/${run_id}/collection_log.txt
 aws s3 cp /var/log/forge-daemon.log \
     s3://${s3_bucket}/imitation_data/${run_id}/forge_daemon.log 2>/dev/null || true
+aws s3 cp /var/log/collection_structured.log \
+    s3://${s3_bucket}/imitation_data/${run_id}/collection_structured.log 2>/dev/null || true
 
 echo "Results uploaded to s3://${s3_bucket}/imitation_data/${run_id}/"
 
@@ -204,6 +239,29 @@ uv sync --extra dev 2>/dev/null || pip install torch numpy h5py safetensors
 
 # Install TensorBoard for live monitoring
 pip install tensorboard 2>/dev/null || true
+
+# Log instance metadata at startup
+echo "--- Instance Metadata ---"
+INSTANCE_TYPE_META=$$(curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/instance-type 2>/dev/null || echo "unknown")
+INSTANCE_ID=$$(curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "unknown")
+echo "Instance type: $$INSTANCE_TYPE_META"
+echo "Instance ID: $$INSTANCE_ID"
+GPU_NAME=$$(python3 -c 'import torch; print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A")' 2>/dev/null || echo "N/A")
+echo "GPU: $$GPU_NAME"
+echo "CPU cores: $$(nproc)"
+echo "Memory: $$(free -h | awk '/Mem:/ {print $$2}')"
+echo "--- End Instance Metadata ---"
+
+# Start background log uploader (pushes logs to S3 every 5 minutes)
+(
+    while true; do
+        sleep 300
+        aws s3 cp /var/log/training.log \
+            "s3://${s3_bucket}/training_runs/${run_id}/live_log.txt" 2>/dev/null || true
+    done
+) &
+LOG_UPLOADER_PID=$$!
+echo "Background log uploader started (PID: $$LOG_UPLOADER_PID, interval: 5min)"
 
 # Download training data from S3
 echo "Downloading training data..."
@@ -286,6 +344,9 @@ with open('/home/ubuntu/training_results/metrics.json', 'w') as f:
 print('Metrics saved')
 "
 
+# Stop background log uploader
+kill $$LOG_UPLOADER_PID 2>/dev/null || true
+
 # Upload results to S3
 echo "Uploading results to S3..."
 aws s3 sync /home/ubuntu/training_results/ \
@@ -296,7 +357,7 @@ aws s3 sync /home/ubuntu/training_results/ \
 aws s3 sync /home/ubuntu/training_results/tensorboard/ \
     "s3://${s3_bucket}/tensorboard-logs/${run_id}/" 2>/dev/null || true
 
-# Upload training log
+# Upload training log (final version overwrites live version)
 aws s3 cp /var/log/training.log \
     "s3://${s3_bucket}/training_runs/${run_id}/instance_log.txt"
 

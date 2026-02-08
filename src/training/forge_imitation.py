@@ -16,6 +16,8 @@ Usage:
     python src/training/forge_imitation.py --games 100 --epochs 10
 """
 
+import logging
+import platform
 import time
 import random
 import argparse
@@ -31,6 +33,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from safetensors.torch import save_file as safetensors_save
+
+LOG_FORMAT = "[%(asctime)s][%(levelname)s][%(name)s] %(message)s"
+logger = logging.getLogger("forgerl.imitation")
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -480,7 +485,7 @@ class ImitationDataCollector:
 
             success = client.start_game(self.deck1, self.deck2, timeout=self.timeout, seed=seed)
             if not success:
-                print(f"Game {game_id}: Failed to start")
+                logger.warning("Game %d: Failed to start", game_id)
                 return metrics
 
             game_start = time.perf_counter()
@@ -555,7 +560,7 @@ class ImitationDataCollector:
                     metrics.player2_life_final = players[1].get("life", 0)
 
         except Exception as e:
-            print(f"Game {game_id}: Error - {e}")
+            logger.error("Game %d: Error - %s", game_id, e, exc_info=True)
         finally:
             client.close()
 
@@ -614,14 +619,16 @@ class ImitationDataCollector:
         self.samples = []
         self.game_metrics = []
 
+        logger.info("Starting collection of %d games", num_games)
+
         for game_id in range(1, num_games + 1):
             metrics = self.collect_game(game_id, seed=game_id)
 
             if verbose:
-                print(f"Game {game_id}: {metrics.total_turns} turns, "
-                      f"{metrics.total_decisions} decisions, "
-                      f"winner: {metrics.winner}")
+                logger.info("Game %d: %d turns, %d decisions, winner: %s",
+                            game_id, metrics.total_turns, metrics.total_decisions, metrics.winner)
 
+        logger.info("Collection done: %d games, %d total samples", num_games, len(self.samples))
         return self.samples, self.game_metrics
 
     def get_statistics(self) -> Dict[str, Any]:
@@ -838,7 +845,11 @@ class ImitationTrainer:
         self.wandb_tracker = wandb_tracker
 
         if self._use_amp:
-            print("[AMP] Mixed precision training enabled")
+            logger.info("Mixed precision training (AMP) enabled")
+
+        logger.info("ImitationTrainer initialized: lr=%s, batch_size=%d, device=%s, "
+                     "warmup=%d epochs, total=%d epochs, grad_accum=%d",
+                     lr, batch_size, device, warmup_epochs, total_epochs, grad_accum_steps)
 
     def _get_lr(self) -> float:
         """Get current learning rate, applying linear warmup if applicable."""
@@ -958,17 +969,18 @@ class ImitationTrainer:
         )
 
         if verbose:
-            print(f"\nTraining on {len(samples)} samples for {epochs} epochs")
-            print("-" * 50)
+            logger.info("Training on %d samples for %d epochs (batch_size=%d)",
+                        len(samples), epochs, self.batch_size)
 
         for epoch in range(epochs):
+            epoch_start = time.time()
             metrics = self.train_epoch(dataloader)
+            epoch_time = time.time() - epoch_start
 
             if verbose:
-                print(f"Epoch {epoch+1:3d}: "
-                      f"loss={metrics['loss']:.4f}, "
-                      f"accuracy={metrics['accuracy']:.3f}, "
-                      f"lr={metrics['lr']:.2e}")
+                logger.info("Epoch %3d/%d: loss=%.4f, accuracy=%.3f, lr=%.2e, time=%.1fs",
+                            epoch + 1, epochs, metrics['loss'], metrics['accuracy'],
+                            metrics['lr'], epoch_time)
 
             # --- TensorBoard logging ---
             if self.tb_writer is not None:
@@ -1039,7 +1051,7 @@ class ImitationTrainer:
             save_dict['state_dict'] = self.network.state_dict()
         torch.save(save_dict, path)
 
-        print(f"Saved checkpoint to {st_path} (SafeTensors) + {path} (legacy)")
+        logger.info("Saved checkpoint to %s (SafeTensors) + %s (legacy)", st_path, path)
 
     def load(self, path: str):
         """Load model checkpoint."""
@@ -1050,7 +1062,7 @@ class ImitationTrainer:
         if 'optimizer_state_dict' in checkpoint:
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.training_history = checkpoint.get('training_history', [])
-        print(f"Loaded checkpoint from {path}")
+        logger.info("Loaded checkpoint from %s", path)
 
 
 # ============================================================================
@@ -1209,21 +1221,27 @@ def main():
     parser.add_argument("--tb-log-dir", default="runs/imitation", help="TensorBoard log directory")
     args = parser.parse_args()
 
-    print("=" * 70)
-    print("FORGE AI IMITATION TRAINING")
-    print("=" * 70)
-    print(f"Host: {args.host}:{args.port}")
-    print(f"Decks: {args.deck1} vs {args.deck2}")
-    print(f"Games: {args.games}, Epochs: {args.epochs}")
-    print()
+    # Configure logging
+    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO, stream=__import__("sys").stderr)
+
+    logger.info("=" * 70)
+    logger.info("FORGE AI IMITATION TRAINING")
+    logger.info("=" * 70)
+    logger.info("Python %s on %s", platform.python_version(), platform.platform())
+    logger.info("PyTorch %s | CUDA: %s", torch.__version__,
+                torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A")
+    logger.info("Host: %s:%d", args.host, args.port)
+    logger.info("Decks: %s vs %s", args.deck1, args.deck2)
+    logger.info("Games: %d, Epochs: %d, Batch: %d, LR: %s",
+                args.games, args.epochs, args.batch_size, args.lr)
 
     # Create checkpoint directory
     Path(args.checkpoint).parent.mkdir(parents=True, exist_ok=True)
 
     # Phase 1: Data Collection
-    print("=" * 70)
-    print("PHASE 1: DATA COLLECTION")
-    print("=" * 70)
+    logger.info("=" * 70)
+    logger.info("PHASE 1: DATA COLLECTION")
+    logger.info("=" * 70)
 
     collector = ImitationDataCollector(
         host=args.host,
@@ -1235,33 +1253,31 @@ def main():
     samples, metrics = collector.collect_games(args.games, verbose=True)
     stats = collector.get_statistics()
 
-    print("\n--- Collection Statistics ---")
-    print(f"Total games: {stats['total_games']}")
-    print(f"Total samples: {stats['total_samples']}")
-    print(f"Avg turns/game: {stats['avg_turns_per_game']:.1f}")
-    print(f"Avg decisions/game: {stats['avg_decisions_per_game']:.1f}")
-    print(f"Avg decisions/turn: {stats['avg_decisions_per_turn']:.1f}")
-    print(f"Max decisions/turn: {stats['max_decisions_per_turn']}")
-    print("\nDecision types:")
+    logger.info("--- Collection Statistics ---")
+    logger.info("Total games: %d, Total samples: %d", stats['total_games'], stats['total_samples'])
+    logger.info("Avg turns/game: %.1f, Avg decisions/game: %.1f",
+                stats['avg_turns_per_game'], stats['avg_decisions_per_game'])
+    logger.info("Avg decisions/turn: %.1f, Max decisions/turn: %d",
+                stats['avg_decisions_per_turn'], stats['max_decisions_per_turn'])
     for dt, count in stats['decision_type_breakdown'].items():
-        print(f"  {dt}: {count}")
+        logger.info("  %s: %d", dt, count)
 
     if args.collect_only:
-        print("\n--collect-only flag set, skipping training.")
+        logger.info("--collect-only flag set, skipping training.")
         return
 
     # Phase 2: Training
-    print("\n" + "=" * 70)
-    print("PHASE 2: TRAINING")
-    print("=" * 70)
+    logger.info("=" * 70)
+    logger.info("PHASE 2: TRAINING")
+    logger.info("=" * 70)
 
     # Use AlphaZeroNetwork (same architecture as self-play) for weight transfer
     network = AlphaZeroNetwork()
     total_params = sum(p.numel() for p in network.parameters())
-    print(f"Network: AlphaZeroNetwork ({total_params:,} params)")
-    print(f"  Encoder: {sum(p.numel() for p in network.encoder.parameters()):,}")
-    print(f"  Policy:  {sum(p.numel() for p in network.policy_head.parameters()):,}")
-    print(f"  Value:   {sum(p.numel() for p in network.value_head.parameters()):,}")
+    logger.info("Network: AlphaZeroNetwork (%d params)", total_params)
+    logger.info("  Encoder: %d", sum(p.numel() for p in network.encoder.parameters()))
+    logger.info("  Policy:  %d", sum(p.numel() for p in network.policy_head.parameters()))
+    logger.info("  Value:   %d", sum(p.numel() for p in network.value_head.parameters()))
 
     # --- Optional logging ---
     wandb_tracker = None
@@ -1282,7 +1298,7 @@ def main():
             notes=f"Imitation training: {args.games} games, {args.epochs} epochs",
         )
     elif args.wandb and not WANDB_AVAILABLE:
-        print("[W&B] wandb not installed -- skipping")
+        logger.warning("wandb not installed -- skipping W&B logging")
 
     trainer = ImitationTrainer(
         network,
@@ -1302,9 +1318,9 @@ def main():
     trainer.close()
 
     # Phase 3: Evaluation
-    print("\n" + "=" * 70)
-    print("PHASE 3: EVALUATION")
-    print("=" * 70)
+    logger.info("=" * 70)
+    logger.info("PHASE 3: EVALUATION")
+    logger.info("=" * 70)
 
     fallback = HeuristicAgent()
     agent = ImitationAgent(
@@ -1314,7 +1330,7 @@ def main():
         max_decisions_per_turn=50,
     )
 
-    print(f"\nRunning {args.eval_games} evaluation games with trained agent...")
+    logger.info("Running %d evaluation games with trained agent...", args.eval_games)
 
     eval_metrics = []
     for game_id in range(1, args.eval_games + 1):
@@ -1344,8 +1360,8 @@ def main():
             result = client.get_result()
             winner = result.winner if result else "Unknown"
 
-            print(f"Eval Game {game_id}: {turns} turns, {decisions} decisions, "
-                  f"winner: {winner}")
+            logger.info("Eval Game %d: %d turns, %d decisions, winner: %s",
+                        game_id, turns, decisions, winner)
 
             eval_metrics.append({
                 "game_id": game_id,
@@ -1355,26 +1371,25 @@ def main():
             })
 
         except Exception as e:
-            print(f"Eval Game {game_id}: Error - {e}")
+            logger.error("Eval Game %d: Error - %s", game_id, e, exc_info=True)
         finally:
             client.close()
 
     # Final stats
     agent_stats = agent.get_stats()
-    print("\n--- Agent Statistics ---")
-    print(f"Total decisions: {agent_stats['total_decisions']}")
-    print(f"Fallback decisions: {agent_stats['fallback_decisions']}")
-    print(f"Fallback rate: {agent_stats['fallback_rate']:.1%}")
+    logger.info("--- Agent Statistics ---")
+    logger.info("Total decisions: %d, Fallback: %d (%.1f%%)",
+                agent_stats['total_decisions'], agent_stats['fallback_decisions'],
+                agent_stats['fallback_rate'] * 100)
 
     if eval_metrics:
         avg_turns = sum(m['turns'] for m in eval_metrics) / len(eval_metrics)
         avg_decisions = sum(m['decisions'] for m in eval_metrics) / len(eval_metrics)
-        print(f"\nAvg turns/game: {avg_turns:.1f}")
-        print(f"Avg decisions/game: {avg_decisions:.1f}")
+        logger.info("Avg turns/game: %.1f, Avg decisions/game: %.1f", avg_turns, avg_decisions)
 
-    print("\n" + "=" * 70)
-    print("TRAINING COMPLETE")
-    print("=" * 70)
+    logger.info("=" * 70)
+    logger.info("TRAINING COMPLETE")
+    logger.info("=" * 70)
 
 
 if __name__ == "__main__":

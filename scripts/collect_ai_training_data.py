@@ -14,7 +14,13 @@ For imitation learning bootstrapping:
 """
 
 import json
+import logging
+import os
+import platform
+import resource
 import socket
+import sys
+import traceback
 import h5py
 import numpy as np
 from datetime import datetime
@@ -25,6 +31,13 @@ from typing import List, Tuple
 import itertools
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# ---------------------------------------------------------------------------
+# Logging setup
+# ---------------------------------------------------------------------------
+
+LOG_FORMAT = "[%(asctime)s][%(levelname)s][%(name)s] %(message)s"
+logger = logging.getLogger("forgerl.collect")
 
 
 # Deck directories
@@ -75,6 +88,18 @@ class CollectionStats:
     winners: list = field(default_factory=list)
     deck_pairs_played: dict = field(default_factory=lambda: defaultdict(int))
     cards_seen: set = field(default_factory=set)
+
+
+def _get_memory_mb() -> float:
+    """Return current process RSS in MB (works on Linux and macOS)."""
+    try:
+        ru = resource.getrusage(resource.RUSAGE_SELF)
+        # macOS reports in bytes, Linux in KB
+        if platform.system() == "Darwin":
+            return ru.ru_maxrss / (1024 * 1024)
+        return ru.ru_maxrss / 1024
+    except Exception:
+        return 0.0
 
 
 def collect_training_game(
@@ -130,7 +155,7 @@ def collect_training_game(
                         cards_seen.add(ai_choice["card"])
 
                 except json.JSONDecodeError:
-                    pass
+                    logger.warning("Failed to parse DECISION JSON line")
 
             elif line.startswith("GAME_RESULT:"):
                 game_result = line[12:].strip()
@@ -142,12 +167,15 @@ def collect_training_game(
 
             elif line.startswith("ERROR:"):
                 game_result = f"ERROR: {line}"
+                logger.warning("Forge returned error: %s", line)
                 break
 
     except socket.timeout:
         game_result = "SOCKET_TIMEOUT"
+        logger.warning("Socket timeout for game (seed=%s)", seed)
     except Exception as e:
         game_result = f"EXCEPTION: {str(e)}"
+        logger.error("Exception in game (seed=%s): %s\n%s", seed, e, traceback.format_exc())
     finally:
         sock.close()
 
@@ -315,6 +343,7 @@ def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
     dtypes = np.array(decision_types, dtype=np.int8)
 
     # Save to HDF5
+    logger.info("HDF5 write start: %s (%d rows)", output_path.name, len(decisions))
     with h5py.File(output_path, "w") as f:
         f.create_dataset("states", data=states, compression="gzip", compression_opts=4)
         f.create_dataset("turns", data=turns, compression="gzip")
@@ -334,6 +363,9 @@ def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
                 f.attrs[k] = v
             elif isinstance(v, dict):
                 f.attrs[k] = json.dumps(v)
+
+    file_size_mb = output_path.stat().st_size / (1024 * 1024) if output_path.exists() else 0
+    logger.info("HDF5 write done: %s (%.2f MB, %d rows)", output_path.name, file_size_mb, len(decisions))
 
 
 def generate_deck_pairs(decks: List[str], num_pairs: int) -> List[Tuple[str, str]]:
@@ -517,17 +549,22 @@ def collect_training_batch(
     import threading
     stats_lock = threading.Lock()
 
-    print("=" * 60)
-    print("AI TRAINING DATA COLLECTION")
-    print("=" * 60)
-    print(f"Target games: {num_games:,}")
-    print(f"Deck pool: {len(decks)} decks")
-    print(f"Unique matchups: {len(set(deck_pairs))}")
-    print(f"Output: {output_path}")
-    print(f"Save interval: every {save_interval} games")
-    print(f"Parallel workers: {workers}")
-    print("=" * 60)
-    print()
+    # --- Startup logging ---
+    logger.info("=" * 60)
+    logger.info("AI TRAINING DATA COLLECTION")
+    logger.info("=" * 60)
+    logger.info("Python %s on %s", sys.version.split()[0], platform.platform())
+    logger.info("PID: %d, Host: %s:%d", os.getpid(), host, port)
+    logger.info("NumPy %s, h5py %s", np.__version__, h5py.__version__)
+    logger.info("Target games: %d", num_games)
+    logger.info("Deck pool: %d decks", len(decks))
+    logger.info("Unique matchups: %d", len(set(deck_pairs)))
+    logger.info("Output: %s", output_path)
+    logger.info("Save interval: every %d games", save_interval)
+    logger.info("Parallel workers: %d", workers)
+    logger.info("Game timeout: %ds", timeout)
+    logger.info("Initial RSS: %.1f MB", _get_memory_mb())
+    logger.info("=" * 60)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     start_time = datetime.now()
@@ -589,14 +626,25 @@ def collect_training_batch(
             stats.turns_per_game.append(max_turn)
             games_completed_count[0] += 1
 
-            # Progress indicator every 100 games
+            # Progress indicator every 50 games (or first game)
             completed = games_completed_count[0]
-            if completed % 100 == 0 or completed == 1:
+            if completed % 50 == 0 or completed == 1:
                 elapsed = (datetime.now() - start_time).total_seconds()
                 rate = completed / elapsed if elapsed > 0 else 0
                 eta = (num_games - completed) / rate if rate > 0 else 0
-                print(f"Game {completed:,}/{num_games:,} ({completed*100/num_games:.1f}%) - "
-                      f"{rate:.1f} games/sec - ETA: {eta/60:.1f} min")
+                success_rate = stats.games_completed / completed * 100 if completed > 0 else 0
+                logger.info(
+                    "PROGRESS game=%d/%d (%.1f%%) | success=%.1f%% | "
+                    "throughput=%.1f games/s | elapsed=%.0fs | ETA=%.1f min | "
+                    "decisions=%d | errors=%d | timeouts=%d",
+                    completed, num_games, completed * 100 / num_games,
+                    success_rate, rate, elapsed, eta / 60,
+                    stats.total_decisions, stats.games_error, stats.games_timeout,
+                )
+
+            # Memory logging every 100 games
+            if completed % 100 == 0 and completed > 0:
+                logger.info("MEMORY RSS=%.1f MB | buffer_decisions=%d", _get_memory_mb(), len(all_decisions))
 
             # Periodic checkpoint
             if completed % save_interval == 0:
@@ -609,7 +657,7 @@ def collect_training_batch(
                     "checkpoint": True
                 }
                 save_to_hdf5(all_decisions.copy(), checkpoint_file, metadata)
-                print(f"  Checkpoint saved: {checkpoint_file.name} ({stats.total_decisions:,} decisions)")
+                logger.info("Checkpoint saved: %s (%d decisions)", checkpoint_file.name, stats.total_decisions)
 
     # Run games in parallel
     with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -619,7 +667,8 @@ def collect_training_batch(
                 game_id, result = future.result()
                 process_result(game_id, result)
             except Exception as e:
-                print(f"  Game {futures[future]} failed: {e}")
+                logger.error("Worker exception for game %d: %s\n%s",
+                             futures[future], e, traceback.format_exc())
 
     # Final save
     hdf5_file = output_path / f"training_data_{timestamp}_final.h5"
@@ -635,41 +684,40 @@ def collect_training_batch(
     }
     save_to_hdf5(all_decisions, hdf5_file, metadata)
 
-    print(f"\n{'='*60}")
-    print("COLLECTION COMPLETE")
-    print(f"{'='*60}")
-    print(f"\nHDF5 data saved to {hdf5_file}")
-    print(f"  States shape: ({stats.total_decisions:,}, 17)")
+    logger.info("=" * 60)
+    logger.info("COLLECTION COMPLETE")
+    logger.info("=" * 60)
+    logger.info("HDF5 data saved to %s", hdf5_file)
+    logger.info("  States shape: (%d, 17)", stats.total_decisions)
     if hdf5_file.exists():
-        print(f"  Compressed size: {hdf5_file.stat().st_size / (1024*1024):.2f} MB")
+        size_mb = hdf5_file.stat().st_size / (1024 * 1024)
+        logger.info("  Compressed size: %.2f MB", size_mb)
     else:
-        print("  WARNING: No data collected (0 decisions). File not created.")
+        logger.warning("No data collected (0 decisions). File not created.")
 
     # Generate report
     report_path = generate_report(stats, output_path, timestamp)
-    print(f"Report saved to {report_path}")
+    logger.info("Report saved to %s", report_path)
 
     # Print summary
-    print(f"\n{'='*60}")
-    print("SUMMARY")
-    print(f"{'='*60}")
-    print(f"Total games: {num_games:,}")
-    print(f"  Completed: {stats.games_completed:,}")
-    print(f"  Timeout: {stats.games_timeout:,}")
-    print(f"  Error: {stats.games_error:,}")
-    print(f"\nTotal decisions: {stats.total_decisions:,}")
-    print(f"Unique cards seen: {len(stats.cards_seen):,}")
-    print(f"Unique matchups: {len(stats.deck_pairs_played)}")
-    print(f"Avg decisions/game: {np.mean(stats.decisions_per_game):.1f}")
-    print(f"Avg turns/game: {np.mean(stats.turns_per_game):.1f}")
-
     elapsed = (datetime.now() - start_time).total_seconds()
-    print(f"\nCollection time: {elapsed/60:.1f} minutes ({elapsed/3600:.2f} hours)")
-    print(f"Rate: {num_games/elapsed:.1f} games/sec")
+    logger.info("=" * 60)
+    logger.info("FINAL SUMMARY")
+    logger.info("=" * 60)
+    logger.info("Total games: %d (completed=%d, timeout=%d, error=%d)",
+                num_games, stats.games_completed, stats.games_timeout, stats.games_error)
+    logger.info("Total decisions: %d", stats.total_decisions)
+    logger.info("Unique cards seen: %d", len(stats.cards_seen))
+    logger.info("Unique matchups: %d", len(stats.deck_pairs_played))
+    logger.info("Avg decisions/game: %.1f", np.mean(stats.decisions_per_game))
+    logger.info("Avg turns/game: %.1f", np.mean(stats.turns_per_game))
+    logger.info("Collection time: %.1f min (%.2f hours)", elapsed / 60, elapsed / 3600)
+    logger.info("Throughput: %.1f games/sec", num_games / elapsed if elapsed > 0 else 0)
+    logger.info("Final RSS: %.1f MB", _get_memory_mb())
 
-    print("\nDecisions by type:")
+    logger.info("Decisions by type:")
     for dtype, count in sorted(stats.decision_counts.items()):
-        print(f"  {dtype}: {count:,}")
+        logger.info("  %s: %d", dtype, count)
 
     # Save summary JSON
     summary = {
@@ -700,6 +748,30 @@ def collect_training_batch(
     return summary
 
 
+def _configure_logging(level: str = "INFO", log_file: str | None = None):
+    """Configure logging to stderr + optional file with structured format."""
+    root = logging.getLogger()
+    root.setLevel(getattr(logging, level.upper(), logging.INFO))
+
+    # Clear existing handlers to avoid duplicates
+    root.handlers.clear()
+
+    fmt = logging.Formatter(LOG_FORMAT)
+
+    # Always log to stderr (visible in CloudWatch and terminal)
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler.setFormatter(fmt)
+    root.addHandler(stderr_handler)
+
+    # Optionally log to a file (for S3 upload)
+    if log_file:
+        Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(fmt)
+        root.addHandler(file_handler)
+        logger.info("Logging to file: %s", log_file)
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Collect AI training data")
@@ -711,7 +783,14 @@ def main():
     parser.add_argument("--save-interval", type=int, default=1000, help="Save checkpoint every N games")
     parser.add_argument("--timeout", type=int, default=60, help="Game timeout in seconds")
     parser.add_argument("--workers", type=int, default=8, help="Parallel workers (max 10)")
+    parser.add_argument("--log-level", default="INFO",
+                        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+                        help="Logging level (default: INFO)")
+    parser.add_argument("--log-file", default=None,
+                        help="Path to log file (in addition to stderr)")
     args = parser.parse_args()
+
+    _configure_logging(level=args.log_level, log_file=args.log_file)
 
     collect_training_batch(
         num_games=args.games,
