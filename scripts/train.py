@@ -47,6 +47,7 @@ try:
     )
     from src.deploy.userdata import (
         generate_collection_userdata,
+        generate_docker_collection_userdata,
         generate_training_userdata,
     )
     from src.deploy.monitor import poll_s3_completion
@@ -181,7 +182,11 @@ def cmd_collect(args: argparse.Namespace) -> None:
         instance_type=args.instance,
     )
 
+    use_docker = not getattr(args, "legacy", False)
+    method = "Docker" if use_docker else "Legacy (S3 tarballs)"
+
     print(_heading("DATA COLLECTION"))
+    print(f"  Method:   {method}")
     print(f"  Games:    {cfg.num_games}")
     print(f"  Workers:  {cfg.num_workers}")
     print(f"  Instance: {cfg.instance_type}")
@@ -189,7 +194,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
     print()
 
     # Validate + cost
-    validate_credentials()
+    account_id = validate_credentials()
     print(_ok("AWS credentials"))
 
     cost_est = estimate_costs(collection_config=cfg)
@@ -213,38 +218,83 @@ def cmd_collect(args: argparse.Namespace) -> None:
     from src.deploy.aws import find_ami, get_vpc_info, ensure_security_group
     from src.deploy.config import DeployConfig
 
+    ecr_registry = f"{account_id}.dkr.ecr.{REGION}.amazonaws.com"
     deploy_cfg = DeployConfig(
         region=REGION,
         s3_bucket=S3_BUCKET,
+        ecr_registry=ecr_registry,
     )
 
-    # Package & upload
-    print(_info("Packaging code..."))
-    code_tar = create_code_tarball(PROJECT_DIR)
-    forge_tar = create_forge_tarball(PROJECT_DIR)
-    # Upload to test_packages/ (matches userdata template path)
-    code_filename = f"{run_id}_code.tar.gz"
-    forge_filename = f"{run_id}_forge.tar.gz"
-    upload_to_s3(code_tar, S3_BUCKET, f"test_packages/{code_filename}")
-    if forge_tar:
-        upload_to_s3(forge_tar, S3_BUCKET, f"test_packages/{forge_filename}")
-    else:
-        # Reuse latest pre-built Forge JAR from S3 if no local build
+    if use_docker:
+        # --- Docker-based deployment (recommended) ---
+        print(_info("Using Docker images from ECR"))
+        print(f"  ECR registry: {ecr_registry}")
+
+        # Verify ECR images exist
         import boto3
-        s3 = boto3.client("s3", region_name=REGION)
-        resp = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix="test_packages/forge_jar_")
-        forge_jars = sorted(
-            [obj["Key"] for obj in resp.get("Contents", [])],
-            reverse=True,
+        ecr_client = boto3.client("ecr", region_name=REGION)
+        for repo_name in ["mtg-rl-daemon", "mtg-rl-collection"]:
+            try:
+                ecr_client.describe_images(
+                    repositoryName=repo_name,
+                    imageIds=[{"imageTag": "latest"}],
+                )
+                print(_ok(f"  {repo_name}:latest found in ECR"))
+            except Exception:
+                print(_err(f"  {repo_name}:latest NOT found in ECR"))
+                print("  Push images first by merging to main (CI pushes)")
+                print("  Or push manually:")
+                print(f"    docker build -t {ecr_registry}/{repo_name}:latest ...")
+                print(f"    docker push {ecr_registry}/{repo_name}:latest")
+                sys.exit(1)
+
+        # Generate Docker-based userdata
+        userdata = generate_docker_collection_userdata(
+            deploy_config=deploy_cfg,
+            collection_config=cfg,
+            run_id=run_id,
+            timestamp=ts,
+            ecr_registry=ecr_registry,
         )
-        if forge_jars:
-            latest_jar = forge_jars[0].split("/")[-1]
-            forge_filename = latest_jar
-            print(_ok(f"Reusing pre-built Forge JAR: {latest_jar}"))
+    else:
+        # --- Legacy tarball-based deployment ---
+        print(_info("Using legacy S3 tarball deployment"))
+
+        # Package & upload
+        print(_info("Packaging code..."))
+        code_tar = create_code_tarball(PROJECT_DIR)
+        forge_tar = create_forge_tarball(PROJECT_DIR)
+        code_filename = f"{run_id}_code.tar.gz"
+        forge_filename = f"{run_id}_forge.tar.gz"
+        upload_to_s3(code_tar, S3_BUCKET, f"test_packages/{code_filename}")
+        if forge_tar:
+            upload_to_s3(forge_tar, S3_BUCKET, f"test_packages/{forge_filename}")
         else:
-            print(_warn("No Forge JAR available — instance will build from source (~7 min)"))
-            forge_filename = ""
-    print(_ok("Packages uploaded"))
+            import boto3
+            s3 = boto3.client("s3", region_name=REGION)
+            resp = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix="test_packages/forge_jar_")
+            forge_jars = sorted(
+                [obj["Key"] for obj in resp.get("Contents", [])],
+                reverse=True,
+            )
+            if forge_jars:
+                latest_jar = forge_jars[0].split("/")[-1]
+                forge_filename = latest_jar
+                print(_ok(f"Reusing pre-built Forge JAR: {latest_jar}"))
+            else:
+                print(_warn("No Forge JAR available -- instance will build from source (~7 min)"))
+                forge_filename = ""
+        print(_ok("Packages uploaded"))
+
+        # Generate legacy userdata
+        userdata = generate_collection_userdata(
+            deploy_config=deploy_cfg,
+            collection_config=cfg,
+            run_id=run_id,
+            timestamp=ts,
+            code_package=code_filename,
+            forge_package=forge_filename if forge_tar else "",
+        )
 
     # Network setup
     print(_info("Setting up network..."))
@@ -253,17 +303,9 @@ def cmd_collect(args: argparse.Namespace) -> None:
     sg_id = ensure_security_group(REGION, vpc_info["vpc_id"])
     print(_ok(f"AMI: {ami_id}"))
 
-    # Generate userdata
-    userdata = generate_collection_userdata(
-        deploy_config=deploy_cfg,
-        collection_config=cfg,
-        run_id=run_id,
-        timestamp=ts,
-        code_package=code_filename,
-        forge_package=forge_filename if forge_tar else "",
-    )
+    # Launch (Docker needs less disk -- 30GB vs 50GB)
+    volume_size = 30 if use_docker else cfg.volume_size_gb
 
-    # Launch
     result = launch_spot_instance(
         config=deploy_cfg,
         userdata=userdata,
@@ -272,15 +314,15 @@ def cmd_collect(args: argparse.Namespace) -> None:
         subnet_id=vpc_info["subnet_id"],
         security_group_id=sg_id,
         spot_price=str(cfg.spot_price),
-        volume_size_gb=cfg.volume_size_gb,
+        volume_size_gb=volume_size,
         tags={"Name": f"forgerl-{run_id}", "Project": "forgerl"},
     )
     instance_id = result["instance_id"]
     print(_ok(f"Spot instance launched: {instance_id} ({result['request_type']})"))
 
-    # Poll — with new logging, check S3 live log every 2 min
+    # Poll -- with new logging, check S3 live log every 2 min
     print(_info("Polling for completion (timeout 3h)..."))
-    print(_info(f"Live logs: aws s3 cp s3://{S3_BUCKET}/imitation_data/{run_id}/collection_log.txt - | tail -50"))
+    print(_info(f"Live logs: aws s3 cp s3://{S3_BUCKET}/imitation_data/{run_id}/live_log.txt - | tail -50"))
     success = poll_s3_completion(
         S3_BUCKET,
         f"imitation_data/{run_id}/collection_complete.json",
@@ -291,7 +333,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
         print(_ok(f"Collection complete!  s3://{S3_BUCKET}/imitation_data/{run_id}/"))
     else:
         print(_err("Collection timed out after 3 hours. Check the instance manually."))
-        print(_info(f"Instance: {instance_id} — terminate with: python3 scripts/train.py kill"))
+        print(_info(f"Instance: {instance_id} -- terminate with: python3 scripts/train.py kill"))
         sys.exit(1)
 
 
@@ -668,6 +710,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_collect.add_argument("--games", type=int, required=True, help="Number of games to collect")
     p_collect.add_argument("--workers", type=int, default=8, help="Parallel workers")
     p_collect.add_argument("--instance", type=str, default="c5.2xlarge", help="EC2 instance type")
+    p_collect.add_argument("--legacy", action="store_true", help="Use legacy S3 tarball deployment instead of Docker")
     p_collect.add_argument("--dry-run", action="store_true", help="Show plan without executing")
     p_collect.set_defaults(func=cmd_collect)
 
