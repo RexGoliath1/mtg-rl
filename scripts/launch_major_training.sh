@@ -45,6 +45,9 @@ DRY_RUN=false
 PHASE="all"  # all, collection, training
 SKIP_COST_CHECK=false
 NOTIFY_EMAIL="${FORGERL_NOTIFY_EMAIL:-}"
+WANDB_KEY="${WANDB_API_KEY:-}"
+WANDB_ENTITY_VAR="${WANDB_ENTITY:-}"
+WANDB_PROJECT_VAR="${WANDB_PROJECT:-forgerl}"
 
 # --- Parse arguments ---
 while [[ $# -gt 0 ]]; do
@@ -219,6 +222,13 @@ validate_prerequisites() {
         echo "  [WARN] FORGERL_NOTIFY_EMAIL not set -- no email notification"
     else
         echo "  [OK] Email notification -> ${NOTIFY_EMAIL}"
+    fi
+
+    # Check W&B config
+    if [ -z "$WANDB_KEY" ]; then
+        echo "  [WARN] WANDB_API_KEY not set -- no W&B tracking"
+    else
+        echo "  [OK] W&B tracking -> ${WANDB_ENTITY_VAR}/${WANDB_PROJECT_VAR}"
     fi
 }
 
@@ -444,6 +454,17 @@ tar -xzf ../code.tar.gz
 # Install Python dependencies with UV
 curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="\$HOME/.local/bin:\$PATH"
+
+# Weights & Biases setup (if API key provided)
+WANDB_FLAG=""
+if [ -n "${WANDB_KEY}" ]; then
+    export WANDB_API_KEY='${WANDB_KEY}'
+    export WANDB_ENTITY='${WANDB_ENTITY_VAR}'
+    export WANDB_PROJECT='${WANDB_PROJECT_VAR}'
+    pip install wandb 2>/dev/null || true
+    WANDB_FLAG="--wandb"
+    echo "W&B tracking enabled (entity: ${WANDB_ENTITY_VAR}, project: ${WANDB_PROJECT_VAR})"
+fi
 uv sync --extra dev 2>/dev/null || pip install torch numpy h5py safetensors
 
 # Download training data from S3
@@ -485,6 +506,7 @@ python3 -m src.training.forge_imitation \
     --checkpoint /home/ubuntu/training_results/model.pt \
     --tensorboard \
     --tb-log-dir /home/ubuntu/training_results/tensorboard \
+    ${WANDB_FLAG} \
     2>&1 | tee /home/ubuntu/training_results/training.log
 
 TRAIN_END=\$(date +%s)
@@ -740,6 +762,14 @@ if [ "$DRY_RUN" = true ]; then
     else
         echo "  - No email (set FORGERL_NOTIFY_EMAIL to enable)"
     fi
+    echo ""
+    echo "Monitoring:"
+    if [ -n "$WANDB_KEY" ]; then
+        echo "  - W&B: https://wandb.ai/${WANDB_ENTITY_VAR}/${WANDB_PROJECT_VAR}"
+    else
+        echo "  - W&B: disabled (set WANDB_API_KEY to enable)"
+    fi
+    echo "  - TensorBoard: logs synced to S3 after training"
     echo ""
     echo "Total estimated cost: \$${total_cost}"
     echo ""
