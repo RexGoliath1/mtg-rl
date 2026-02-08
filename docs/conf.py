@@ -16,6 +16,7 @@ project = "ForgeRL"
 copyright = "2026, ForgeRL Contributors"
 author = "ForgeRL Contributors"
 release = "0.1.0"
+html_title = "ForgeRL"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -26,6 +27,19 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
     "sphinx.ext.todo",
+    "myst_parser",
+]
+
+# Support both reStructuredText and Markdown
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
+
+# MyST-Parser extensions for richer Markdown
+myst_enable_extensions = [
+    "colon_fence",
+    "deflist",
 ]
 
 templates_path = ["_templates"]
@@ -34,7 +48,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
 html_static_path = ["_static"]
 
 # -- Extension configuration -------------------------------------------------
@@ -77,6 +91,14 @@ autodoc_mock_imports = [
     "pyarrow",
     "boto3",
     "sentence_transformers",
+    "numpy",
+    "h5py",
+    "requests",
+    "yaml",
+    "pyyaml",
+    "beautifulsoup4",
+    "bs4",
+    "graphviz",
 ]
 
 # Intersphinx mapping
@@ -88,3 +110,15 @@ intersphinx_mapping = {
 
 # Todo extension
 todo_include_todos = True
+
+# Suppress warnings from docstring formatting issues in source code,
+# cross-reference ambiguities, and image paths in included root Markdown files.
+# Root .md files (README, WHITEPAPER, ARCHITECTURE) use paths relative to repo root,
+# which don't resolve when included from docs/. These are cosmetic warnings only.
+suppress_warnings = [
+    "docutils",
+    "ref.python",
+    "toc.not_included",
+    "image.not_readable",
+    "myst.xref_missing",
+]

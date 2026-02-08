@@ -34,10 +34,16 @@ dev = [
     "pytest>=8.0.0",
     "graphviz>=0.20",
     "watchdog>=4.0.0",
+    "sphinx>=7.0",
+    "sphinx-rtd-theme>=2.0",
+    "myst-parser>=3.0",
+    "furo>=2024.1.29",
 ]
 docs = [
     "sphinx>=7.0",
     "sphinx-rtd-theme>=2.0",
+    "myst-parser>=3.0",
+    "furo>=2024.1.29",
 ]
 
 [build-system]

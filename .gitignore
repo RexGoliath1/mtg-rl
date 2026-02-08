@@ -95,7 +95,7 @@ TRAINING_REPORT.md
 TRAINING_SPEEDUP.md
 TRAINING_STRATEGY.md
 TRANSFER_LEARNING.md
-WHITEPAPER.md
+/WHITEPAPER.md
 research/alphazero_mtg_architecture.md
 infrastructure/TERRAFORM_VS_AWSCLI.md
 
