@@ -8,6 +8,9 @@ Creates a comprehensive multi-page PDF covering:
   4. Training Curves — loss/accuracy over epochs (from TensorBoard logs or metrics dict)
 
 Usage:
+    # First-time setup (creates .env with Gmail App Password):
+    ./scripts/setup_email.sh
+
     # Generate + send dummy report (for testing email pipeline):
     FORGERL_NOTIFY_EMAIL=user@example.com uv run python3 scripts/send_test_report.py
 
@@ -15,10 +18,13 @@ Usage:
     uv run python3 scripts/send_test_report.py --pdf data/reports/vocab_health_2026-02-07.pdf
 
     # Generate PDF only (no email):
-    uv run python3 scripts/send_test_report.py --pdf-only
+    uv run python3 scripts/send_test_report.py --save-only
 
     # Custom subject:
     uv run python3 scripts/send_test_report.py --subject "Nightly Training Report"
+
+Note: Email requires .env file with FORGERL_SMTP_PASS (Gmail App Password).
+      Run ./scripts/setup_email.sh for interactive setup wizard.
 """
 
 import argparse
@@ -466,8 +472,9 @@ def main():
     )
     parser.add_argument(
         "--pdf-only",
+        "--save-only",
         action="store_true",
-        help="Generate PDF without sending email",
+        help="Generate PDF without sending email (save locally only)",
     )
     parser.add_argument(
         "--tb-log-dir",
@@ -501,6 +508,17 @@ def main():
     except ValueError as e:
         logger.error(str(e))
         logger.info("Set FORGERL_NOTIFY_EMAIL or use --to flag")
+        logger.info("Run ./scripts/setup_email.sh for interactive setup")
+        sys.exit(1)
+
+    # Check if SMTP password is configured
+    if not notifier.smtp_pass:
+        logger.error("SMTP password not configured")
+        logger.info("")
+        logger.info("Gmail with 2FA requires an App Password (not your regular password).")
+        logger.info("Run the setup wizard: ./scripts/setup_email.sh")
+        logger.info("")
+        logger.info("Or generate a PDF without email: --save-only")
         sys.exit(1)
 
     body = (
