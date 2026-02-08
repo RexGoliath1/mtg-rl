@@ -15,7 +15,7 @@ set -e
 
 # Configuration
 S3_BUCKET="mtg-rl-checkpoints-20260124190118616600000001"
-REGION="us-west-2"
+REGION="us-east-1"
 INSTANCE_TYPE="g4dn.xlarge"
 SPOT_PRICE="0.25"
 DURATION_MINUTES="${1:-10}"

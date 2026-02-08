@@ -65,7 +65,7 @@ aws s3 cp "s3://$S3_BUCKET/code/training-code.tar.gz" . || {
     # Fetch GitHub token from AWS Secrets Manager
     GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
         --secret-id mtg-rl/github-token \
-        --region us-west-2 \
+        --region us-east-1 \
         --query SecretString \
         --output text)
     git clone https://$GITHUB_TOKEN@github.com/RexGoliath1/mtg-rl.git

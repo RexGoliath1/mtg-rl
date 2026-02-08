@@ -3,7 +3,7 @@
 
 set -e
 
-REGION="${AWS_REGION:-us-west-2}"
+REGION="${AWS_REGION:-us-east-1}"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ECR_REPO="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/mtg-rl-inference"
 

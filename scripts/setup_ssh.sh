@@ -17,7 +17,7 @@
 set -e
 
 KEY_NAME="mtg-rl-training"
-REGION="${AWS_REGION:-us-west-2}"
+REGION="${AWS_REGION:-us-east-1}"
 SSH_DIR="$HOME/.ssh"
 KEY_FILE="$SSH_DIR/$KEY_NAME.pem"
 

@@ -10,7 +10,7 @@
 alert_email = "sgoncia@gmail.com"
 
 # Optional: Override defaults
-# aws_region = "us-west-2"
+# aws_region = "us-east-1"
 # environment = "dev"
 # monthly_budget = 100  # Maximum allowed: $100 (hard limit)
 

@@ -49,7 +49,7 @@ cd /home/ubuntu
 
 GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
     --secret-id mtg-rl/github-token \
-    --region us-west-2 \
+    --region us-east-1 \
     --query SecretString \
     --output text)
 

@@ -12,7 +12,7 @@ set -e
 # ============================================================================
 
 # Configuration
-AWS_REGION="${AWS_REGION:-us-west-2}"
+AWS_REGION="${AWS_REGION:-us-east-1}"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text 2>/dev/null)
 ECR_REPO="mtg-rl"
 S3_BUCKET="mtg-rl-checkpoints-20260124190118616600000001"

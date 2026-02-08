@@ -18,7 +18,7 @@ set -e
 
 # Configuration
 S3_BUCKET="mtg-rl-checkpoints-20260124190118616600000001"
-REGION="us-west-2"
+REGION="us-east-1"
 INSTANCE_TYPE="${INSTANCE_TYPE:-g4dn.xlarge}"
 NUM_GAMES="${NUM_GAMES:-100}"
 DURATION_MINUTES="${DURATION_MINUTES:-20}"

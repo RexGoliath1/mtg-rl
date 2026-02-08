@@ -30,7 +30,7 @@ INSTANCE_TYPE="g4dn.xlarge"
 SPOT_PRICE="0.20"
 S3_BUCKET=""
 DRY_RUN=false
-REGION="${AWS_REGION:-us-west-2}"
+REGION="${AWS_REGION:-us-east-1}"
 PROJECT_NAME="mtg-rl"
 
 # Parse arguments

@@ -9,7 +9,7 @@
 
 set -e
 
-REGION="${AWS_REGION:-us-west-2}"
+REGION="${AWS_REGION:-us-east-1}"
 
 # Find running instance (by IAM profile since spot instances may not have tags)
 INSTANCE_INFO=$(aws ec2 describe-instances \
