@@ -9,6 +9,10 @@ Key components:
 3. OpponentSampler - Samples opponents based on configurable strategies
 4. SelfPlayTrainer - Orchestrates training against past selves
 
+Supports two network backends:
+- "alphazero": AlphaZeroNetwork from src.training.self_play (default)
+- "ppo": MTGPolicyNetwork + PPOAgent (legacy)
+
 Self-play provides natural curriculum learning:
 - Early: Easy opponents (early versions of yourself)
 - Late: Hard opponents (recent improved versions)
@@ -24,18 +28,21 @@ import time
 import random
 import logging
 from dataclasses import dataclass, field, asdict
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from collections import deque
 from pathlib import Path
 from datetime import datetime
 import threading
 import math
 
+import numpy as np
 import torch
+import torch.nn as nn
 
-from src.models.policy_network import MTGPolicyNetwork, TransformerConfig, StatePreprocessor
+from src.models.policy_network import MTGPolicyNetwork, TransformerConfig
 from src.agents.ppo_agent import PPOAgent, PPOConfig
 from src.environments.daemon_environment import DaemonMTGEnvironment
+from src.training.self_play import AlphaZeroNetwork
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -51,8 +58,8 @@ class EloTracker:
 
     Elo provides a relative measure of skill:
     - New models start at 1200
-    - Win against higher-rated → bigger gain
-    - Win against lower-rated → smaller gain
+    - Win against higher-rated -> bigger gain
+    - Win against lower-rated -> smaller gain
     - K-factor determines rating volatility
     """
 
@@ -154,6 +161,7 @@ class ModelCheckpoint:
     timestamp: float
     elo_rating: float = 1200.0
     win_rate_vs_random: float = 0.0
+    network_type: str = "ppo"
     metadata: Dict = field(default_factory=dict)
 
 
@@ -210,17 +218,19 @@ class ModelPool:
         self.elo_tracker.save(str(elo_path))
 
     def add_checkpoint(self,
-                       model: MTGPolicyNetwork,
+                       model: nn.Module,
                        games_trained: int,
-                       config: TransformerConfig,
+                       config: Union[TransformerConfig, None] = None,
+                       network_type: str = "ppo",
                        metadata: Dict = None) -> str:
         """
         Add a new model checkpoint to the pool.
 
         Args:
-            model: The policy network to checkpoint
+            model: The network to checkpoint (MTGPolicyNetwork or AlphaZeroNetwork)
             games_trained: Number of games trained on
-            config: Transformer configuration
+            config: Transformer configuration (used for PPO path; ignored for alphazero)
+            network_type: "alphazero" or "ppo"
             metadata: Additional metadata to store
 
         Returns:
@@ -233,11 +243,23 @@ class ModelPool:
 
             # Save model weights
             model_path = self.pool_dir / f"{model_id}.pt"
-            torch.save({
-                'state_dict': model.state_dict(),
-                'config': config,
-                'games_trained': games_trained,
-            }, model_path)
+
+            if network_type == "alphazero":
+                # Use AlphaZeroNetwork's save format
+                torch.save({
+                    'state_dict': model.state_dict(),
+                    'encoder_config': getattr(model, 'encoder_config', None),
+                    'network_type': 'alphazero',
+                    'games_trained': games_trained,
+                }, model_path)
+            else:
+                # Legacy PPO format
+                torch.save({
+                    'state_dict': model.state_dict(),
+                    'config': config,
+                    'network_type': 'ppo',
+                    'games_trained': games_trained,
+                }, model_path)
 
             # Create checkpoint entry
             checkpoint = ModelCheckpoint(
@@ -246,6 +268,7 @@ class ModelPool:
                 games_trained=games_trained,
                 timestamp=timestamp,
                 elo_rating=self.elo_tracker.get_rating(model_id),
+                network_type=network_type,
                 metadata=metadata or {}
             )
 
@@ -257,7 +280,7 @@ class ModelPool:
 
             self._save_pool_state()
 
-            logger.info(f"Added checkpoint {model_id} to pool (total: {len(self.checkpoints)})")
+            logger.info(f"Added checkpoint {model_id} ({network_type}) to pool (total: {len(self.checkpoints)})")
             return model_id
 
     def _prune_pool(self):
@@ -365,15 +388,38 @@ class ModelPool:
 
     def load_model(self,
                    checkpoint: ModelCheckpoint,
-                   config: TransformerConfig) -> MTGPolicyNetwork:
-        """Load a model from checkpoint."""
-        model = MTGPolicyNetwork(config).to(self.device)
+                   config: Optional[TransformerConfig] = None,
+                   device: Optional[torch.device] = None) -> nn.Module:
+        """
+        Load a model from checkpoint. Dispatches based on network_type.
 
-        checkpoint_data = torch.load(checkpoint.path, map_location=self.device, weights_only=False)
-        model.load_state_dict(checkpoint_data['state_dict'])
-        model.eval()
+        Args:
+            checkpoint: The checkpoint metadata
+            config: TransformerConfig (required for PPO, ignored for alphazero)
+            device: Device to load model onto
 
-        return model
+        Returns:
+            Loaded model (AlphaZeroNetwork or MTGPolicyNetwork)
+        """
+        load_device = device or self.device
+        checkpoint_data = torch.load(checkpoint.path, map_location=load_device, weights_only=False)
+
+        net_type = checkpoint_data.get('network_type', checkpoint.network_type)
+
+        if net_type == "alphazero":
+            encoder_config = checkpoint_data.get('encoder_config', None)
+            network = AlphaZeroNetwork(encoder_config=encoder_config).to(load_device)
+            network.load_state_dict(checkpoint_data['state_dict'])
+            network.eval()
+            return network
+        else:
+            # Legacy PPO path
+            if config is None:
+                config = checkpoint_data.get('config', TransformerConfig())
+            model = MTGPolicyNetwork(config).to(load_device)
+            model.load_state_dict(checkpoint_data['state_dict'])
+            model.eval()
+            return model
 
     def get_latest(self) -> Optional[ModelCheckpoint]:
         """Get the most recent checkpoint."""
@@ -387,6 +433,95 @@ class ModelPool:
 
     def __len__(self):
         return len(self.checkpoints)
+
+
+# =============================================================================
+# ALPHAZERO AGENT ADAPTER
+# =============================================================================
+
+class AlphaZeroAgent:
+    """
+    Adapter that wraps AlphaZeroNetwork to match the PPOAgent.get_action() interface.
+
+    This allows SelfPlayGame to use AlphaZeroNetwork without changing its game loop.
+    The DaemonMTGEnvironment provides integer action indices and numpy observations,
+    so we encode the game state through ForgeGameStateEncoder and sample from the
+    policy head to produce an action index compatible with env.step().
+    """
+
+    def __init__(self, network: AlphaZeroNetwork, device: torch.device = None):
+        self.network = network
+        self.device = device or next(network.parameters()).device
+        self.encoder = network.encoder
+
+    @torch.no_grad()
+    def get_action(
+        self,
+        game_state,
+        action_mask: np.ndarray,
+        deterministic: bool = False,
+    ) -> Tuple[int, Optional[Dict]]:
+        """
+        Select an action given the game state and action mask.
+
+        This mirrors PPOAgent.get_action() so SelfPlayGame.play() works unchanged.
+
+        Args:
+            game_state: GameState object from DaemonMTGEnvironment (has .to_observation())
+            action_mask: numpy array of valid actions (1=valid, 0=invalid)
+            deterministic: If True, pick the argmax action
+
+        Returns:
+            action: Selected action index
+            info: Dict with value estimate (or None)
+        """
+        self.network.eval()
+
+        # Encode the observation through the state encoder
+        # game_state is a GameState from rl_environment with .to_observation()
+        obs = game_state.to_observation()
+        state_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(0)
+
+        # Get policy logits and value from AlphaZero heads
+        policy_logits = self.network.policy_head(state_tensor, return_logits=True)
+        value = self.network.value_head(state_tensor)
+
+        # Apply action mask: set invalid actions to -inf before softmax
+        mask_tensor = torch.tensor(action_mask, dtype=torch.float32, device=self.device).unsqueeze(0)
+
+        # Trim or pad policy logits to match action_mask size
+        num_actions = mask_tensor.shape[1]
+        policy_dim = policy_logits.shape[1]
+
+        if policy_dim < num_actions:
+            # Pad policy logits with -inf for extra actions
+            padding = torch.full(
+                (1, num_actions - policy_dim), float('-inf'), device=self.device
+            )
+            policy_logits = torch.cat([policy_logits, padding], dim=1)
+        elif policy_dim > num_actions:
+            # Truncate to match environment action space
+            policy_logits = policy_logits[:, :num_actions]
+
+        # Mask invalid actions
+        policy_logits = policy_logits.masked_fill(mask_tensor == 0, float('-inf'))
+
+        # Check if any valid actions exist
+        if (mask_tensor.sum() == 0):
+            return -1, None
+
+        # Softmax to get probabilities
+        probs = torch.softmax(policy_logits, dim=-1)
+
+        if deterministic:
+            action = probs.argmax(dim=-1).item()
+        else:
+            action = torch.multinomial(probs, 1).item()
+
+        return action, {
+            'value': value,
+            'action_probs': probs,
+        }
 
 
 # =============================================================================
@@ -412,7 +547,7 @@ class SelfPlayConfig:
     opponent_sampling_strategy: str = 'recent'  # recent, uniform, elo_matched
     self_play_ratio: float = 0.8  # Ratio of games against self vs pool
 
-    # PPO settings
+    # PPO settings (used when network_type="ppo")
     n_steps: int = 128
     batch_size: int = 64
     n_epochs: int = 4
@@ -423,7 +558,7 @@ class SelfPlayConfig:
     entropy_coef: float = 0.01
     value_coef: float = 0.5
 
-    # Network settings
+    # Network settings (used when network_type="ppo")
     d_model: int = 256
     n_heads: int = 8
     n_layers: int = 4
@@ -435,6 +570,9 @@ class SelfPlayConfig:
     # Parallelism
     n_parallel_games: int = 4
 
+    # Network type: "alphazero" (default) or "ppo" (legacy)
+    network_type: str = "alphazero"
+
 
 class SelfPlayGame:
     """
@@ -442,12 +580,15 @@ class SelfPlayGame:
 
     Both players can be the same model (true self-play) or
     different models (playing against historical versions).
+
+    Accepts any agent that implements get_action(game_state, action_mask)
+    returning (action_idx, info_dict_or_none).
     """
 
     def __init__(self,
                  env: DaemonMTGEnvironment,
-                 player1_agent: PPOAgent,
-                 player2_agent: PPOAgent,
+                 player1_agent,
+                 player2_agent,
                  player1_id: str,
                  player2_id: str,
                  collect_transitions: bool = True):
@@ -534,9 +675,13 @@ class SelfPlayTrainer:
     1. Model pool management
     2. Opponent sampling
     3. Game execution
-    4. PPO training updates
+    4. Training updates (PPO for "ppo" mode, placeholder for "alphazero")
     5. Elo tracking
     6. Checkpointing
+
+    Supports two network backends via config.network_type:
+    - "alphazero": AlphaZeroNetwork + AlphaZeroAgent (policy/value heads, MCTS-ready)
+    - "ppo": MTGPolicyNetwork + PPOAgent (legacy transformer + PPO training)
     """
 
     def __init__(self, config: SelfPlayConfig):
@@ -555,34 +700,10 @@ class SelfPlayTrainer:
         pool_dir = self.run_dir / config.pool_dir
         self.model_pool = ModelPool(str(pool_dir), config.max_pool_size, self.device)
 
-        # Create PPO and transformer configs
-        self.ppo_config = PPOConfig(
-            learning_rate=config.learning_rate,
-            gamma=config.gamma,
-            gae_lambda=config.gae_lambda,
-            clip_epsilon=config.clip_epsilon,
-            n_steps=config.n_steps,
-            n_epochs=config.n_epochs,
-            batch_size=config.batch_size,
-            entropy_coef=config.entropy_coef,
-            value_coef=config.value_coef,
-        )
-
-        self.transformer_config = TransformerConfig(
-            d_model=config.d_model,
-            n_heads=config.n_heads,
-            n_layers=config.n_layers,
-        )
-
-        # Create main agent
-        self.agent = PPOAgent(
-            ppo_config=self.ppo_config,
-            transformer_config=self.transformer_config,
-            device=self.device
-        )
-
-        # State preprocessor for opponent models
-        self.preprocessor = StatePreprocessor(self.transformer_config)
+        if config.network_type == "alphazero":
+            self._init_alphazero()
+        else:
+            self._init_ppo()
 
         # Metrics
         self.games_played = 0
@@ -595,9 +716,50 @@ class SelfPlayTrainer:
         self.current_model_id = "initial"
 
         logger.info("SelfPlayTrainer initialized")
+        logger.info(f"  Network type: {config.network_type}")
         logger.info(f"  Device: {self.device}")
         logger.info(f"  Run dir: {self.run_dir}")
         logger.info(f"  Pool size: {len(self.model_pool)}")
+
+    def _init_alphazero(self):
+        """Initialize AlphaZero network and agent."""
+        self.network = AlphaZeroNetwork(num_players=2).to(self.device)
+        self.agent = AlphaZeroAgent(self.network, device=self.device)
+
+        # Keep these as None since PPO-specific
+        self.ppo_config = None
+        self.transformer_config = None
+
+        param_count = sum(p.numel() for p in self.network.parameters())
+        logger.info(f"  AlphaZeroNetwork params: {param_count:,}")
+
+    def _init_ppo(self):
+        """Initialize PPO agent (legacy path)."""
+        self.network = None  # PPOAgent owns the network
+
+        self.ppo_config = PPOConfig(
+            learning_rate=self.config.learning_rate,
+            gamma=self.config.gamma,
+            gae_lambda=self.config.gae_lambda,
+            clip_epsilon=self.config.clip_epsilon,
+            n_steps=self.config.n_steps,
+            n_epochs=self.config.n_epochs,
+            batch_size=self.config.batch_size,
+            entropy_coef=self.config.entropy_coef,
+            value_coef=self.config.value_coef,
+        )
+
+        self.transformer_config = TransformerConfig(
+            d_model=self.config.d_model,
+            n_heads=self.config.n_heads,
+            n_layers=self.config.n_layers,
+        )
+
+        self.agent = PPOAgent(
+            ppo_config=self.ppo_config,
+            transformer_config=self.transformer_config,
+            device=self.device
+        )
 
     def _create_environment(self) -> DaemonMTGEnvironment:
         """Create a new game environment."""
@@ -609,7 +771,7 @@ class SelfPlayTrainer:
             timeout=self.config.game_timeout,
         )
 
-    def _select_opponent(self) -> Tuple[PPOAgent, str]:
+    def _select_opponent(self):
         """
         Select an opponent for self-play.
 
@@ -630,18 +792,22 @@ class SelfPlayTrainer:
         if opponent_checkpoint is None:
             return self.agent, self.current_model_id
 
-        # Load opponent model
+        # Load opponent model (dispatches by network_type)
         opponent_model = self.model_pool.load_model(
             opponent_checkpoint, self.transformer_config
         )
 
-        # Create agent wrapper for opponent
-        opponent_agent = PPOAgent(
-            ppo_config=self.ppo_config,
-            transformer_config=self.transformer_config,
-            device=self.device
-        )
-        opponent_agent.policy = opponent_model
+        # Wrap in appropriate agent
+        if opponent_checkpoint.network_type == "alphazero":
+            opponent_agent = AlphaZeroAgent(opponent_model, device=self.device)
+        else:
+            # Legacy PPO path
+            opponent_agent = PPOAgent(
+                ppo_config=self.ppo_config,
+                transformer_config=self.transformer_config,
+                device=self.device
+            )
+            opponent_agent.policy = opponent_model
 
         return opponent_agent, opponent_checkpoint.model_id
 
@@ -674,7 +840,10 @@ class SelfPlayTrainer:
             env._cleanup()
 
     def _store_transitions(self, transitions: List[Dict]):
-        """Store transitions in the PPO buffer."""
+        """Store transitions in the PPO buffer (PPO mode only)."""
+        if self.config.network_type != "ppo":
+            return
+
         for t in transitions:
             if 'action_info' in t and t['action_info']:
                 self.agent.store_transition(
@@ -685,29 +854,49 @@ class SelfPlayTrainer:
                 )
 
     def _training_step(self) -> Dict:
-        """Perform a PPO training step."""
-        # Compute last value for bootstrapping
-        last_value = torch.tensor([0.0], device=self.device)
-
-        metrics = self.agent.train_step(last_value)
-        return metrics
+        """Perform a training step. Dispatches by network_type."""
+        if self.config.network_type == "ppo":
+            # PPO training step
+            last_value = torch.tensor([0.0], device=self.device)
+            metrics = self.agent.train_step(last_value)
+            return metrics
+        else:
+            # AlphaZero: training is done via the Learner in src.training.self_play
+            # In the self-play loop we just collect games; training happens externally
+            # or could be wired in here when the replay buffer is ready.
+            return {}
 
     def _checkpoint(self):
         """Save model checkpoint to pool."""
-        model_id = self.model_pool.add_checkpoint(
-            model=self.agent.policy,
-            games_trained=self.games_played,
-            config=self.transformer_config,
-            metadata={
-                'wins': self.wins,
-                'losses': self.losses,
-                'recent_win_rate': sum(self.recent_results) / max(1, len(self.recent_results)),
-            }
-        )
-        self.current_model_id = model_id
+        if self.config.network_type == "alphazero":
+            model_id = self.model_pool.add_checkpoint(
+                model=self.network,
+                games_trained=self.games_played,
+                network_type="alphazero",
+                metadata={
+                    'wins': self.wins,
+                    'losses': self.losses,
+                    'recent_win_rate': sum(self.recent_results) / max(1, len(self.recent_results)),
+                }
+            )
+            # Also save main model using AlphaZeroNetwork's format
+            self.network.save(str(self.run_dir / 'current_model.pt'))
+        else:
+            model_id = self.model_pool.add_checkpoint(
+                model=self.agent.policy,
+                games_trained=self.games_played,
+                config=self.transformer_config,
+                network_type="ppo",
+                metadata={
+                    'wins': self.wins,
+                    'losses': self.losses,
+                    'recent_win_rate': sum(self.recent_results) / max(1, len(self.recent_results)),
+                }
+            )
+            # Also save main model
+            self.agent.save(str(self.run_dir / 'current_model.pt'))
 
-        # Also save main model
-        self.agent.save(str(self.run_dir / 'current_model.pt'))
+        self.current_model_id = model_id
 
     def _log_progress(self, force: bool = False):
         """Log training progress."""
@@ -743,6 +932,7 @@ class SelfPlayTrainer:
         logger.info("=" * 60)
         logger.info("SELF-PLAY TRAINING")
         logger.info("=" * 60)
+        logger.info(f"Network type: {self.config.network_type}")
         logger.info(f"Total games: {self.config.total_games:,}")
         logger.info(f"Games per checkpoint: {self.config.games_per_checkpoint}")
         logger.info(f"Self-play ratio: {self.config.self_play_ratio}")
@@ -751,8 +941,13 @@ class SelfPlayTrainer:
         if resume:
             model_path = self.run_dir / 'current_model.pt'
             if model_path.exists():
-                self.agent.load(str(model_path))
-                logger.info(f"Resumed from {model_path}")
+                if self.config.network_type == "alphazero":
+                    loaded = AlphaZeroNetwork.load(str(model_path), device=str(self.device))
+                    self.network.load_state_dict(loaded.state_dict())
+                    logger.info(f"Resumed AlphaZero model from {model_path}")
+                else:
+                    self.agent.load(str(model_path))
+                    logger.info(f"Resumed PPO model from {model_path}")
 
         # Add initial model to pool
         if len(self.model_pool) == 0:
@@ -789,15 +984,14 @@ class SelfPlayTrainer:
                     self.losses += 1
                 self.recent_results.append(1.0 if won else 0.0)
 
-                # Store transitions for training
+                # Store transitions for training (PPO mode only)
                 if result.get('transitions'):
                     self._store_transitions(result['transitions'])
 
-                # Training step when buffer is full
-                if self.agent.buffer.ptr >= self.config.n_steps:
+                # Training step when buffer is full (PPO mode)
+                if self.config.network_type == "ppo" and self.agent.buffer.ptr >= self.config.n_steps:
                     self._training_step()
                     self.agent.num_updates += 1
-            
 
                 # Checkpoint periodically
                 if games_since_checkpoint >= self.config.games_per_checkpoint:
@@ -838,11 +1032,13 @@ class SelfPlayTrainer:
 # EVALUATION
 # =============================================================================
 
-def evaluate_against_random(agent: PPOAgent,
+def evaluate_against_random(agent,
                            config: SelfPlayConfig,
                            n_games: int = 100) -> float:
     """
     Evaluate agent against random baseline.
+
+    Accepts any agent with get_action(game_state, action_mask, deterministic=True).
 
     Returns win rate.
     """
@@ -899,6 +1095,9 @@ def main():
     parser.add_argument("--strategy", type=str, default="recent",
                        choices=["recent", "uniform", "elo_matched"],
                        help="Opponent sampling strategy")
+    parser.add_argument("--network-type", type=str, default="alphazero",
+                       choices=["alphazero", "ppo"],
+                       help="Network backend: alphazero (default) or ppo (legacy)")
     parser.add_argument("--resume", action="store_true", help="Resume from last checkpoint")
 
     args = parser.parse_args()
@@ -911,6 +1110,7 @@ def main():
         total_games=args.games,
         games_per_checkpoint=args.checkpoint_interval,
         opponent_sampling_strategy=args.strategy,
+        network_type=args.network_type,
     )
 
     trainer = SelfPlayTrainer(config)
