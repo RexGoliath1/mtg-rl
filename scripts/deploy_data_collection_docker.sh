@@ -236,7 +236,7 @@ date
 
 # Create a minimal docker-compose file inline
 # (avoids needing to clone the repo just for the compose file)
-mkdir -p /home/ubuntu/collection
+mkdir -p /home/ubuntu/collection /home/ubuntu/daemon-logs
 cat > /home/ubuntu/collection/docker-compose.yml << 'COMPOSE_EOF'
 services:
   daemon:
@@ -251,12 +251,14 @@ services:
       timeout: 10s
       retries: 5
       start_period: 180s
+    volumes:
+      - /home/ubuntu/daemon-logs:/forge/logs
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 8G
         reservations:
-          memory: 2G
+          memory: 4G
 
   collection:
     image: ECR_REGISTRY_PLACEHOLDER/mtg-rl-collection:latest
@@ -281,7 +283,58 @@ COMPOSE_EOF
 
 cd /home/ubuntu/collection
 
-# Start services - daemon starts first, collection waits for health check
+# --- Start daemon first, run warmup, then start collection ---
+# Start daemon in background
+docker compose up -d daemon
+echo "Waiting for daemon health check..."
+
+# Wait for daemon to be healthy (up to 5 minutes)
+for i in $(seq 1 60); do
+    STATUS=$(docker inspect --format='{{.State.Health.Status}}' mtg-daemon 2>/dev/null || echo "starting")
+    if [ "$STATUS" = "healthy" ]; then
+        echo "Daemon is healthy after ${i}x5s"
+        break
+    fi
+    if [ "$i" -eq 60 ]; then
+        echo "ERROR: Daemon failed to become healthy after 5 minutes"
+        docker compose logs daemon
+        docker compose down
+        shutdown -h now
+    fi
+    sleep 5
+done
+
+# --- JVM Warmup Phase ---
+# Run 3 throwaway games to trigger JIT compilation of hot code paths.
+# This prevents the first real collection games from being slow.
+echo ""
+echo "=========================================="
+echo "JVM WARMUP PHASE (3 throwaway games)"
+echo "=========================================="
+DECKS=$(docker exec mtg-daemon ls /forge/userdata/decks/constructed/ | grep '\.dck$' | head -2)
+DECK1=$(echo "$DECKS" | head -1)
+DECK2=$(echo "$DECKS" | tail -1)
+
+if [ -n "$DECK1" ] && [ -n "$DECK2" ]; then
+    for warmup_i in 1 2 3; do
+        echo "  Warmup game $warmup_i/3..."
+        echo "NEWGAME ${DECK1} ${DECK2} -i -c 30" | nc -w 60 localhost 17171 > /dev/null 2>&1 || true
+        sleep 2
+    done
+    echo "Warmup complete. JIT should have compiled hot paths."
+else
+    echo "WARN: Could not find decks for warmup, skipping."
+fi
+
+# --- Start JVM Monitor ---
+# Run monitoring in background inside the daemon container.
+# Logs every 60s to /forge/logs/jvm_stats.log (volume-mounted to host).
+docker exec -d mtg-daemon /forge/jvm_monitor.sh 60 /forge/logs/jvm_stats.log
+echo "JVM monitor started (60s interval)"
+
+# --- Start collection ---
+echo ""
+echo "Starting collection container..."
 docker compose up --abort-on-container-exit --exit-code-from collection 2>&1 | tee /var/log/docker-compose.log
 COMPOSE_EXIT=$?
 
@@ -309,6 +362,10 @@ aws s3 cp /var/log/forge-daemon.log \
     s3://BUCKET_PLACEHOLDER/imitation_data/RUN_ID_PLACEHOLDER/forge_daemon.log 2>/dev/null || true
 aws s3 cp /var/log/docker-compose.log \
     s3://BUCKET_PLACEHOLDER/imitation_data/RUN_ID_PLACEHOLDER/docker_compose.log 2>/dev/null || true
+
+# Upload JVM performance logs (GC log + monitor stats)
+aws s3 sync /home/ubuntu/daemon-logs/ \
+    s3://BUCKET_PLACEHOLDER/imitation_data/RUN_ID_PLACEHOLDER/jvm_logs/ 2>/dev/null || true
 
 echo "Results uploaded to s3://BUCKET_PLACEHOLDER/imitation_data/RUN_ID_PLACEHOLDER/"
 

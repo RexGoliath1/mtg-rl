@@ -79,8 +79,8 @@ FROM eclipse-temurin:17-jre
 LABEL maintainer="MTG RL Training"
 LABEL description="Forge MTG daemon for reinforcement learning"
 
-# Install netcat for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends netcat-openbsd xvfb \
+# Install netcat for healthcheck, procps for jstat/jcmd JVM monitoring
+RUN apt-get update && apt-get install -y --no-install-recommends netcat-openbsd xvfb procps \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /forge
@@ -89,7 +89,8 @@ WORKDIR /forge
 RUN mkdir -p /forge/res \
     /forge/userdata/decks/constructed \
     /forge/userdata/decks/commander \
-    /forge/cache
+    /forge/cache \
+    /forge/logs
 
 # Copy the built jar
 COPY --from=builder /build/forge.jar /forge/forge.jar
@@ -134,11 +135,48 @@ RUN echo "userDir=/forge/userdata/" > /forge/forge.profile.properties \
 # Create symlink so /forge/../forge-gui points to /forge
 RUN ln -s /forge /forge-gui
 
+# Copy JVM monitoring script
+COPY infrastructure/docker/jvm_monitor.sh /forge/jvm_monitor.sh
+RUN chmod +x /forge/jvm_monitor.sh
+
 # Expose daemon port
 EXPOSE 17171
 
-# Set Java options
-ENV JAVA_OPTS="-Xmx2g \
+# JVM Performance Tuning
+# Override at runtime: docker run -e JAVA_OPTS="..." to customize
+#
+# Heap: Pre-allocate 4-6G to avoid GC pressure during concurrent games.
+#   -Xms4g: Start with 4G (avoids heap expansion pauses)
+#   -Xmx6g: Max 6G (leave headroom for OS/metaspace within 8G container)
+#
+# GC: Tuned G1GC (preferred over ZGC on Java 17 which lacks generational support)
+#   -XX:MaxGCPauseMillis=50: Target 50ms pauses (game server responsiveness)
+#   -XX:G1HeapRegionSize=16m: Larger regions for 4-6G heap (fewer regions to scan)
+#   -XX:InitiatingHeapOccupancyPercent=35: Start GC early to avoid full GC
+#   -XX:G1ReservePercent=15: Reserve 15% for promotion spikes during concurrent games
+#
+# JIT: Warm up faster for game engine hot paths
+#   -XX:+TieredCompilation: Enable (explicit, default on Java 17)
+#   -XX:CompileThreshold=1000: Compile sooner (default 10000), helps warmup games
+#
+# Memory: String dedup + bounded metaspace
+#   -XX:+UseStringDeduplication: MTG has many duplicate card name/type strings
+#   -XX:MaxMetaspaceSize=256m: Bound metaspace to prevent leaks
+#
+# GC Logging: Machine-parseable GC logs for post-run analysis
+#   Logs to /forge/logs/gc.log with rotation (5 x 20MB files)
+#
+ENV JAVA_OPTS="-Xms4g -Xmx6g \
+    -XX:+UseG1GC \
+    -XX:MaxGCPauseMillis=50 \
+    -XX:G1HeapRegionSize=16m \
+    -XX:InitiatingHeapOccupancyPercent=35 \
+    -XX:G1ReservePercent=15 \
+    -XX:+TieredCompilation \
+    -XX:CompileThreshold=1000 \
+    -XX:+UseStringDeduplication \
+    -XX:MaxMetaspaceSize=256m \
+    -Xlog:gc*:file=/forge/logs/gc.log:time,uptime,level,tags:filecount=5,filesize=20m \
     --add-opens java.base/java.lang=ALL-UNNAMED \
     --add-opens java.base/java.util=ALL-UNNAMED \
     --add-opens java.base/java.text=ALL-UNNAMED \
