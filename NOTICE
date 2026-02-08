@@ -1,0 +1,58 @@
+ForgeRL - Third-Party Notices
+=============================
+
+This project incorporates or depends on the following third-party
+software and data, each with their own licensing terms.
+
+------------------------------------------------------------------------
+Forge - MTG Rules Engine
+------------------------------------------------------------------------
+Source: https://github.com/Card-Forge/forge
+Fork:   https://github.com/RexGoliath1/forge.git (branch: feature/rl-daemon-mode)
+License: GNU General Public License v3.0 (GPL-3.0)
+
+Forge is an unofficial rules engine for Magic: The Gathering, developed
+by the Forge community. Our fork contains modifications for daemon mode
+operation. Forge source code is available at the URLs above.
+
+ForgeRL communicates with Forge as a separate process via TCP sockets.
+The ForgeRL Python codebase is an independent work and is not a
+derivative of Forge.
+
+------------------------------------------------------------------------
+Scryfall
+------------------------------------------------------------------------
+Source: https://scryfall.com
+API Docs: https://scryfall.com/docs/api
+License: Scryfall data used under Wizards of the Coast Fan Content Policy
+
+Card data and images are provided by Scryfall. Card images are
+copyright Wizards of the Coast. Scryfall is not affiliated with this
+project.
+
+------------------------------------------------------------------------
+17lands
+------------------------------------------------------------------------
+Source: https://www.17lands.com
+Datasets: https://www.17lands.com/public_datasets
+License: CC BY 4.0
+
+Public game replay data from 17lands is used for behavioral cloning
+training. Attribution: 17lands.com
+
+------------------------------------------------------------------------
+Wizards of the Coast - Fan Content Policy
+------------------------------------------------------------------------
+Policy: https://company.wizards.com/en/legal/fancontentpolicy
+
+ForgeRL is unofficial Fan Content permitted under the Fan Content
+Policy. Not approved/endorsed by Wizards. Portions of the materials
+used are property of Wizards of the Coast.
+(c) Wizards of the Coast LLC.
+
+------------------------------------------------------------------------
+Python Dependencies
+------------------------------------------------------------------------
+All Python dependencies use permissive open-source licenses
+(BSD-3-Clause, MIT, Apache-2.0). See pyproject.toml for the full list.
+No copyleft (GPL/AGPL) Python dependencies are used.
