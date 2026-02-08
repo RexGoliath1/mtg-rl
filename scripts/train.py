@@ -176,17 +176,14 @@ def cmd_collect(args: argparse.Namespace) -> None:
     run_id = f"collection_{ts}"
 
     cfg = CollectionConfig(
-        games=args.games,
-        workers=args.workers,
+        num_games=args.games,
+        num_workers=args.workers,
         instance_type=args.instance,
-        region=REGION,
-        s3_bucket=S3_BUCKET,
-        run_id=run_id,
     )
 
     print(_heading("DATA COLLECTION"))
-    print(f"  Games:    {cfg.games}")
-    print(f"  Workers:  {cfg.workers}")
+    print(f"  Games:    {cfg.num_games}")
+    print(f"  Workers:  {cfg.num_workers}")
     print(f"  Instance: {cfg.instance_type}")
     print(f"  Output:   s3://{S3_BUCKET}/imitation_data/{run_id}/")
     print()
@@ -195,39 +192,78 @@ def cmd_collect(args: argparse.Namespace) -> None:
     validate_credentials()
     print(_ok("AWS credentials"))
 
-    cost = estimate_costs("collect", cfg)
+    cost_est = estimate_costs(collection_config=cfg)
     spend = get_current_month_spend()
     remaining = MONTHLY_BUDGET - spend
 
-    print(f"\n  Estimated cost:    ${cost:.2f}")
+    print(f"\n  Estimated cost:    ${cost_est.total:.2f}")
     print(f"  Month-to-date:     ${spend:.2f}")
     print(f"  Budget remaining:  ${remaining:.2f} of ${MONTHLY_BUDGET}")
 
-    if not check_budget(cost, MONTHLY_BUDGET):
-        print(_err(f"Estimated cost (${cost:.2f}) exceeds remaining budget (${remaining:.2f})"))
+    if not check_budget(cost_est.total, MONTHLY_BUDGET):
+        print(_err(f"Estimated cost (${cost_est.total:.2f}) exceeds remaining budget (${remaining:.2f})"))
         sys.exit(1)
     print(_ok("Budget check passed"))
 
     if args.dry_run:
-        _print_dry_run_plan("collect", cfg, cost)
+        _print_dry_run_plan("collect", cfg, cost_est.total)
         return
+
+    # Import additional deploy helpers
+    from src.deploy.aws import find_ami, get_vpc_info, ensure_security_group
+    from src.deploy.config import DeployConfig
+
+    deploy_cfg = DeployConfig(
+        region=REGION,
+        s3_bucket=S3_BUCKET,
+    )
 
     # Package & upload
     print(_info("Packaging code..."))
     code_tar = create_code_tarball(PROJECT_DIR)
     forge_tar = create_forge_tarball(PROJECT_DIR)
-    upload_to_s3(code_tar, S3_BUCKET, f"packages/{run_id}/code.tar.gz")
+    code_s3_key = f"packages/{run_id}/code.tar.gz"
+    forge_s3_key = f"packages/{run_id}/forge.tar.gz"
+    upload_to_s3(code_tar, S3_BUCKET, code_s3_key)
     if forge_tar:
-        upload_to_s3(forge_tar, S3_BUCKET, f"packages/{run_id}/forge.tar.gz")
+        upload_to_s3(forge_tar, S3_BUCKET, forge_s3_key)
     print(_ok("Packages uploaded"))
 
-    # Launch
-    userdata = generate_collection_userdata(cfg)
-    instance_id = launch_spot_instance(cfg, userdata)
-    print(_ok(f"Spot instance launched: {instance_id}"))
+    # Network setup
+    print(_info("Setting up network..."))
+    ami_id = find_ami(REGION)
+    vpc_info = get_vpc_info(REGION)
+    sg_id = ensure_security_group(REGION, vpc_info["vpc_id"])
+    print(_ok(f"AMI: {ami_id}"))
 
-    # Poll
+    # Generate userdata
+    userdata = generate_collection_userdata(
+        deploy_config=deploy_cfg,
+        collection_config=cfg,
+        run_id=run_id,
+        timestamp=ts,
+        code_package=code_s3_key,
+        forge_package=forge_s3_key if forge_tar else "",
+    )
+
+    # Launch
+    result = launch_spot_instance(
+        config=deploy_cfg,
+        userdata=userdata,
+        instance_type=cfg.instance_type,
+        ami_id=ami_id,
+        subnet_id=vpc_info["subnet_id"],
+        security_group_id=sg_id,
+        spot_price=str(cfg.spot_price),
+        volume_size_gb=cfg.volume_size_gb,
+        tags={"Name": f"forgerl-{run_id}", "Project": "forgerl"},
+    )
+    instance_id = result["instance_id"]
+    print(_ok(f"Spot instance launched: {instance_id} ({result['request_type']})"))
+
+    # Poll — with new logging, check S3 live log every 2 min
     print(_info("Polling for completion (timeout 3h)..."))
+    print(_info(f"Live logs: aws s3 cp s3://{S3_BUCKET}/imitation_data/{run_id}/collection_log.txt - | tail -50"))
     success = poll_s3_completion(
         S3_BUCKET,
         f"imitation_data/{run_id}/collection_complete.json",
@@ -238,6 +274,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
         print(_ok(f"Collection complete!  s3://{S3_BUCKET}/imitation_data/{run_id}/"))
     else:
         print(_err("Collection timed out after 3 hours. Check the instance manually."))
+        print(_info(f"Instance: {instance_id} — terminate with: python3 scripts/train.py kill"))
         sys.exit(1)
 
 
@@ -551,8 +588,8 @@ def _print_dry_run_plan(phase: str, cfg, cost: float) -> None:
 
     if phase == "collect":
         print(f"  - Launch {cfg.instance_type} spot instance")
-        print(f"  - Collect {cfg.games} games with {cfg.workers} workers")
-        print(f"  - Upload to s3://{S3_BUCKET}/imitation_data/{cfg.run_id}/")
+        print(f"  - Collect {cfg.num_games} games with {cfg.num_workers} workers")
+        print(f"  - Upload to s3://{S3_BUCKET}/imitation_data/")
     elif phase == "train":
         print(f"  - Launch {cfg.instance_type} spot instance (GPU)")
         print(f"  - Train for {cfg.epochs} epochs (batch={cfg.batch_size})")
