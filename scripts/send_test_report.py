@@ -3,9 +3,10 @@
 
 Creates a comprehensive multi-page PDF covering:
   1. Training Summary — model info, loss, checkpoint
-  2. Pipeline Timing Profile — horizontal bar chart + table
-  3. Monitoring Links — TensorBoard, W&B, S3
-  4. Training Curves — loss/accuracy over epochs (from TensorBoard logs or metrics dict)
+  2. Network Architecture — visual diagram with parameter counts
+  3. Pipeline Timing Profile — horizontal bar chart + table
+  4. Monitoring Links — TensorBoard, W&B, S3
+  5. Training Curves — loss/accuracy over epochs (from TensorBoard logs or metrics dict)
 
 Usage:
     # First-time setup (creates .env with Gmail App Password):
@@ -131,6 +132,7 @@ def generate_training_report(
 
     with PdfPages(output_path) as pdf:
         _page_training_summary(pdf, metrics)
+        _page_network_architecture(pdf)
         _page_pipeline_timing(pdf, timing, timing_detailed)
         _page_monitoring_links(pdf, metrics)
         _page_training_curves(pdf, metrics, tb_log_dir)
@@ -203,7 +205,70 @@ def _page_training_summary(pdf, metrics: Dict[str, Any]):
     plt.close(fig)
 
 
-# -- Page 2: Pipeline Timing Profile ----------------------------------------
+# -- Page 2: Network Architecture -------------------------------------------
+
+def _page_network_architecture(pdf):
+    import matplotlib.pyplot as plt
+    from matplotlib.image import imread
+    import subprocess
+
+    fig, ax = plt.subplots(figsize=(8.5, 11))
+    ax.axis("off")
+
+    # Generate the network diagram
+    diagram_script = Path(__file__).parent / "generate_network_diagram.py"
+    diagram_path = Path("data/reports/network_architecture.png")
+
+    # Run the diagram generator if image doesn't exist or is stale
+    if not diagram_path.exists():
+        try:
+            subprocess.run(
+                ["python3", str(diagram_script)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Failed to generate network diagram: {e.stderr}")
+            ax.text(
+                0.5, 0.5, "Network diagram not available\n(graphviz may not be installed)",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=14, color="grey",
+            )
+            fig.suptitle("Page 2 — Network Architecture", fontsize=9, y=0.02, color="grey")
+            pdf.savefig(fig, bbox_inches="tight")
+            plt.close(fig)
+            return
+        except FileNotFoundError:
+            logger.warning("python3 not found in PATH")
+            ax.text(
+                0.5, 0.5, "Network diagram not available\n(generation failed)",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=14, color="grey",
+            )
+            fig.suptitle("Page 2 — Network Architecture", fontsize=9, y=0.02, color="grey")
+            pdf.savefig(fig, bbox_inches="tight")
+            plt.close(fig)
+            return
+
+    # Load and display the diagram
+    if diagram_path.exists():
+        img = imread(diagram_path)
+        ax.imshow(img, aspect='auto')
+        ax.axis("off")
+    else:
+        ax.text(
+            0.5, 0.5, "Network diagram not found",
+            transform=ax.transAxes, ha="center", va="center",
+            fontsize=14, color="grey",
+        )
+
+    fig.suptitle("Page 2 — Network Architecture", fontsize=9, y=0.02, color="grey")
+    pdf.savefig(fig, bbox_inches="tight")
+    plt.close(fig)
+
+
+# -- Page 3: Pipeline Timing Profile ----------------------------------------
 
 def _page_pipeline_timing(pdf, timing: Dict[str, float], detailed=None):
     import matplotlib.pyplot as plt
@@ -267,7 +332,7 @@ def _page_pipeline_timing(pdf, timing: Dict[str, float], detailed=None):
         tbl[0, j].set_text_props(color="white", fontweight="bold")
     ax_tbl.set_title("Timing Details", fontweight="bold", pad=20)
 
-    fig.suptitle("Page 2 — Pipeline Timing Profile", fontsize=9, y=0.02, color="grey")
+    fig.suptitle("Page 3 — Pipeline Timing Profile", fontsize=9, y=0.02, color="grey")
     fig.tight_layout(rect=[0, 0.03, 1, 0.97])
     pdf.savefig(fig, bbox_inches="tight")
     plt.close(fig)
@@ -333,7 +398,7 @@ def _page_monitoring_links(pdf, metrics: Dict[str, Any]):
         url=wandb_url,
     )
 
-    fig.suptitle("Page 3 — Monitoring Links", fontsize=9, y=0.02, color="grey")
+    fig.suptitle("Page 4 — Monitoring Links", fontsize=9, y=0.02, color="grey")
     pdf.savefig(fig, bbox_inches="tight")
     plt.close(fig)
 
@@ -393,7 +458,7 @@ def _page_training_curves(pdf, metrics: Dict[str, Any], tb_log_dir: str):
         )
         ax_acc.set_title("Training Accuracy", fontweight="bold")
 
-    fig.suptitle("Page 4 — Training Curves", fontsize=9, y=0.02, color="grey")
+    fig.suptitle("Page 5 — Training Curves", fontsize=9, y=0.02, color="grey")
     fig.tight_layout(rect=[0, 0.03, 1, 0.97])
     pdf.savefig(fig, bbox_inches="tight")
     plt.close(fig)
