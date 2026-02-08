@@ -194,9 +194,9 @@ echo "IAM profile: $INSTANCE_PROFILE"
 
 # Build the S3 sync command based on whether a specific data path was given
 if [ -n "$DATA_PATH" ]; then
-    S3_SYNC_CMD="aws s3 sync \"s3://S3_BUCKET_PLACEHOLDER/imitation_data/DATA_PATH_PLACEHOLDER/\" /home/ubuntu/training_data/ --exclude \"*\" --include \"*.h5\""
+    S3_SYNC_CMD="aws s3 sync \"s3://${S3_BUCKET}/imitation_data/${DATA_PATH}/\" /home/ubuntu/training_data/ --exclude \"*\" --include \"*.h5\""
 else
-    S3_SYNC_CMD="aws s3 sync \"s3://S3_BUCKET_PLACEHOLDER/imitation_data/\" /home/ubuntu/training_data/ --exclude \"*\" --include \"*.h5\""
+    S3_SYNC_CMD="aws s3 sync \"s3://${S3_BUCKET}/imitation_data/\" /home/ubuntu/training_data/ --exclude \"*\" --include \"*.h5\""
 fi
 
 # Create user data script
