@@ -234,6 +234,15 @@ KEYWORD_ABILITIES = {
     "transmute": Mechanic.TRANSMUTE,
     "forecast": Mechanic.FORECAST,
     "bloodthirst": Mechanic.BLOODTHIRST,
+
+    # Feature gap keywords
+    "unearth": Mechanic.UNEARTH,
+    "amass": Mechanic.AMASS,
+    "channel": Mechanic.CHANNEL,
+    "ascend": Mechanic.ASCEND,
+    "level up": Mechanic.LEVEL_UP,
+    "replicate": Mechanic.REPLICATE,
+    "scavenge": Mechanic.SCAVENGE,
 }
 
 
@@ -289,6 +298,9 @@ KEYWORD_COST_CATEGORY = {
     "improvise": Mechanic.REDUCE_COST,
     "undaunted": Mechanic.REDUCE_COST,
     "assist": Mechanic.REDUCE_COST,
+
+    # Feature gap cost categories
+    "replicate": Mechanic.ADDITIONAL_COST,
 }
 
 # =============================================================================
@@ -380,6 +392,15 @@ KEYWORD_IMPLICATIONS = {
     "populate": [Mechanic.CREATE_TOKEN],
     "detain": [Mechanic.CANT_ATTACK, Mechanic.CANT_BLOCK],
     "partner with": [Mechanic.TUTOR_TO_HAND],
+
+    # Feature gap implications
+    "unearth": [Mechanic.REANIMATE, Mechanic.SACRIFICE, Mechanic.HASTE],
+    "amass": [Mechanic.CREATE_TOKEN, Mechanic.PLUS_ONE_COUNTER],
+    "channel": [Mechanic.ACTIVATED_ABILITY, Mechanic.DISCARD, Mechanic.FROM_HAND],
+    "ascend": [Mechanic.THRESHOLD_CONDITION],
+    "level up": [Mechanic.ACTIVATED_ABILITY, Mechanic.PLUS_ONE_COUNTER],
+    "replicate": [Mechanic.COPY_SPELL, Mechanic.ADDITIONAL_COST],
+    "scavenge": [Mechanic.FROM_GRAVEYARD, Mechanic.PLUS_ONE_COUNTER, Mechanic.EXILE],
 }
 
 
@@ -1070,6 +1091,27 @@ PATTERNS = [
     (r"you\s+may\s+(cast|play)\s+it", []),
     (r"if\s+you\s+do,?\s+", []),
     (r"attach\s+it\s+to\s+", []),
+
+    # Feature gap patterns (top 15 implementation)
+    (r"counter target .{0,30}spell", [Mechanic.COUNTER_SPELL]),
+    (r"power and toughness are each equal to", [Mechanic.POWER_EQUAL_TO_X, Mechanic.SET_POWER, Mechanic.SET_TOUGHNESS]),
+    (r"devotion to\s+(white|blue|black|red|green)", [Mechanic.DEVOTION, Mechanic.COLOR_CONDITION]),
+    (r"additional combat phase", [Mechanic.EXTRA_COMBAT]),
+    (r"choose a creature type", [Mechanic.CHOOSE_CREATURE_TYPE, Mechanic.CREATURE_TYPE_MATTERS]),
+    (r"spells .{0,30}cost .{0,5}\{?\d+\}?.{0,5} more to cast", [Mechanic.INCREASE_COST]),
+    (r"spells .{0,30}cost .{0,5}\{?\d+\}?.{0,5} less to cast", [Mechanic.REDUCE_COST]),
+    (r"venture into the dungeon", [Mechanic.VENTURE]),
+    (r"can't be blocked (except )?by\b", [Mechanic.CONDITIONAL_UNBLOCKABLE]),
+    (r"each opponent sacrifices", [Mechanic.EDICT_EFFECT, Mechanic.SACRIFICE]),
+    (r"each opponent discards", [Mechanic.MASS_DISCARD_OPPONENT, Mechanic.DISCARD]),
+    (r"activated abilities .{0,30}can't be activated", [Mechanic.ABILITY_SHUTDOWN, Mechanic.STATIC_ABILITY]),
+
+    # Confidence-booster patterns (consume text, no new enums)
+    (r"whenever one or more", []),
+    (r"protection from (white|blue|black|red|green|colorless|monocolored|multicolored|all|each|everything|instants?|sorceries|creatures?|enchantments?|artifacts?|planeswalkers?)", []),
+    (r"if .{0,20}(?:was|is) kicked", []),
+    (r"whenever? .{0,30}becomes? the target", []),
+    (r"hexproof from\s+(?:white|blue|black|red|green|monocolored|multicolored)", []),
 ]
 
 # Pre-compile all patterns at module load for ~19x speedup

@@ -604,6 +604,25 @@ class Mechanic(IntEnum):
     MDFC = 1385                          # Modal double-faced card (two usable faces)
     MUST_BE_BLOCKED = 1386               # "must be blocked" / "must be blocked if able" (Lure, Provoke)
 
+    # ==========================================================================
+    # FEATURE GAP ENUMS (1388-1402) — top 15 parser coverage gaps
+    # ==========================================================================
+    UNEARTH = 1388                       # "Unearth {cost}" — reanimate from graveyard, exile at end step
+    AMASS = 1389                         # "Amass N" — create or grow Army token
+    CHANNEL = 1390                       # "Channel — discard: effect" — ability from hand
+    EDICT_EFFECT = 1391                  # "each opponent sacrifices" — forced sacrifice (no targeting)
+    MASS_DISCARD_OPPONENT = 1392         # "each opponent discards" — symmetrical discard effect
+    CONDITIONAL_UNBLOCKABLE = 1393       # "can't be blocked by/except by" — conditional evasion
+    EXTRA_COMBAT = 1394                  # "additional combat phase" — extra combat steps
+    VENTURE = 1395                       # "venture into the dungeon" — dungeon mechanic
+    ASCEND = 1396                        # "Ascend" — city's blessing threshold (10 permanents)
+    LEVEL_UP = 1397                      # "Level up {cost}" — gain levels for stat/ability boosts
+    DEVOTION = 1398                      # "devotion to [color]" — count colored mana symbols
+    CHOOSE_CREATURE_TYPE = 1399          # "choose a creature type" — tribal selection
+    REPLICATE = 1400                     # "Replicate {cost}" — copy spell for each replicate paid
+    SCAVENGE = 1401                      # "Scavenge {cost}" — exile from GY, put +1/+1 counters
+    ABILITY_SHUTDOWN = 1402              # "activated abilities can't be activated" — Null Rod/Ouphe
+
 
 # Total vocabulary size
 VOCAB_SIZE = max(m.value for m in Mechanic) + 1
