@@ -280,6 +280,62 @@ def parse_decklist(text: str) -> dict:
     return result
 
 
+def parse_manabox_collection(text: str) -> list[tuple[int, str]]:
+    """Parse a Manabox CSV export or simple one-per-line format.
+
+    Supports:
+    - Manabox CSV: Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID
+    - Simple: "1 Card Name" or "Card Name" (one per line)
+
+    Returns list of (quantity, card_name) tuples.
+    """
+    lines = text.strip().split("\n")
+    results = []
+
+    # Detect Manabox CSV by header
+    if lines and "," in lines[0] and ("name" in lines[0].lower() or "manabox" in lines[0].lower()):
+        # Find column indices
+        header = [h.strip().strip('"').lower() for h in lines[0].split(",")]
+        name_idx = None
+        qty_idx = None
+        for i, h in enumerate(header):
+            if h == "name":
+                name_idx = i
+            elif h == "quantity" or h == "count":
+                qty_idx = i
+        if name_idx is None:
+            name_idx = 0
+        for line in lines[1:]:
+            if not line.strip():
+                continue
+            cols = line.split(",")
+            if len(cols) <= name_idx:
+                continue
+            card_name = cols[name_idx].strip().strip('"')
+            if not card_name:
+                continue
+            qty = 1
+            if qty_idx is not None and qty_idx < len(cols):
+                try:
+                    qty = int(cols[qty_idx].strip().strip('"'))
+                except ValueError:
+                    qty = 1
+            results.append((qty, card_name))
+    else:
+        # Simple format: "N Card Name" or "Card Name"
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith("#") or line.startswith("//"):
+                continue
+            match = re.match(r"^(\d+)x?\s+(.+)$", line)
+            if match:
+                results.append((int(match.group(1)), match.group(2).strip()))
+            else:
+                results.append((1, line))
+
+    return results
+
+
 # ---------------------------------------------------------------------------
 # Deck analysis
 # ---------------------------------------------------------------------------

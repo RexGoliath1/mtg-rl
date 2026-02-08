@@ -133,6 +133,8 @@ def generate_metadata(cards: list[dict]) -> dict:
             "tribal_types": tribal_types,
             "is_land": is_land,
             "is_mdfc_land": is_mdfc_land,
+            "is_legendary": "Legendary" in front_type and "Creature" in front_type,
+            "color_identity": card.get("color_identity", []),
             "edhrec_rank": card.get("edhrec_rank"),
             "layout": card.get("layout", "normal"),
             "cmc": card.get("cmc", 0),
@@ -166,11 +168,14 @@ def main():
     n_adventure = sum(1 for v in metadata.values() if v.get("layout") == "adventure")
     n_mdfc = sum(1 for v in metadata.values() if v.get("layout") == "modal_dfc")
 
+    n_legendary = sum(1 for v in metadata.values() if v.get("is_legendary"))
+
     print("\nMetadata generated:")
     print(f"  Total cards: {len(metadata)}")
     print(f"  With creature subtypes: {n_with_subtypes}")
     print(f"  With tribal references: {n_with_tribal}")
     print(f"  Lands: {n_lands}")
+    print(f"  Legendary creatures: {n_legendary}")
     print(f"  With EDHREC rank: {n_with_rank}")
     print(f"  Adventures: {n_adventure}, MDFCs: {n_mdfc}")
 
