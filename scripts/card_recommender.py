@@ -1473,6 +1473,34 @@ HTML_PAGE = r"""<!DOCTYPE html>
   .commander-card .cmd-colors {
     font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;
   }
+
+  /* Color filter bar */
+  .color-filter-bar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    margin: 16px 0; padding: 12px 16px;
+    background: var(--card-bg); border: 2px solid var(--card-border);
+    border-radius: 10px;
+  }
+  .color-filter-bar .filter-label {
+    font-size: 0.85rem; color: var(--text-muted); margin-right: 8px;
+  }
+  .color-filter-btn {
+    width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent;
+    cursor: pointer; font-weight: 700; font-size: 0.9rem;
+    transition: all 0.2s; opacity: 0.4;
+  }
+  .color-filter-btn:hover { opacity: 0.7; transform: scale(1.1); }
+  .color-filter-btn.active { opacity: 1; border-color: var(--accent); transform: scale(1.15); }
+  .color-filter-all {
+    padding: 6px 16px; border-radius: 20px; border: 2px solid var(--card-border);
+    background: var(--card-bg); color: var(--text); cursor: pointer;
+    font-size: 0.8rem; font-weight: 600; transition: all 0.2s;
+  }
+  .color-filter-all:hover { border-color: var(--accent); }
+  .color-filter-all.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .color-filter-count {
+    font-size: 0.8rem; color: var(--text-muted); margin-left: auto;
+  }
   .collection-stats {
     background: var(--card-bg); border: 2px solid var(--card-border);
     border-radius: 12px; padding: 16px 24px; margin-bottom: 20px;
@@ -2210,7 +2238,7 @@ Rhystic Study"></textarea>
                 img_tag = f'<img src="{image_uri}" alt="{_html_escape(name)}" loading="lazy">' if image_uri else f'<div class="card-img-placeholder" style="height:120px">{_html_escape(name)}</div>'
 
                 cards_html += f"""
-                <form method="POST" action="/collection/recommend" style="display:contents">
+                <form method="POST" action="/collection/recommend" style="display:contents" data-colors="{ci_str}">
                   <input type="hidden" name="collection" value="{collection_escaped}">
                   <input type="hidden" name="commander" value="{_html_escape(name)}">
                   <button type="submit" class="commander-card" style="all:unset;cursor:pointer">
@@ -2224,8 +2252,63 @@ Rhystic Study"></textarea>
 
             cmd_html = f"""
             <h2 style="margin-bottom:4px">Choose Your Commander</h2>
-            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:12px">Click a legendary creature to get deck recommendations from your collection.</p>
-            <div class="commander-grid">{cards_html}</div>"""
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:12px">Filter by color, then click a legendary creature to build a deck.</p>
+            <div class="color-filter-bar">
+              <span class="filter-label">Colors:</span>
+              <button class="color-filter-all active" onclick="filterAll()" id="filter-all">All</button>
+              <button class="color-filter-btn" data-color="W" style="background:#f0e6c0;color:#1a1a2e" onclick="toggleColor(this)">W</button>
+              <button class="color-filter-btn" data-color="U" style="background:#4a9bd9;color:#fff" onclick="toggleColor(this)">U</button>
+              <button class="color-filter-btn" data-color="B" style="background:#a070a0;color:#fff" onclick="toggleColor(this)">B</button>
+              <button class="color-filter-btn" data-color="R" style="background:#e05050;color:#fff" onclick="toggleColor(this)">R</button>
+              <button class="color-filter-btn" data-color="G" style="background:#40b060;color:#1a1a2e" onclick="toggleColor(this)">G</button>
+              <span class="color-filter-count" id="filter-count">{len(commanders)} commanders</span>
+            </div>
+            <div class="commander-grid" id="commander-grid">{cards_html}</div>
+            <script>
+            const selectedColors = new Set();
+            function toggleColor(btn) {{
+              const c = btn.dataset.color;
+              if (selectedColors.has(c)) {{
+                selectedColors.delete(c);
+                btn.classList.remove('active');
+              }} else {{
+                selectedColors.add(c);
+                btn.classList.add('active');
+              }}
+              document.getElementById('filter-all').classList.remove('active');
+              applyFilter();
+            }}
+            function filterAll() {{
+              selectedColors.clear();
+              document.querySelectorAll('.color-filter-btn').forEach(b => b.classList.remove('active'));
+              document.getElementById('filter-all').classList.add('active');
+              applyFilter();
+            }}
+            function applyFilter() {{
+              const forms = document.querySelectorAll('#commander-grid form[data-colors]');
+              let visible = 0;
+              forms.forEach(form => {{
+                if (selectedColors.size === 0) {{
+                  form.style.display = '';
+                  visible++;
+                  return;
+                }}
+                const cardColors = form.dataset.colors;
+                // Show if card's CI is a subset of selected colors
+                // "C" (colorless) is always shown when any filter is active
+                if (cardColors === 'C') {{
+                  form.style.display = '';
+                  visible++;
+                  return;
+                }}
+                const cardSet = new Set(cardColors.split(''));
+                const isSubset = [...cardSet].every(c => selectedColors.has(c));
+                form.style.display = isSubset ? '' : 'none';
+                if (isSubset) visible++;
+              }});
+              document.getElementById('filter-count').textContent = visible + ' commander' + (visible !== 1 ? 's' : '');
+            }}
+            </script>"""
 
         elapsed = time.time() - t0
 
