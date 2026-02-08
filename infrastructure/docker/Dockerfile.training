@@ -26,6 +26,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml /app/
 RUN mkdir -p /app/src && touch /app/src/__init__.py
 
+# Upgrade pip (PyTorch base has old pip that hits ResolutionTooDeep on complex deps)
+RUN pip install --no-cache-dir --upgrade pip
 # Skip torch if already in base image (pytorch/pytorch base), install everything else
 RUN pip install --no-cache-dir ".[training,data]"
 

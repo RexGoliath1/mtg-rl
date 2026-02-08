@@ -2,7 +2,7 @@
 """
 Collect AI Training Data
 
-Run games in observation mode (-o) where Forge AI makes decisions
+Run games in interactive mode (-i) where Forge AI makes decisions
 and all decisions are logged for training data collection.
 
 Storage: HDF5 for efficient numerical data, with JSON metadata.
@@ -120,8 +120,8 @@ def collect_training_game(
     cards_seen = set()
 
     try:
-        # Start game in observation mode (-o)
-        cmd = f"NEWGAME {deck1} {deck2} -o -q -c {timeout}"
+        # Start game in interactive mode (-i) so daemon sends DECISION: data
+        cmd = f"NEWGAME {deck1} {deck2} -i -q -c {timeout}"
         if seed is not None:
             cmd += f" -s {seed}"
 
