@@ -28,7 +28,7 @@ class ImitationDataset(Dataset):
 
         # Load all HDF5 files and use the largest one
         data_path = Path(data_dir)
-        h5_files = sorted(data_path.glob("*.h5"))
+        h5_files = sorted(data_path.rglob("*.h5"))
         if not h5_files:
             raise ValueError(f"No HDF5 files found in {data_dir}")
 
