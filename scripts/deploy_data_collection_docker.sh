@@ -18,6 +18,7 @@ set -e
 # Usage:
 #   ./scripts/deploy_data_collection_docker.sh --games 1000
 #   ./scripts/deploy_data_collection_docker.sh --games 5000 --workers 8
+#   ./scripts/deploy_data_collection_docker.sh --games 1000 --run-id fleet_123/instance_0 --s3-prefix fleet_123/instance_0
 # ============================================================================
 
 # Configuration
@@ -27,6 +28,8 @@ INSTANCE_TYPE="${INSTANCE_TYPE:-c5.2xlarge}"
 NUM_GAMES="${NUM_GAMES:-1000}"
 WORKERS="${WORKERS:-8}"
 TIMEOUT="${TIMEOUT:-60}"
+CUSTOM_RUN_ID=""
+CUSTOM_S3_PREFIX=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -47,9 +50,17 @@ while [[ $# -gt 0 ]]; do
             INSTANCE_TYPE="$2"
             shift 2
             ;;
+        --run-id)
+            CUSTOM_RUN_ID="$2"
+            shift 2
+            ;;
+        --s3-prefix)
+            CUSTOM_S3_PREFIX="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--games N] [--workers N] [--timeout N] [--instance-type TYPE]"
+            echo "Usage: $0 [--games N] [--workers N] [--timeout N] [--instance-type TYPE] [--run-id ID] [--s3-prefix PREFIX]"
             exit 1
             ;;
     esac
@@ -104,7 +115,14 @@ for REPO in mtg-rl-daemon mtg-rl-collection; do
 done
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-RUN_ID="collection_${TIMESTAMP}"
+if [ -n "$CUSTOM_RUN_ID" ]; then
+    RUN_ID="$CUSTOM_RUN_ID"
+else
+    RUN_ID="collection_${TIMESTAMP}"
+fi
+
+# S3 prefix defaults to RUN_ID (fleet script overrides for per-instance subdirs)
+S3_PREFIX="${CUSTOM_S3_PREFIX:-$RUN_ID}"
 
 # Find Ubuntu 22.04 AMI
 echo ""
@@ -217,11 +235,29 @@ docker images
     while true; do
         sleep 300
         aws s3 cp /var/log/data-collection.log \
-            s3://BUCKET_PLACEHOLDER/imitation_data/RUN_ID_PLACEHOLDER/live_log.txt 2>/dev/null || true
+            s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/live_log.txt 2>/dev/null || true
     done
 ) &
 LOG_UPLOADER_PID=$!
 echo "Background log uploader started (PID: $LOG_UPLOADER_PID, interval: 5min)"
+
+# --- Start incremental HDF5 uploader (protects against spot interruption) ---
+(
+    LAST_UPLOADED=""
+    while true; do
+        sleep 120
+        # Find the newest HDF5 file (checkpoint or final)
+        NEWEST_H5=$(ls -t /home/ubuntu/training_data/*.h5 2>/dev/null | head -1)
+        if [ -n "$NEWEST_H5" ] && [ "$NEWEST_H5" != "$LAST_UPLOADED" ]; then
+            echo "[S3_SYNC] Incremental upload: $(basename $NEWEST_H5)"
+            aws s3 cp "$NEWEST_H5" \
+                "s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/$(basename $NEWEST_H5)" 2>/dev/null || true
+            LAST_UPLOADED="$NEWEST_H5"
+        fi
+    done
+) &
+S3_SYNC_PID=$!
+echo "Incremental S3 uploader started (PID: $S3_SYNC_PID, interval: 2min)"
 
 # --- Run data collection via Docker Compose ---
 echo ""
@@ -346,32 +382,33 @@ date
 # Show container logs for debugging
 docker compose logs daemon > /var/log/forge-daemon.log 2>&1 || true
 
-# Stop background log uploader
+# Stop background uploaders
 kill $LOG_UPLOADER_PID 2>/dev/null || true
+kill $S3_SYNC_PID 2>/dev/null || true
 
 # --- Upload results to S3 ---
 echo "Uploading results to S3..."
 aws s3 sync /home/ubuntu/training_data/ \
-    s3://BUCKET_PLACEHOLDER/imitation_data/RUN_ID_PLACEHOLDER/ \
+    s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/ \
     --exclude "*.tex"
 
 # Upload logs
 aws s3 cp /var/log/data-collection.log \
-    s3://BUCKET_PLACEHOLDER/imitation_data/RUN_ID_PLACEHOLDER/collection_log.txt
+    s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/collection_log.txt
 aws s3 cp /var/log/forge-daemon.log \
-    s3://BUCKET_PLACEHOLDER/imitation_data/RUN_ID_PLACEHOLDER/forge_daemon.log 2>/dev/null || true
+    s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/forge_daemon.log 2>/dev/null || true
 aws s3 cp /var/log/docker-compose.log \
-    s3://BUCKET_PLACEHOLDER/imitation_data/RUN_ID_PLACEHOLDER/docker_compose.log 2>/dev/null || true
+    s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/docker_compose.log 2>/dev/null || true
 
 # Upload JVM performance logs (GC log + monitor stats)
 aws s3 sync /home/ubuntu/daemon-logs/ \
-    s3://BUCKET_PLACEHOLDER/imitation_data/RUN_ID_PLACEHOLDER/jvm_logs/ 2>/dev/null || true
+    s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/jvm_logs/ 2>/dev/null || true
 
-echo "Results uploaded to s3://BUCKET_PLACEHOLDER/imitation_data/RUN_ID_PLACEHOLDER/"
+echo "Results uploaded to s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/"
 
 # Signal completion
-echo '{"status":"complete","timestamp":"TIMESTAMP_PLACEHOLDER","games":NUM_GAMES_PLACEHOLDER,"method":"docker"}' | \
-    aws s3 cp - s3://BUCKET_PLACEHOLDER/imitation_data/RUN_ID_PLACEHOLDER/collection_complete.json
+echo '{"status":"complete","timestamp":"TIMESTAMP_PLACEHOLDER","games":NUM_GAMES_PLACEHOLDER,"method":"docker","run_id":"RUN_ID_PLACEHOLDER"}' | \
+    aws s3 cp - s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/collection_complete.json
 
 # Stop all containers
 docker compose down 2>/dev/null || true
@@ -385,6 +422,7 @@ USERDATA
 USER_DATA="${USER_DATA//BUCKET_PLACEHOLDER/$S3_BUCKET}"
 USER_DATA="${USER_DATA//ECR_REGISTRY_PLACEHOLDER/$ECR_REGISTRY}"
 USER_DATA="${USER_DATA//ECR_REGION_PLACEHOLDER/$REGION}"
+USER_DATA="${USER_DATA//S3_PREFIX_PLACEHOLDER/$S3_PREFIX}"
 USER_DATA="${USER_DATA//RUN_ID_PLACEHOLDER/$RUN_ID}"
 USER_DATA="${USER_DATA//TIMESTAMP_PLACEHOLDER/$TIMESTAMP}"
 USER_DATA="${USER_DATA//NUM_GAMES_PLACEHOLDER/$NUM_GAMES}"
@@ -490,19 +528,20 @@ echo "Public IP:   $PUBLIC_IP"
 echo "Games:       $NUM_GAMES"
 echo "Workers:     $WORKERS"
 echo "Run ID:      $RUN_ID"
+echo "S3 Prefix:   $S3_PREFIX"
 echo ""
 echo "Monitor with:"
 echo "  # Check if complete:"
-echo "  aws s3 ls s3://${S3_BUCKET}/imitation_data/${RUN_ID}/collection_complete.json"
+echo "  aws s3 ls s3://${S3_BUCKET}/imitation_data/${S3_PREFIX}/collection_complete.json"
 echo ""
 echo "  # View live log (updates every 5 min):"
-echo "  aws s3 cp s3://${S3_BUCKET}/imitation_data/${RUN_ID}/live_log.txt - | tail -50"
+echo "  aws s3 cp s3://${S3_BUCKET}/imitation_data/${S3_PREFIX}/live_log.txt - | tail -50"
 echo ""
 echo "  # Check instance state:"
 echo "  aws ec2 describe-instances --region $REGION --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].State.Name' --output text"
 echo ""
 echo "  # Download results when complete:"
-echo "  aws s3 sync s3://${S3_BUCKET}/imitation_data/${RUN_ID}/ training_data/${TIMESTAMP}/"
+echo "  aws s3 sync s3://${S3_BUCKET}/imitation_data/${S3_PREFIX}/ training_data/${TIMESTAMP}/"
 echo ""
 echo "Instance auto-terminates after collection."
 echo "============================================================"
