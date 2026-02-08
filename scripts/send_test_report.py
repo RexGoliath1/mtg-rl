@@ -7,6 +7,7 @@ Creates a comprehensive multi-page PDF covering:
   3. Pipeline Timing Profile — horizontal bar chart + table
   4. Monitoring Links — TensorBoard, W&B, S3
   5. Training Curves — loss/accuracy over epochs (from TensorBoard logs or metrics dict)
+  6. Deck Mechanics Analysis — centroid feature profile of training decks
 
 Usage:
     # First-time setup (creates .env with Gmail App Password):
@@ -136,6 +137,7 @@ def generate_training_report(
         _page_pipeline_timing(pdf, timing, timing_detailed)
         _page_monitoring_links(pdf, metrics)
         _page_training_curves(pdf, metrics, tb_log_dir)
+        _page_deck_mechanics(pdf)
 
     logger.info(f"Created training report PDF: {output_path}")
     return output_path
@@ -460,6 +462,271 @@ def _page_training_curves(pdf, metrics: Dict[str, Any], tb_log_dir: str):
 
     fig.suptitle("Page 5 — Training Curves", fontsize=9, y=0.02, color="grey")
     fig.tight_layout(rect=[0, 0.03, 1, 0.97])
+    pdf.savefig(fig, bbox_inches="tight")
+    plt.close(fig)
+
+
+# -- Page 6: Deck Mechanics Analysis ----------------------------------------
+
+def _parse_dck_file(filepath: Path) -> tuple[str, list[str]]:
+    """Parse a Forge .dck deck file into (deck_name, [card_names]).
+
+    Returns the deck name from metadata and a list of mainboard card names
+    (one entry per copy, e.g. "4 Shock" yields 4 entries of "Shock").
+    """
+    deck_name = filepath.stem
+    cards: list[str] = []
+    in_main = False
+
+    for line in filepath.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("Name="):
+            deck_name = line.split("=", 1)[1].strip()
+        elif line == "[main]":
+            in_main = True
+        elif line.startswith("["):
+            in_main = False
+        elif in_main and line:
+            import re
+            m = re.match(r"^(\d+)\s+(.+)$", line)
+            if m:
+                qty = int(m.group(1))
+                name = m.group(2).strip()
+                cards.extend([name] * qty)
+    return deck_name, cards
+
+
+def _load_h5_for_analysis() -> tuple:
+    """Load the HDF5 card mechanics database and return (mechanics, card_index, vocab_size, mechanic_names).
+
+    Tries commander first, falls back to standard. Returns (None, ...) if unavailable.
+    """
+    import json
+
+    from mechanics.vocabulary import Mechanic
+
+    project_root = Path(__file__).parent.parent
+    h5_paths = [
+        project_root / "data" / "card_mechanics_commander.h5",
+        project_root / "data" / "card_mechanics_standard.h5",
+    ]
+
+    h5_path = None
+    for p in h5_paths:
+        if p.exists():
+            h5_path = p
+            break
+    if h5_path is None:
+        return None, None, 0, {}
+
+    try:
+        import h5py
+    except ImportError:
+        return None, None, 0, {}
+
+    with h5py.File(h5_path, "r") as f:
+        mechanics = f["mechanics"][:]
+        card_index = json.loads(f.attrs["card_index"])
+        vocab_size = int(f.attrs["vocab_size"])
+
+    # Build mechanic name lookup
+    mechanic_names = {}
+    for m in Mechanic:
+        if m.value < vocab_size:
+            mechanic_names[m.value] = m.name
+
+    return mechanics, card_index, vocab_size, mechanic_names
+
+
+def _page_deck_mechanics(pdf):
+    """Page 6: Deck mechanics analysis — centroid feature profile of training decks."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    fig = plt.figure(figsize=(8.5, 11))
+
+    # Load HDF5 card data
+    mechanics, card_index, vocab_size, mechanic_names = _load_h5_for_analysis()
+
+    if mechanics is None:
+        ax = fig.add_subplot(111)
+        ax.axis("off")
+        ax.text(
+            0.5, 0.5,
+            "Deck mechanics analysis not available\n\n"
+            "(HDF5 card database not found in data/)",
+            transform=ax.transAxes, ha="center", va="center",
+            fontsize=14, color="grey",
+        )
+        fig.suptitle("Page 6 — Deck Mechanics Analysis", fontsize=9, y=0.02, color="grey")
+        pdf.savefig(fig, bbox_inches="tight")
+        plt.close(fig)
+        return
+
+    # Find all deck files
+    decks_dir = Path(__file__).parent.parent / "decks"
+    dck_files = sorted(decks_dir.glob("*.dck")) if decks_dir.is_dir() else []
+
+    if not dck_files:
+        ax = fig.add_subplot(111)
+        ax.axis("off")
+        ax.text(
+            0.5, 0.5,
+            "No deck files found in decks/ directory",
+            transform=ax.transAxes, ha="center", va="center",
+            fontsize=14, color="grey",
+        )
+        fig.suptitle("Page 6 — Deck Mechanics Analysis", fontsize=9, y=0.02, color="grey")
+        pdf.savefig(fig, bbox_inches="tight")
+        plt.close(fig)
+        return
+
+    # Build a front-face index for DFC name resolution
+    front_face_index: dict[str, str] = {}
+    for full_name in card_index:
+        if " // " in full_name:
+            front = full_name.split(" // ")[0]
+            front_face_index[front] = full_name
+
+    def resolve_name(name: str):
+        if name in card_index:
+            return name
+        if name in front_face_index:
+            return front_face_index[name]
+        name_lower = name.lower()
+        for key in card_index:
+            if key.lower() == name_lower:
+                return key
+        for front, full in front_face_index.items():
+            if front.lower() == name_lower:
+                return full
+        return None
+
+    # Mechanics to skip in display (too generic)
+    skip_display = {
+        "TRIGGERED_ABILITY", "ACTIVATED_ABILITY", "SORCERY_SPEED", "INSTANT_SPEED",
+        "UNTIL_END_OF_TURN", "TARGET_CREATURE", "TARGET_PLAYER",
+        "ADD_MANA", "MANA_OF_ANY_COLOR", "MANA_FIXING", "TO_BATTLEFIELD_TAPPED",
+        "TUTOR_LAND", "SEARCH_LIBRARY", "TAP_FOR_EFFECT", "SACRIFICE_COST",
+        "ENTERS_THE_BATTLEFIELD", "MANA_COST", "COLOR_IDENTITY",
+    }
+
+    # Parse decks and compute centroids
+    deck_summaries = []
+    all_vecs = []
+
+    for dck_file in dck_files:
+        deck_name, card_names = _parse_dck_file(dck_file)
+        resolved = []
+        for name in card_names:
+            key = resolve_name(name)
+            if key is not None:
+                resolved.append(key)
+
+        if not resolved:
+            deck_summaries.append({
+                "name": deck_name,
+                "total_cards": len(card_names),
+                "resolved": 0,
+                "top_mechanics": [],
+            })
+            continue
+
+        # Get vectors and compute centroid
+        vecs = np.array([mechanics[card_index[name]] for name in resolved], dtype=np.float64)
+        centroid = vecs.mean(axis=0)
+        all_vecs.append(vecs)
+
+        # Top mechanics (skip generic ones)
+        top_indices = np.argsort(-centroid)[:30]
+        top_mechs = []
+        for idx in top_indices:
+            if centroid[idx] < 0.05:
+                break
+            mname = mechanic_names.get(idx, "")
+            if mname and mname not in skip_display:
+                top_mechs.append((mname, float(centroid[idx])))
+            if len(top_mechs) >= 10:
+                break
+
+        deck_summaries.append({
+            "name": deck_name,
+            "total_cards": len(card_names),
+            "resolved": len(resolved),
+            "top_mechanics": top_mechs,
+        })
+
+    # Compute global centroid across all decks
+    global_top_mechs = []
+    if all_vecs:
+        combined = np.vstack(all_vecs)
+        global_centroid = combined.mean(axis=0)
+        top_indices = np.argsort(-global_centroid)[:30]
+        for idx in top_indices:
+            if global_centroid[idx] < 0.05:
+                break
+            mname = mechanic_names.get(idx, "")
+            if mname and mname not in skip_display:
+                global_top_mechs.append((mname, float(global_centroid[idx])))
+            if len(global_top_mechs) >= 15:
+                break
+
+    # Layout: top half = deck listing table, bottom half = global centroid bar chart
+    gs = fig.add_gridspec(2, 1, height_ratios=[1, 1.3], hspace=0.35, top=0.94, bottom=0.06)
+
+    # --- Top: Deck listing ---
+    ax_table = fig.add_subplot(gs[0])
+    ax_table.axis("off")
+
+    # Build deck summary text
+    lines = ["Training Decks", "=" * 55, ""]
+    for ds in deck_summaries:
+        pct = (ds["resolved"] / ds["total_cards"] * 100) if ds["total_cards"] > 0 else 0
+        lines.append(f"  {ds['name']:<30} {ds['total_cards']:>3} cards ({ds['resolved']} resolved, {pct:.0f}%)")
+        if ds["top_mechanics"]:
+            top3 = [f"{m[0].replace('_', ' ').title()}" for m in ds["top_mechanics"][:5]]
+            lines.append(f"    Top mechanics: {', '.join(top3)}")
+        lines.append("")
+
+    lines.append(f"  Total decks: {len(dck_files)}")
+
+    deck_text = "\n".join(lines)
+    ax_table.text(
+        0.05, 0.95, deck_text,
+        transform=ax_table.transAxes,
+        fontsize=8.5,
+        verticalalignment="top",
+        fontfamily="monospace",
+        bbox=dict(boxstyle="round", facecolor="#f5f0e8", alpha=0.6),
+    )
+
+    # --- Bottom: Global centroid bar chart ---
+    ax_bar = fig.add_subplot(gs[1])
+
+    if global_top_mechs:
+        mech_labels = [m[0].replace("_", " ").title() for m in reversed(global_top_mechs)]
+        mech_values = [m[1] for m in reversed(global_top_mechs)]
+
+        colors = plt.cm.viridis([v / max(mech_values) for v in mech_values])
+        ax_bar.barh(range(len(mech_labels)), mech_values, color=colors, edgecolor="grey", linewidth=0.5)
+        ax_bar.set_yticks(range(len(mech_labels)))
+        ax_bar.set_yticklabels(mech_labels, fontsize=8)
+        ax_bar.set_xlabel("Mean Centroid Weight", fontsize=9)
+        ax_bar.set_title("Global Mechanics Centroid (All Training Decks)", fontweight="bold", fontsize=10)
+        ax_bar.grid(axis="x", alpha=0.3)
+
+        # Add value labels
+        for i, v in enumerate(mech_values):
+            ax_bar.text(v + max(mech_values) * 0.01, i, f"{v:.2f}", va="center", fontsize=7)
+    else:
+        ax_bar.text(
+            0.5, 0.5, "No card data resolved for centroid analysis",
+            transform=ax_bar.transAxes, ha="center", va="center",
+            fontsize=12, color="grey",
+        )
+        ax_bar.set_title("Global Mechanics Centroid", fontweight="bold", fontsize=10)
+
+    fig.suptitle("Page 6 — Deck Mechanics Analysis", fontsize=9, y=0.02, color="grey")
     pdf.savefig(fig, bbox_inches="tight")
     plt.close(fig)
 
