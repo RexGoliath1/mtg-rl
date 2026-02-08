@@ -5841,3 +5841,145 @@ class TestXCost:
         )
         enc = parse_card(card)
         assert_lacks_mechanics(enc, [Mechanic.X_COST], "Lightning Bolt")
+
+
+# =============================================================================
+# FEATURE GAP PATTERNS (top 15 implementation)
+# =============================================================================
+
+class TestFeatureGapPatterns:
+    """Tests for the top 15 feature gap patterns."""
+
+    def test_unearth_keyword(self):
+        result = parse_oracle_text("Unearth {B}", card_type="Creature", card_name="Dregscape Zombie")
+        assert Mechanic.UNEARTH in result.mechanics
+
+    def test_amass_keyword(self):
+        result = parse_oracle_text("Amass Zombies 2", card_type="Sorcery", card_name="Widespread Brutality")
+        assert Mechanic.AMASS in result.mechanics
+
+    def test_channel_keyword(self):
+        result = parse_oracle_text(
+            "Channel — {1}{G}, Discard this card: Destroy target artifact, enchantment, or nonbasic land an opponent controls.",
+            card_type="Land", card_name="Boseiju, Who Endures"
+        )
+        assert Mechanic.CHANNEL in result.mechanics
+
+    def test_devotion(self):
+        result = parse_oracle_text(
+            "When Gray Merchant of Asphodel enters the battlefield, each opponent loses X life, where X is your devotion to black.",
+            card_type="Creature", card_name="Gray Merchant of Asphodel"
+        )
+        assert Mechanic.DEVOTION in result.mechanics
+
+    def test_extra_combat(self):
+        result = parse_oracle_text(
+            "{3}{R}{R}: Untap all creatures you control. After this main phase, there is an additional combat phase followed by an additional main phase.",
+            card_type="Enchantment", card_name="Aggravated Assault"
+        )
+        assert Mechanic.EXTRA_COMBAT in result.mechanics
+
+    def test_counter_typed_spell(self):
+        result = parse_oracle_text("Counter target noncreature spell.", card_type="Instant", card_name="Negate")
+        assert Mechanic.COUNTER_SPELL in result.mechanics
+
+    def test_star_pt(self):
+        result = parse_oracle_text(
+            "Serra Avatar's power and toughness are each equal to your life total.",
+            card_type="Creature", card_name="Serra Avatar"
+        )
+        assert Mechanic.POWER_EQUAL_TO_X in result.mechanics
+
+    def test_choose_creature_type(self):
+        result = parse_oracle_text(
+            "As Metallic Mimic enters the battlefield, choose a creature type.",
+            card_type="Artifact Creature", card_name="Metallic Mimic"
+        )
+        assert Mechanic.CHOOSE_CREATURE_TYPE in result.mechanics
+
+    def test_spell_cost_more(self):
+        result = parse_oracle_text(
+            "Noncreature spells cost {1} more to cast.",
+            card_type="Creature", card_name="Thalia, Guardian of Thraben"
+        )
+        assert Mechanic.INCREASE_COST in result.mechanics
+
+    def test_spell_cost_less(self):
+        result = parse_oracle_text(
+            "Goblin spells you cast cost {1} less to cast.",
+            card_type="Creature", card_name="Goblin Warchief"
+        )
+        assert Mechanic.REDUCE_COST in result.mechanics
+
+    def test_ascend_keyword(self):
+        result = parse_oracle_text(
+            "Ascend\nAt the beginning of your upkeep, if you have the city's blessing, reveal the top card of your library and put it into your hand. You lose life equal to its mana value.",
+            card_type="Creature", card_name="Twilight Prophet"
+        )
+        assert Mechanic.ASCEND in result.mechanics
+
+    def test_venture(self):
+        result = parse_oracle_text(
+            "When Clattering Skeletons dies, venture into the dungeon.",
+            card_type="Creature", card_name="Clattering Skeletons"
+        )
+        assert Mechanic.VENTURE in result.mechanics
+
+    def test_conditional_evasion(self):
+        result = parse_oracle_text(
+            "Each creature you control with power 2 or less can't be blocked by creatures with power 3 or greater.",
+            card_type="Creature", card_name="Delney, Streetwise Lookout"
+        )
+        assert Mechanic.CONDITIONAL_UNBLOCKABLE in result.mechanics
+
+    def test_edict_effect(self):
+        result = parse_oracle_text(
+            "When Fleshbag Marauder enters the battlefield, each opponent sacrifices a creature.",
+            card_type="Creature", card_name="Fleshbag Marauder"
+        )
+        assert Mechanic.EDICT_EFFECT in result.mechanics
+
+    def test_mass_discard(self):
+        result = parse_oracle_text(
+            "When Syphon Mind enters, each opponent discards a card. Draw a card for each card discarded this way.",
+            card_type="Sorcery", card_name="Syphon Mind"
+        )
+        assert Mechanic.MASS_DISCARD_OPPONENT in result.mechanics
+
+    def test_ability_shutdown(self):
+        result = parse_oracle_text(
+            "Activated abilities of artifacts can't be activated.",
+            card_type="Creature", card_name="Collector Ouphe"
+        )
+        assert Mechanic.ABILITY_SHUTDOWN in result.mechanics
+
+    def test_replicate_keyword(self):
+        result = parse_oracle_text(
+            "Replicate {1}{R}\nShattering Spree deals 1 damage to target artifact.",
+            card_type="Sorcery", card_name="Shattering Spree"
+        )
+        assert Mechanic.REPLICATE in result.mechanics
+
+    def test_scavenge_keyword(self):
+        result = parse_oracle_text("Scavenge {4}{B}{G}", card_type="Creature", card_name="Deadbridge Goliath")
+        assert Mechanic.SCAVENGE in result.mechanics
+
+    def test_level_up_keyword(self):
+        result = parse_oracle_text(
+            "Level up {1}\nLEVEL 1-2: 4/4\nLEVEL 3+: Hexproof, 6/6",
+            card_type="Creature", card_name="Hexdrinker"
+        )
+        assert Mechanic.LEVEL_UP in result.mechanics
+
+    def test_kicked_confidence(self):
+        """Kicked condition should be consumed for confidence."""
+        result = parse_oracle_text(
+            "Kicker {2}{B}\nWhen Gatekeeper of Malakir enters the battlefield, if it was kicked, target player sacrifices a creature.",
+            card_type="Creature", card_name="Gatekeeper of Malakir"
+        )
+        assert result.confidence > 0.4
+
+    def test_protection_from_confidence(self):
+        """Protection from color should be consumed."""
+        result = parse_oracle_text("Protection from white", card_type="Creature", card_name="Black Knight")
+        assert result.confidence > 0.5
