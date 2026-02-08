@@ -17,6 +17,8 @@ Then open http://localhost:8000 in your browser.
 """
 
 import argparse
+import csv
+import io
 import json
 import os
 import re
@@ -106,7 +108,10 @@ if METADATA:
     print(f"Legendary creatures: {IS_LEGENDARY.sum()}")
 
 # Load sample collection for "Use Sample" button
-SAMPLE_COLLECTION_PATH = os.path.join(PROJECT_ROOT, "data", "sample_collection.csv")
+# Prefer real Manabox collection if available, fall back to sample
+_MANABOX_PATH = os.path.join(PROJECT_ROOT, "decks", "manabox.csv")
+_SAMPLE_PATH = os.path.join(PROJECT_ROOT, "data", "sample_collection.csv")
+SAMPLE_COLLECTION_PATH = _MANABOX_PATH if os.path.exists(_MANABOX_PATH) else _SAMPLE_PATH
 SAMPLE_COLLECTION_TEXT = ""
 if os.path.exists(SAMPLE_COLLECTION_PATH):
     with open(SAMPLE_COLLECTION_PATH) as f:
@@ -313,8 +318,10 @@ def parse_manabox_collection(text: str) -> list[tuple[int, str]]:
 
     # Detect Manabox CSV by header
     if lines and "," in lines[0] and ("name" in lines[0].lower() or "manabox" in lines[0].lower()):
-        # Find column indices
-        header = [h.strip().strip('"').lower() for h in lines[0].split(",")]
+        # Use csv.reader for proper handling of quoted fields (commas in card names)
+        reader = csv.reader(io.StringIO(text.strip()))
+        header_row = next(reader)
+        header = [h.strip().lower() for h in header_row]
         name_idx = None
         qty_idx = None
         for i, h in enumerate(header):
@@ -324,19 +331,16 @@ def parse_manabox_collection(text: str) -> list[tuple[int, str]]:
                 qty_idx = i
         if name_idx is None:
             name_idx = 0
-        for line in lines[1:]:
-            if not line.strip():
+        for cols in reader:
+            if not cols or len(cols) <= name_idx:
                 continue
-            cols = line.split(",")
-            if len(cols) <= name_idx:
-                continue
-            card_name = cols[name_idx].strip().strip('"')
+            card_name = cols[name_idx].strip()
             if not card_name:
                 continue
             qty = 1
             if qty_idx is not None and qty_idx < len(cols):
                 try:
-                    qty = int(cols[qty_idx].strip().strip('"'))
+                    qty = int(cols[qty_idx].strip())
                 except ValueError:
                     qty = 1
             results.append((qty, card_name))
