@@ -134,6 +134,12 @@ variable "imitation_train_hidden_dim" {
   default     = 256
 }
 
+variable "imitation_train_learning_rate" {
+  description = "Learning rate for imitation model training"
+  type        = string
+  default     = "0.001"
+}
+
 variable "auto_shutdown" {
   description = "Auto-shutdown instance after training completes (saves cost)"
   type        = bool
@@ -631,11 +637,13 @@ resource "aws_spot_instance_request" "training" {
       workers       = var.imitation_workers
       auto_shutdown = var.auto_shutdown ? "true" : "false"
     }) : var.training_mode == "imitation_train" ? templatefile("${path.module}/imitation_train_userdata.sh.tpl", {
-      s3_bucket     = aws_s3_bucket.checkpoints.bucket
-      epochs        = var.imitation_train_epochs
-      batch_size    = var.training_batch_size
-      hidden_dim    = var.imitation_train_hidden_dim
-      auto_shutdown = var.auto_shutdown ? "true" : "false"
+      s3_bucket      = aws_s3_bucket.checkpoints.bucket
+      ecr_repo       = aws_ecr_repository.training.repository_url
+      epochs         = var.imitation_train_epochs
+      batch_size     = var.training_batch_size
+      hidden_dim     = var.imitation_train_hidden_dim
+      learning_rate  = var.imitation_train_learning_rate
+      auto_shutdown  = var.auto_shutdown ? "true" : "false"
     }) : templatefile("${path.module}/training_userdata.sh.tpl", {
       s3_bucket     = aws_s3_bucket.checkpoints.bucket
       sets          = join(" ", var.training_sets)
@@ -678,11 +686,13 @@ resource "aws_instance" "training" {
       workers       = var.imitation_workers
       auto_shutdown = var.auto_shutdown ? "true" : "false"
     }) : var.training_mode == "imitation_train" ? templatefile("${path.module}/imitation_train_userdata.sh.tpl", {
-      s3_bucket     = aws_s3_bucket.checkpoints.bucket
-      epochs        = var.imitation_train_epochs
-      batch_size    = var.training_batch_size
-      hidden_dim    = var.imitation_train_hidden_dim
-      auto_shutdown = var.auto_shutdown ? "true" : "false"
+      s3_bucket      = aws_s3_bucket.checkpoints.bucket
+      ecr_repo       = aws_ecr_repository.training.repository_url
+      epochs         = var.imitation_train_epochs
+      batch_size     = var.training_batch_size
+      hidden_dim     = var.imitation_train_hidden_dim
+      learning_rate  = var.imitation_train_learning_rate
+      auto_shutdown  = var.auto_shutdown ? "true" : "false"
     }) : templatefile("${path.module}/training_userdata.sh.tpl", {
       s3_bucket     = aws_s3_bucket.checkpoints.bucket
       sets          = join(" ", var.training_sets)
