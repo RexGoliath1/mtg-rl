@@ -57,6 +57,8 @@ def load_deck_pool() -> List[str]:
     for deck_dir in [MODERN_DECKS_DIR, ROOT_DECKS_DIR]:
         if deck_dir.exists():
             for dck in deck_dir.glob("*.dck"):
+                if ' ' in dck.name:
+                    continue
                 decks.append(dck.name)
 
     if not decks:
@@ -120,8 +122,9 @@ def collect_training_game(
     cards_seen = set()
 
     try:
-        # Start game in interactive mode (-i) so daemon sends DECISION: data
-        cmd = f"NEWGAME {deck1} {deck2} -i -q -c {timeout}"
+        # Start game in interactive mode (-i) so daemon sends DECISION:
+        # data for each decision point and waits for our response.
+        cmd = f"NEWGAME {deck1} {deck2} -i -c {timeout}"
         if seed is not None:
             cmd += f" -s {seed}"
 
@@ -135,6 +138,7 @@ def collect_training_game(
                 break
 
             line = line.strip()
+            logger.debug("DAEMON: %s", line[:200])
             if line.startswith("DECISION:"):
                 try:
                     data = json.loads(line[9:])
@@ -149,6 +153,25 @@ def collect_training_game(
                     ai_choice = data.get("ai_choice", {})
                     if isinstance(ai_choice, dict) and ai_choice.get("card"):
                         cards_seen.add(ai_choice["card"])
+
+                    # Auto-respond so the daemon can proceed to the
+                    # next decision.  We pick the simplest legal action
+                    # for each decision type -- the goal is data
+                    # collection, not optimal play.
+                    decision_type = data.get("decision_type", "")
+                    if decision_type in ("declare_attackers",
+                                         "declare_blockers",
+                                         "choose_cards"):
+                        response = ""
+                    elif decision_type == "confirm_action":
+                        response = "y"
+                    elif decision_type == "announce_value":
+                        response = "0"
+                    else:
+                        # choose_action and any unknown types
+                        response = "0"
+                    wfile.write(response + "\n")
+                    wfile.flush()
 
                 except json.JSONDecodeError:
                     logger.warning("Failed to parse DECISION JSON line")
