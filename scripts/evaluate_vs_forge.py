@@ -5,8 +5,13 @@ Evaluate Trained Agent vs Forge AI
 Loads an imitation learning checkpoint and plays games against Forge daemon.
 Tracks win rate, game length, decisions made, and other metrics.
 
+Supports multiple MTG formats via --format flag (commander, modern, standard).
+Format selection controls default deck directory and evaluation metadata;
+Forge daemon handles actual rules enforcement server-side.
+
 Usage:
     python3 scripts/evaluate_vs_forge.py --checkpoint checkpoints/imitation_best.pt --games 10
+    python3 scripts/evaluate_vs_forge.py --checkpoint checkpoints/imitation_best.pt --games 50 --format modern
     python3 scripts/evaluate_vs_forge.py --checkpoint checkpoints/imitation_best.pt --games 50 --deck1 decks/red_aggro.dck --deck2 decks/white_weenie.dck
 """
 
@@ -19,6 +24,7 @@ from typing import Optional
 import torch
 
 from src.forge.forge_client import ForgeClient
+from src.forge.game_config import FORMAT_NAMES, FormatConfig, get_format
 from src.forge.state_mapper import ForgeNetworkAgent, StateMapper
 from src.training.self_play import AlphaZeroNetwork
 
@@ -33,6 +39,7 @@ class GameStats:
     duration_seconds: float
     our_final_life: int
     opponent_final_life: int
+    format_name: str = "modern"
     timeout: bool = False
     error: bool = False
     error_msg: str = ""
@@ -44,12 +51,14 @@ class ForgeEvaluator:
     def __init__(
         self,
         network: AlphaZeroNetwork,
+        format_config: FormatConfig,
         host: str = "localhost",
         port: int = 17171,
         timeout: int = 120,
         our_player_name: str = "Player0",
     ):
         self.network = network
+        self.format_config = format_config
         self.host = host
         self.port = port
         self.timeout = timeout
@@ -87,6 +96,7 @@ class ForgeEvaluator:
             duration_seconds=0.0,
             our_final_life=0,
             opponent_final_life=0,
+            format_name=self.format_config.name,
         )
 
         client = ForgeClient(self.host, self.port, timeout=self.timeout)
@@ -172,12 +182,15 @@ class ForgeEvaluator:
             Dictionary of aggregate statistics
         """
         self.stats = []
+        fmt = self.format_config
 
         if verbose:
             print(f"\n{'='*60}")
             print("Evaluating network vs Forge AI")
-            print(f"Decks: {deck1} vs {deck2}")
-            print(f"Games: {num_games}")
+            print(f"Format:  {fmt.name} (life={fmt.starting_life}, "
+                  f"deck_size={fmt.deck_size}, max_players={fmt.max_players})")
+            print(f"Decks:   {deck1} vs {deck2}")
+            print(f"Games:   {num_games}")
             print(f"{'='*60}\n")
 
         for game_id in range(1, num_games + 1):
@@ -218,6 +231,8 @@ class ForgeEvaluator:
         avg_duration = sum(s.duration_seconds for s in completed) / len(completed) if completed else 0.0
 
         summary = {
+            "format": self.format_config.name,
+            "starting_life": self.format_config.starting_life,
             "total_games": total,
             "completed": len(completed),
             "wins": wins,
@@ -232,8 +247,10 @@ class ForgeEvaluator:
 
         if verbose:
             print(f"\n{'='*60}")
-            print("EVALUATION SUMMARY")
+            print(f"EVALUATION SUMMARY ({self.format_config.name.upper()})")
             print(f"{'='*60}")
+            print(f"Format:          {self.format_config.name}")
+            print(f"Starting Life:   {self.format_config.starting_life}")
             print(f"Total Games:     {total}")
             print(f"Completed:       {len(completed)}")
             print(f"Wins:            {wins}")
@@ -247,6 +264,34 @@ class ForgeEvaluator:
             print(f"{'='*60}\n")
 
         return summary
+
+
+def _resolve_default_decks(
+    fmt: FormatConfig,
+    deck1_arg: Optional[str],
+    deck2_arg: Optional[str],
+) -> tuple[str, str]:
+    """Pick sensible default decks based on format when not explicitly provided.
+
+    Returns:
+        (deck1_path, deck2_path)
+    """
+    if deck1_arg is not None and deck2_arg is not None:
+        return deck1_arg, deck2_arg
+
+    # Pick first two .dck files from the format's default deck directory
+    deck_dir = Path(fmt.default_deck_dir)
+    if deck_dir.is_dir():
+        dck_files = sorted(deck_dir.glob("*.dck"))
+        if len(dck_files) >= 2:
+            d1 = deck1_arg or str(dck_files[0])
+            d2 = deck2_arg or str(dck_files[1])
+            return d1, d2
+
+    # Fallback to root-level decks
+    d1 = deck1_arg or "decks/red_aggro.dck"
+    d2 = deck2_arg or "decks/white_weenie.dck"
+    return d1, d2
 
 
 def main():
@@ -264,6 +309,13 @@ def main():
         help="Number of games to play (default: 10)",
     )
     parser.add_argument(
+        "--format",
+        type=str,
+        choices=FORMAT_NAMES,
+        default="modern",
+        help="MTG format: commander, modern, or standard (default: modern)",
+    )
+    parser.add_argument(
         "--host",
         type=str,
         default="localhost",
@@ -278,14 +330,14 @@ def main():
     parser.add_argument(
         "--deck1",
         type=str,
-        default="decks/red_aggro.dck",
-        help="Path to our deck (default: decks/red_aggro.dck)",
+        default=None,
+        help="Path to our deck (default: auto-selected from format's deck directory)",
     )
     parser.add_argument(
         "--deck2",
         type=str,
-        default="decks/white_weenie.dck",
-        help="Path to opponent deck (default: decks/white_weenie.dck)",
+        default=None,
+        help="Path to opponent deck (default: auto-selected from format's deck directory)",
     )
     parser.add_argument(
         "--timeout",
@@ -302,6 +354,14 @@ def main():
 
     args = parser.parse_args()
 
+    # Resolve format configuration
+    fmt = get_format(args.format)
+    print(f"Format: {fmt.name} (life={fmt.starting_life}, deck_size={fmt.deck_size}, "
+          f"max_players={fmt.max_players})")
+
+    # Resolve deck paths (auto-select from format directory if not specified)
+    deck1_str, deck2_str = _resolve_default_decks(fmt, args.deck1, args.deck2)
+
     # Validate checkpoint exists
     checkpoint_path = Path(args.checkpoint)
     if not checkpoint_path.exists():
@@ -309,13 +369,13 @@ def main():
         return 1
 
     # Validate decks exist
-    deck1_path = Path(args.deck1)
-    deck2_path = Path(args.deck2)
+    deck1_path = Path(deck1_str)
+    deck2_path = Path(deck2_str)
     if not deck1_path.exists():
-        print(f"Error: Deck not found: {args.deck1}")
+        print(f"Error: Deck not found: {deck1_str}")
         return 1
     if not deck2_path.exists():
-        print(f"Error: Deck not found: {args.deck2}")
+        print(f"Error: Deck not found: {deck2_str}")
         return 1
 
     # Load network
@@ -328,6 +388,7 @@ def main():
     # Create evaluator
     evaluator = ForgeEvaluator(
         network=network,
+        format_config=fmt,
         host=args.host,
         port=args.port,
         timeout=args.timeout,
