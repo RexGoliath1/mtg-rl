@@ -160,19 +160,21 @@ class MechanicsCache:
     Loads from HDF5 and provides fast lookup by card name.
     """
 
-    def __init__(self, h5_path: str):
+    def __init__(self, h5_path: str, vocab_size: int = 1403, max_params: int = 37):
         """
         Load mechanics embeddings from HDF5 file.
 
         Args:
             h5_path: Path to card_mechanics_*.h5 file
+            vocab_size: Fallback vocab size when HDF5 is unavailable
+            max_params: Fallback max params when HDF5 is unavailable
         """
         self.h5_path = h5_path
         self.mechanics_matrix = None
         self.params_matrix = None
         self.card_index = {}
-        self.vocab_size = 0
-        self.max_params = 0
+        self.vocab_size = vocab_size
+        self.max_params = max_params
         self._loaded = False
 
         self._load()
@@ -209,8 +211,8 @@ class MechanicsCache:
         """
         if not self._loaded:
             return (
-                np.zeros(self.vocab_size or 1311, dtype=np.float32),
-                np.zeros(self.max_params or 20, dtype=np.float32)
+                np.zeros(self.vocab_size, dtype=np.float32),
+                np.zeros(self.max_params, dtype=np.float32)
             )
 
         idx = self.card_index.get(card_name)
@@ -969,7 +971,11 @@ class ForgeGameStateEncoder(nn.Module):
         self.config = config or GameStateConfig()
 
         # Load mechanics cache
-        self.mechanics_cache = MechanicsCache(self.config.mechanics_h5_path)
+        self.mechanics_cache = MechanicsCache(
+            self.config.mechanics_h5_path,
+            vocab_size=self.config.vocab_size,
+            max_params=self.config.max_params,
+        )
 
         # Shared card embedding MLP (used by all zone encoders and stack encoder)
         # 42 = state features (zone 8 + bools 7 + counters 10 + combat 4 + mods 2 + temporal 1 + types 7 + P/T 2 + CMC 1)
@@ -1329,132 +1335,3 @@ class ForgeGameStateEncoder(nn.Module):
         encoder = cls(checkpoint['config'])
         encoder.load_state_dict(checkpoint['state_dict'])
         return encoder
-
-
-# =============================================================================
-# TESTING
-# =============================================================================
-
-def test_game_state_encoder():
-    """Test the game state encoder."""
-    print("=" * 70)
-    print("Testing Forge Game State Encoder")
-    print("=" * 70)
-
-    # Create encoder
-    config = GameStateConfig()
-    encoder = ForgeGameStateEncoder(config)
-
-    # Count parameters
-    total_params = sum(p.numel() for p in encoder.parameters())
-    print(f"\nEncoder parameters: {total_params:,}")
-
-    # Test with mock game state (includes new per-card and per-player fields)
-    mock_state = {
-        "turn": 5,
-        "phase": "main1",
-        "activePlayer": 0,
-        "priorityPlayer": 0,
-        "players": [
-            {
-                "id": 0,
-                "name": "Player1",
-                "life": 20,
-                "poison": 0,
-                "library_size": 50,
-                "hand_size": 3,
-                "lands_played_this_turn": 1,
-                "max_land_plays": 1,
-                "has_lost": False,
-                "mana": {"W": 2, "U": 0, "B": 0, "R": 1, "G": 1, "C": 3},
-                "hand": [
-                    {"name": "Lightning Bolt", "id": 1, "is_instant": True, "cmc": 1},
-                    {"name": "Counterspell", "id": 2, "is_instant": True, "cmc": 2},
-                    {"name": "Sol Ring", "id": 3, "is_artifact": True, "cmc": 1},
-                ],
-                "battlefield": [
-                    {"name": "Grizzly Bears", "id": 10, "tapped": False, "is_creature": True, "power": 2, "toughness": 2, "cmc": 2},
-                    {"name": "Forest", "id": 11, "tapped": True, "is_land": True},
-                    {"name": "Mountain", "id": 12, "tapped": False, "is_land": True},
-                ],
-                "graveyard": [
-                    {"name": "Giant Growth", "id": 20, "is_instant": True, "cmc": 1},
-                ],
-                "exile": [],
-                "command": [],
-            },
-            {
-                "id": 1,
-                "name": "Opponent",
-                "life": 18,
-                "poison": 2,
-                "library_size": 45,
-                "hand_size": 2,
-                "lands_played_this_turn": 0,
-                "max_land_plays": 1,
-                "has_lost": False,
-                "mana": {"W": 0, "U": 2, "B": 0, "R": 0, "G": 0, "C": 2},
-                "hand": [
-                    {"name": "Unknown Card", "id": 100},
-                    {"name": "Unknown Card", "id": 101},
-                ],
-                "battlefield": [
-                    {"name": "Snapcaster Mage", "id": 110, "tapped": False, "is_creature": True, "power": 2, "toughness": 1, "cmc": 2},
-                    {"name": "Island", "id": 111, "tapped": True, "is_land": True},
-                    {"name": "Island", "id": 112, "tapped": True, "is_land": True},
-                ],
-                "graveyard": [],
-                "exile": [],
-                "command": [],
-            },
-        ],
-        "stack": [],
-        "legalActions": ["cast:1:Lightning Bolt", "pass"],
-    }
-
-    print("\nEncoding mock game state...")
-    encoder.eval()
-    with torch.no_grad():
-        state_embedding = encoder.encode_json(mock_state)
-
-    print(f"State embedding shape: {state_embedding.shape}")
-    print(f"State embedding mean: {state_embedding.mean().item():.4f}")
-    print(f"State embedding std: {state_embedding.std().item():.4f}")
-
-    # Test with stack
-    mock_state_with_stack = mock_state.copy()
-    mock_state_with_stack["stack"] = [
-        {"name": "Lightning Bolt", "id": 1, "targets": [110]},
-    ]
-
-    print("\nEncoding state with stack...")
-    with torch.no_grad():
-        state_with_stack = encoder.encode_json(mock_state_with_stack)
-
-    print(f"State (with stack) shape: {state_with_stack.shape}")
-
-    # Check embeddings are different
-    diff = (state_embedding - state_with_stack).abs().mean().item()
-    print(f"Difference from empty stack: {diff:.4f}")
-
-    # Test save/load
-    print("\nTesting save/load...")
-    encoder.save("/tmp/test_forge_encoder.pt")
-    loaded = ForgeGameStateEncoder.load("/tmp/test_forge_encoder.pt")
-    loaded.eval()
-
-    # Re-encode with original to get consistent comparison
-    with torch.no_grad():
-        orig_emb = encoder.encode_json(mock_state)
-        loaded_emb = loaded.encode_json(mock_state)
-
-    load_diff = (orig_emb - loaded_emb).abs().max().item()
-    print(f"Load difference (should be ~0): {load_diff:.6f}")
-
-    print("\n" + "=" * 70)
-    print("Forge Game State Encoder test completed!")
-    print("=" * 70)
-
-
-if __name__ == "__main__":
-    test_game_state_encoder()
