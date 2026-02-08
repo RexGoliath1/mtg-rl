@@ -37,12 +37,19 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from safetensors.torch import save_file as safetensors_save, load_file as safetensors_load
 
+try:
+    from torch.utils.tensorboard import SummaryWriter
+    TB_AVAILABLE = True
+except ImportError:
+    TB_AVAILABLE = False
+
 from src.forge.game_state_encoder import ForgeGameStateEncoder, GameStateConfig
 from src.forge.policy_value_heads import (
     PolicyHead, ValueHead, PolicyValueConfig, ActionConfig,
     create_action_mask, decode_action
 )
 from src.forge.mcts import MCTS, MCTSConfig, SimulatedForgeClient, ForgeClientInterface
+from src.utils.wandb_integration import WandbTracker, WANDB_AVAILABLE
 
 
 # =============================================================================
@@ -82,6 +89,11 @@ class SelfPlayConfig:
     checkpoint_dir: str = "checkpoints/selfplay"
     checkpoint_interval: int = 10  # Iterations between checkpoints
     eval_interval: int = 20  # Iterations between evaluation
+
+    # Logging
+    use_tensorboard: bool = False
+    tb_log_dir: str = "runs/selfplay"
+    use_wandb: bool = False
 
     # Device
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
@@ -536,6 +548,34 @@ class SelfPlayTrainer:
         self.total_games = 0
         self.total_samples = 0
 
+        # --- TensorBoard ---
+        self.tb_writer: Optional[SummaryWriter] = None
+        if self.config.use_tensorboard and TB_AVAILABLE:
+            self.tb_writer = SummaryWriter(log_dir=self.config.tb_log_dir)
+            print(f"[TensorBoard] Logging to {self.config.tb_log_dir}")
+        elif self.config.use_tensorboard and not TB_AVAILABLE:
+            print("[TensorBoard] Not available (install tensorboard)")
+
+        # --- Weights & Biases ---
+        self.wandb_tracker: Optional[WandbTracker] = None
+        if self.config.use_wandb and WANDB_AVAILABLE:
+            self.wandb_tracker = WandbTracker(
+                project="mtg-selfplay",
+                config={
+                    "games_per_iteration": self.config.games_per_iteration,
+                    "mcts_simulations": self.config.mcts_simulations,
+                    "batch_size": self.config.batch_size,
+                    "learning_rate": self.config.learning_rate,
+                    "epochs_per_iteration": self.config.epochs_per_iteration,
+                    "replay_buffer_size": self.config.replay_buffer_size,
+                },
+                tags=["self-play", "alphazero"],
+                notes="AlphaZero self-play training",
+            )
+            print("[W&B] Logging enabled")
+        elif self.config.use_wandb and not WANDB_AVAILABLE:
+            print("[W&B] wandb not installed -- skipping")
+
     def run_iteration(self) -> Dict[str, Any]:
         """
         Run one training iteration.
@@ -550,9 +590,11 @@ class SelfPlayTrainer:
         # 1. Self-play phase
         print(f"\n[Iteration {self.iteration}] Self-play phase...")
         games_samples = []
+        per_game_lengths = []
         for game_idx in range(self.config.games_per_iteration):
             samples = self.actor.play_game()
             games_samples.extend(samples)
+            per_game_lengths.append(len(samples))
             self.replay_buffer.add_game(samples)
             print(f"  Game {game_idx + 1}/{self.config.games_per_iteration}: "
                   f"{len(samples)} moves")
@@ -577,7 +619,37 @@ class SelfPlayTrainer:
             stats["policy_loss"] = np.mean([e["policy_loss"] for e in epoch_stats])
             stats["value_loss"] = np.mean([e["value_loss"] for e in epoch_stats])
 
-        # 3. Checkpointing
+        # 3. Log metrics
+        if epoch_stats and "skipped" not in epoch_stats[-1]:
+            step = self.iteration
+
+            # TensorBoard
+            if self.tb_writer is not None:
+                self.tb_writer.add_scalar("selfplay/policy_loss", stats["policy_loss"], step)
+                self.tb_writer.add_scalar("selfplay/value_loss", stats["value_loss"], step)
+                self.tb_writer.add_scalar("selfplay/games_played", self.total_games, step)
+                self.tb_writer.add_scalar("selfplay/buffer_size", stats["buffer_size"], step)
+                self.tb_writer.add_scalar("selfplay/samples_collected", stats["samples_collected"], step)
+
+            # W&B
+            if self.wandb_tracker is not None:
+                self.wandb_tracker.log_metrics({
+                    "selfplay/policy_loss": stats["policy_loss"],
+                    "selfplay/value_loss": stats["value_loss"],
+                    "selfplay/games_played": self.total_games,
+                    "selfplay/buffer_size": stats["buffer_size"],
+                    "selfplay/samples_collected": stats["samples_collected"],
+                }, step=step)
+
+        # Per-game metrics (logged for each game in the iteration)
+        for game_idx, game_len in enumerate(per_game_lengths):
+            game_num = self.total_games - self.config.games_per_iteration + game_idx + 1
+            if self.tb_writer is not None:
+                self.tb_writer.add_scalar("selfplay/game_length", game_len, game_num)
+            if self.wandb_tracker is not None:
+                self.wandb_tracker.log_game({"game_length": game_len}, game_num)
+
+        # 4. Checkpointing
         if self.iteration % self.config.checkpoint_interval == 0:
             self._save_checkpoint()
 
@@ -621,6 +693,9 @@ class SelfPlayTrainer:
         # Final checkpoint
         self._save_checkpoint()
 
+        # Close loggers
+        self.close()
+
     def _save_checkpoint(self):
         """Save training checkpoint."""
         os.makedirs(self.config.checkpoint_dir, exist_ok=True)
@@ -636,6 +711,16 @@ class SelfPlayTrainer:
             "config": self.config,
         }, path)
         print(f"Saved checkpoint: {path}")
+
+    def close(self):
+        """Flush and close TensorBoard writer and W&B tracker."""
+        if self.tb_writer is not None:
+            self.tb_writer.flush()
+            self.tb_writer.close()
+            self.tb_writer = None
+        if self.wandb_tracker is not None:
+            self.wandb_tracker.finish()
+            self.wandb_tracker = None
 
 
 # =============================================================================
