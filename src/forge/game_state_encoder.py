@@ -69,17 +69,17 @@ class GameStateConfig:
     max_players: int = 4
 
     # Architecture
-    d_model: int = 384  # Internal embedding dimension
-    n_heads: int = 6
+    d_model: int = 512  # Internal embedding dimension
+    n_heads: int = 8
     n_layers: int = 3
-    d_ff: int = 768
+    d_ff: int = 1024
     dropout: float = 0.1
 
     # Output dimensions
-    card_embedding_dim: int = 384  # Per-card encoding
-    zone_embedding_dim: int = 384  # Per-zone aggregated encoding
-    global_embedding_dim: int = 128  # Game-level features
-    output_dim: int = 512  # Final combined state embedding
+    card_embedding_dim: int = 512  # Per-card encoding
+    zone_embedding_dim: int = 512  # Per-zone aggregated encoding
+    global_embedding_dim: int = 192  # Game-level features
+    output_dim: int = 768  # Final combined state embedding
 
     @property
     def total_max_cards(self) -> int:
@@ -623,32 +623,32 @@ class GlobalEncoder(nn.Module):
 
         # Life total encoding (binary for each player)
         self.life_embed = nn.Sequential(
-            nn.Linear(config.life_bits * config.max_players, 64),
+            nn.Linear(config.life_bits * config.max_players, 96),
             nn.GELU(),
         )
 
         # Mana encoding (per player, per color)
         mana_dim = config.mana_colors * config.max_players
         self.mana_embed = nn.Sequential(
-            nn.Linear(mana_dim, 64),
+            nn.Linear(mana_dim, 96),
             nn.GELU(),
         )
 
         # Turn/phase encoding
         self.turn_embed = nn.Sequential(
-            nn.Linear(1 + 14, 32),  # turn number + phase one-hot
+            nn.Linear(1 + 14, 48),  # turn number + phase one-hot
             nn.GELU(),
         )
 
         # Priority/active player encoding
         self.priority_embed = nn.Sequential(
-            nn.Linear(config.max_players * 2, 32),  # active + priority
+            nn.Linear(config.max_players * 2, 48),  # active + priority
             nn.GELU(),
         )
 
         # Combine all global features
         self.combine = nn.Sequential(
-            nn.Linear(64 + 64 + 32 + 32, config.global_embedding_dim),
+            nn.Linear(96 + 96 + 48 + 48, config.global_embedding_dim),
             nn.LayerNorm(config.global_embedding_dim),
             nn.GELU(),
         )
@@ -900,7 +900,7 @@ class ForgeGameStateEncoder(nn.Module):
         # Shared card embedding MLP (used by all zone encoders and stack encoder)
         input_dim = self.config.vocab_size + self.config.max_params + 32  # 32 = state features
         self.card_embedding = CardEmbeddingMLP(
-            input_dim, 768, self.config.d_model, self.config.dropout
+            input_dim, 1024, self.config.d_model, self.config.dropout
         )
 
         # Zone encoders (one per zone type, sharing card embedding)

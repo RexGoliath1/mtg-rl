@@ -136,15 +136,15 @@ class PolicyValueConfig:
     """Configuration for policy and value heads."""
 
     # Input dimension (from game state encoder)
-    state_dim: int = 512
+    state_dim: int = 768
 
     # Policy head
-    policy_hidden_dim: int = 256
+    policy_hidden_dim: int = 384
     policy_n_layers: int = 3
     policy_dropout: float = 0.1
 
     # Value head
-    value_hidden_dim: int = 256
+    value_hidden_dim: int = 384
     value_n_layers: int = 2
     value_dropout: float = 0.1
 
