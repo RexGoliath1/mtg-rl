@@ -1,6 +1,9 @@
 name: Tests
 on: [push, pull_request]
 
+env:
+  AWS_REGION: us-east-1
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
@@ -38,6 +41,7 @@ jobs:
           name: documentation
           path: docs/_build/html/
 
+  # Build-only validation on all pushes and PRs
   docker-build:
     runs-on: ubuntu-latest
     steps:
@@ -65,29 +69,63 @@ jobs:
           cache-from: type=gha,scope=training
           cache-to: type=gha,mode=max,scope=training
 
-  docker-build-forge:
+  # Build + push to ECR on main branch only
+  ecr-push:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [lint-and-test, docker-build]
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Dockerfile.daemon
+      - name: Build and push collection image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile.collection
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/mtg-rl-collection:latest
+            ${{ steps.ecr-login.outputs.registry }}/mtg-rl-collection:${{ github.sha }}
+          cache-from: type=gha,scope=collection
+          cache-to: type=gha,mode=max,scope=collection
+
+      - name: Build and push daemon image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: infrastructure/docker/Dockerfile.daemon
-          push: false
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/mtg-rl-daemon:latest
+            ${{ steps.ecr-login.outputs.registry }}/mtg-rl-daemon:${{ github.sha }}
           cache-from: type=gha,scope=daemon
           cache-to: type=gha,mode=max,scope=daemon
 
-      - name: Build Dockerfile.sim
+      - name: Build and push training image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: infrastructure/docker/Dockerfile.sim
-          push: false
-          cache-from: type=gha,scope=sim
-          cache-to: type=gha,mode=max,scope=sim
+          file: infrastructure/docker/Dockerfile.training
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/mtg-rl-training:latest
+            ${{ steps.ecr-login.outputs.registry }}/mtg-rl-training:${{ github.sha }}
+          cache-from: type=gha,scope=training
+          cache-to: type=gha,mode=max,scope=training
