@@ -166,14 +166,16 @@ id_ed25519*
 *.pub
 ssh_keys/
 
-# Training data outputs (large, regeneratable)
+# Training data outputs (large, regeneratable, user decks)
 training_data/
 training_output/
 reports/
+user_decks/
 
 # User conversation buffer (notes, screenshots, inspiration docs)
 ClaudeConversation.txt
 ClaudeConversation/
+*Screenshot*.png
 
 # Archived documentation (key insights preserved in Claude memory)
 CARD_ENCODING.md

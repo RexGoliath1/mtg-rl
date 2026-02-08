@@ -543,8 +543,15 @@ def _kmeans_themes(vecs: np.ndarray, card_names: list[str], k: int, max_iter: in
 
     # Build theme info
     # Skip mechanics that are too generic for labeling
-    SKIP_LABEL = {"TRIGGERED_ABILITY", "ACTIVATED_ABILITY", "SORCERY_SPEED", "INSTANT_SPEED",
-                  "UNTIL_END_OF_TURN", "TARGET_CREATURE", "TARGET_PLAYER"}
+    # Mechanics too generic for theme labeling — every deck has these
+    SKIP_LABEL = {
+        "TRIGGERED_ABILITY", "ACTIVATED_ABILITY", "SORCERY_SPEED", "INSTANT_SPEED",
+        "UNTIL_END_OF_TURN", "TARGET_CREATURE", "TARGET_PLAYER",
+        # Mana/utility mechanics — universal, not deck-specific synergy
+        "ADD_MANA", "MANA_OF_ANY_COLOR", "MANA_FIXING", "TO_BATTLEFIELD_TAPPED",
+        "TUTOR_LAND", "SEARCH_LIBRARY", "TAP_FOR_EFFECT", "SACRIFICE_COST",
+        "ENTERS_THE_BATTLEFIELD", "MANA_COST", "COLOR_IDENTITY",
+    }
 
     themes = []
     for i in range(k):
@@ -568,7 +575,11 @@ def _kmeans_themes(vecs: np.ndarray, card_names: list[str], k: int, max_iter: in
 
         # Generate a readable label from top 2-3 mechanics
         label_parts = [m[0].replace("_", " ").title() for m in top_mechs[:3]]
-        label = " / ".join(label_parts) if label_parts else f"Theme {i+1}"
+        is_generic = len(top_mechs) == 0
+        if is_generic:
+            label = "Mana Base / Utility"
+        else:
+            label = " / ".join(label_parts)
 
         themes.append({
             "label": label,
@@ -576,6 +587,7 @@ def _kmeans_themes(vecs: np.ndarray, card_names: list[str], k: int, max_iter: in
             "centroid": centroid,
             "top_mechanics": top_mechs,
             "cluster_id": i,
+            "is_generic": is_generic,
         })
 
     return themes
@@ -589,6 +601,22 @@ BASIC_LANDS = {"Plains", "Island", "Swamp", "Mountain", "Forest",
                "Snow-Covered Plains", "Snow-Covered Island",
                "Snow-Covered Swamp", "Snow-Covered Mountain",
                "Snow-Covered Forest", "Wastes"}
+
+# Generic utility mechanics: present in most decks, not deck-specific synergy.
+# Downweight these in theme centroids so recommendations favor unique synergies.
+_GENERIC_UTILITY_NAMES = {
+    "ADD_MANA", "MANA_OF_ANY_COLOR", "MANA_FIXING", "TO_BATTLEFIELD_TAPPED",
+    "TUTOR_LAND", "SEARCH_LIBRARY", "TAP_FOR_EFFECT", "SACRIFICE_COST",
+    "ENTERS_THE_BATTLEFIELD", "MANA_COST", "COLOR_IDENTITY",
+    "TRIGGERED_ABILITY", "ACTIVATED_ABILITY", "SORCERY_SPEED", "INSTANT_SPEED",
+    "UNTIL_END_OF_TURN", "TARGET_CREATURE", "TARGET_PLAYER",
+}
+# Build index mask for fast numpy operations
+_NAME_TO_IDX = {name: val for val, name in MECHANIC_NAMES.items()}
+GENERIC_UTILITY_INDICES = np.array(
+    [_NAME_TO_IDX[n] for n in _GENERIC_UTILITY_NAMES if n in _NAME_TO_IDX],
+    dtype=int,
+)
 
 
 def get_mechanics_for_idx(idx: int) -> list[str]:
@@ -665,7 +693,13 @@ def recommend_by_themes(
     already_recommended = set()
 
     for theme in themes:
-        centroid = theme["centroid"].astype(np.float64)
+        centroid = theme["centroid"].astype(np.float64).copy()
+
+        # Downweight generic utility mechanics so recommendations favor
+        # deck-specific synergies over universal staples (mana rocks, etc.)
+        if len(GENERIC_UTILITY_INDICES) > 0:
+            centroid[GENERIC_UTILITY_INDICES] *= 0.15
+
         centroid_norm = np.sqrt((centroid ** 2).sum())
 
         if centroid_norm < 1e-8:
@@ -707,7 +741,9 @@ def recommend_by_themes(
             if name in CARD_INDEX:
                 scores[CARD_INDEX[name]] = 0
 
-        top_idx = np.argsort(-scores)[:cards_per_theme]
+        # Generic themes get fewer recommendations — users don't want 9 mana rocks
+        theme_limit = min(2, cards_per_theme) if theme.get("is_generic") else cards_per_theme
+        top_idx = np.argsort(-scores)[:theme_limit]
         recs = []
         for idx in top_idx:
             if scores[idx] <= 0:
