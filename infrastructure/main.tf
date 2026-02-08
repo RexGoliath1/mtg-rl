@@ -626,7 +626,7 @@ resource "aws_spot_instance_request" "training" {
   user_data = base64encode(
     var.training_mode == "imitation" ? templatefile("${path.module}/imitation_userdata.sh.tpl", {
       s3_bucket     = aws_s3_bucket.checkpoints.bucket
-      ecr_repo      = aws_ecr_repository.training.repository_url
+      ecr_repo      = aws_ecr_repository.daemon.repository_url
       num_games     = var.imitation_games
       workers       = var.imitation_workers
       auto_shutdown = var.auto_shutdown ? "true" : "false"
@@ -673,7 +673,7 @@ resource "aws_instance" "training" {
   user_data = base64encode(
     var.training_mode == "imitation" ? templatefile("${path.module}/imitation_userdata.sh.tpl", {
       s3_bucket     = aws_s3_bucket.checkpoints.bucket
-      ecr_repo      = aws_ecr_repository.training.repository_url
+      ecr_repo      = aws_ecr_repository.daemon.repository_url
       num_games     = var.imitation_games
       workers       = var.imitation_workers
       auto_shutdown = var.auto_shutdown ? "true" : "false"

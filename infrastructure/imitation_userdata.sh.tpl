@@ -1,11 +1,15 @@
 #!/bin/bash
 # =============================================================================
-# MTG RL Imitation Learning - Data Collection on AWS
+# MTG RL Imitation Learning - Docker-based Data Collection on AWS
 # =============================================================================
+# Pulls daemon + collection images from ECR and runs via docker compose.
+# No JDK, Maven, Python deps, or Xvfb needed on the instance.
+# =============================================================================
+set -ex
 exec > >(tee /var/log/imitation-setup.log) 2>&1
 
 echo "============================================================"
-echo "MTG RL Imitation Learning Data Collection"
+echo "MTG RL Imitation Learning Data Collection (Docker)"
 echo "Started at: $(date)"
 echo "============================================================"
 
@@ -14,131 +18,168 @@ S3_BUCKET="${s3_bucket}"
 ECR_REPO="${ecr_repo}"
 NUM_GAMES="${num_games}"
 WORKERS="${workers}"
+REGION="us-east-1"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+RUN_ID="collection_$${TIMESTAMP}"
 
 echo "Configuration:"
 echo "  S3 Bucket: $S3_BUCKET"
 echo "  ECR Repo: $ECR_REPO"
 echo "  Games: $NUM_GAMES"
 echo "  Workers: $WORKERS"
+echo "  Run ID: $RUN_ID"
 
-# Install Docker and EC2 Instance Connect (for keyless SSH via AWS CLI)
+# --- Instance metadata ---
+INSTANCE_TYPE=$(curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/instance-type 2>/dev/null || echo "unknown")
+INSTANCE_ID=$(curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "unknown")
+echo "Instance type: $INSTANCE_TYPE"
+echo "Instance ID: $INSTANCE_ID"
+echo "CPU cores: $(nproc)"
+echo "Memory: $(free -h | awk '/Mem:/ {print $2}')"
+
+# --- Install Docker ---
 echo ""
-echo "[1/5] Installing Docker and EC2 Instance Connect..."
-apt-get update -y
-# Note: python3.10-venv specifically needed on Ubuntu 22.04 Deep Learning AMI
-apt-get install -y docker.io python3-pip python3-venv python3.10-venv unzip htop ec2-instance-connect netcat
+echo "[1/4] Installing Docker..."
+apt-get update -y -qq
+apt-get install -y -qq docker.io docker-compose-v2 unzip > /dev/null
 systemctl start docker
 systemctl enable docker
-usermod -aG docker ubuntu
 
-# Ensure SSM agent is running (for AWS Systems Manager access)
+# Ensure SSM agent is running
 snap install amazon-ssm-agent --classic 2>/dev/null || true
 systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service 2>/dev/null || true
 systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service 2>/dev/null || true
 
-# Install AWS CLI
+# --- Install AWS CLI ---
 echo ""
-echo "[2/5] Checking AWS CLI..."
+echo "[2/4] Checking AWS CLI..."
 if ! command -v aws &> /dev/null; then
-    curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
     unzip -q awscliv2.zip
-    ./aws/install
+    ./aws/install --update
     rm -rf awscliv2.zip aws/
 fi
 
-# Login to ECR and pull Forge daemon image (amd64 version for EC2)
+# --- Pull Docker images from ECR ---
 echo ""
-echo "[3/5] Pulling Forge daemon from ECR..."
-aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin $ECR_REPO
-docker pull $ECR_REPO:daemon-latest
+echo "[3/4] Pulling Docker images from ECR..."
+# ECR_REPO is the full registry URL (e.g. 123456789.dkr.ecr.us-east-1.amazonaws.com/mtg-rl-training)
+# We need the registry base URL for login
+ECR_REGISTRY=$(echo "$ECR_REPO" | cut -d'/' -f1)
+aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-# Clone code using GitHub token from Secrets Manager
+# Pull daemon and collection images
+docker pull $ECR_REGISTRY/mtg-rl-daemon:latest
+docker pull $ECR_REGISTRY/mtg-rl-collection:latest
+echo "Images pulled successfully"
+docker images
+
+# --- Start background log uploader ---
+(
+    while true; do
+        sleep 300
+        aws s3 cp /var/log/imitation-setup.log \
+            "s3://$S3_BUCKET/imitation_data/$RUN_ID/live_log.txt" 2>/dev/null || true
+    done
+) &
+LOG_UPLOADER_PID=$!
+
+# --- Run data collection via Docker Compose ---
 echo ""
-echo "[4/5] Setting up collection environment..."
-cd /home/ubuntu
+echo "[4/4] Starting data collection..."
+mkdir -p /home/ubuntu/collection /home/ubuntu/training_data
 
-# Fetch GitHub token from AWS Secrets Manager
-GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
-    --secret-id mtg-rl/github-token \
-    --region us-west-2 \
-    --query SecretString \
-    --output text)
+cat > /home/ubuntu/collection/docker-compose.yml << COMPOSE_EOF
+services:
+  daemon:
+    image: $ECR_REGISTRY/mtg-rl-daemon:latest
+    container_name: mtg-daemon
+    ports:
+      - "17171:17171"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'STATUS' | nc -w 5 localhost 17171 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
 
-git clone https://$GITHUB_TOKEN@github.com/RexGoliath1/mtg-rl.git
-cd mtg-rl
+  collection:
+    image: $ECR_REGISTRY/mtg-rl-collection:latest
+    container_name: mtg-collection
+    depends_on:
+      daemon:
+        condition: service_healthy
+    volumes:
+      - /home/ubuntu/training_data:/app/training_data
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      python -u scripts/collect_ai_training_data.py
+      --games $NUM_GAMES
+      --workers $WORKERS
+      --host daemon
+      --port 17171
+      --output /app/training_data
+      --save-interval 500
+      --timeout 60
+COMPOSE_EOF
 
-# Fix ownership so ubuntu user can write
-chown -R ubuntu:ubuntu /home/ubuntu/mtg-rl
+cd /home/ubuntu/collection
+echo "=========================================="
+echo "STARTING DATA COLLECTION"
+echo "=========================================="
+echo "Games: $NUM_GAMES"
+echo "Workers: $WORKERS"
+date
 
-# Install Python deps globally (throwaway instance, no need for venv)
-pip3 install --upgrade pip
-pip3 install h5py numpy requests
+docker compose up --abort-on-container-exit --exit-code-from collection 2>&1 | tee /var/log/docker-compose.log
+COMPOSE_EXIT=$?
 
-# Create collection script
-echo ""
-echo "[5/5] Starting data collection..."
+echo "=========================================="
+echo "COLLECTION COMPLETE (exit code: $COMPOSE_EXIT)"
+echo "=========================================="
+date
 
-cat > /home/ubuntu/run_collection.sh << 'SCRIPT'
-#!/bin/bash
-cd /home/ubuntu/mtg-rl
+# Save daemon logs
+docker compose logs daemon > /var/log/forge-daemon.log 2>&1 || true
 
-S3_BUCKET="${s3_bucket}"
-NUM_GAMES="${num_games}"
-WORKERS="${workers}"
+# Stop log uploader
+kill $LOG_UPLOADER_PID 2>/dev/null || true
 
-# Start Forge daemon (amd64 version for EC2)
-echo "Starting Forge daemon..."
-docker run -d --name forge-daemon -p 17171:17171 ${ecr_repo}:daemon-latest
-
-# Wait for daemon to be ready
-echo "Waiting for daemon to initialize..."
-sleep 90
-
-# Verify daemon is healthy
-for i in {1..10}; do
-    if echo "STATUS" | nc -w 5 localhost 17171 | grep -q "FORGE DAEMON"; then
-        echo "Daemon is ready!"
-        break
-    fi
-    echo "Waiting for daemon... attempt $i"
-    sleep 30
-done
-
-# Run collection (use python3 on Ubuntu)
-echo "Starting collection of $NUM_GAMES games..."
-echo "Python version: $(python3 --version)"
-echo "Working directory: $(pwd)"
-echo "Script exists: $(ls -la scripts/collect_ai_training_data.py 2>&1)"
-
-python3 -u scripts/collect_ai_training_data.py \
-    --games $NUM_GAMES \
-    --output training_data/imitation_aws \
-    --workers $WORKERS \
-    --save-interval 500 \
-    --timeout 60 || echo "COLLECTION FAILED with exit code $?"
-
-# Upload results to S3
+# --- Upload results to S3 ---
 echo "Uploading results to S3..."
-echo "Local files: $(ls -la training_data/ 2>&1)"
-aws s3 sync training_data/imitation_aws/ s3://$S3_BUCKET/imitation_data/ || echo "S3 sync failed"
+aws s3 sync /home/ubuntu/training_data/ \
+    "s3://$S3_BUCKET/imitation_data/$RUN_ID/" \
+    --exclude "*.tex"
 
-# Also upload the log file for debugging
-aws s3 cp /home/ubuntu/collection.log s3://$S3_BUCKET/logs/collection_$(date +%Y%m%d_%H%M%S).log || true
+# Upload logs
+aws s3 cp /var/log/imitation-setup.log \
+    "s3://$S3_BUCKET/imitation_data/$RUN_ID/collection_log.txt"
+aws s3 cp /var/log/forge-daemon.log \
+    "s3://$S3_BUCKET/imitation_data/$RUN_ID/forge_daemon.log" 2>/dev/null || true
+aws s3 cp /var/log/docker-compose.log \
+    "s3://$S3_BUCKET/imitation_data/$RUN_ID/docker_compose.log" 2>/dev/null || true
+
+echo "Results uploaded to s3://$S3_BUCKET/imitation_data/$RUN_ID/"
+
+# Signal completion
+echo "{\"status\":\"complete\",\"timestamp\":\"$TIMESTAMP\",\"games\":$NUM_GAMES,\"method\":\"docker\"}" | \
+    aws s3 cp - "s3://$S3_BUCKET/imitation_data/$RUN_ID/collection_complete.json"
+
+# Stop containers
+docker compose down 2>/dev/null || true
 
 echo "Collection complete at $(date)"
 
-# Shutdown instance to save costs
+# Auto-shutdown
 if [ "${auto_shutdown}" = "true" ]; then
-    echo "Auto-shutdown enabled. Shutting down in 5 minutes..."
-    sudo shutdown -h +5
+    echo "Auto-shutdown enabled. Shutting down..."
+    shutdown -h now
 fi
-SCRIPT
-
-chmod +x /home/ubuntu/run_collection.sh
-chown ubuntu:ubuntu /home/ubuntu/run_collection.sh
-
-# Run as ubuntu user
-sudo -u ubuntu bash /home/ubuntu/run_collection.sh > /home/ubuntu/collection.log 2>&1 &
-
-echo "Collection started in background. Monitor with: tail -f /home/ubuntu/collection.log"
-echo "Setup complete at $(date)"
