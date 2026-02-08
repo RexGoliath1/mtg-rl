@@ -69,6 +69,176 @@ jobs:
           cache-from: type=gha,scope=training
           cache-to: type=gha,mode=max,scope=training
 
+  # End-to-end daemon<->collector integration test (main branch only)
+  docker-integration-test:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [lint-and-test]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build daemon image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile.daemon
+          push: false
+          load: true
+          tags: mtg-daemon:ci
+          cache-from: type=gha,scope=daemon
+          cache-to: type=gha,mode=max,scope=daemon
+
+      - name: Build collection image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile.collection
+          push: false
+          load: true
+          tags: mtg-collection:ci
+          cache-from: type=gha,scope=collection
+          cache-to: type=gha,mode=max,scope=collection
+
+      - name: Create output directory
+        run: mkdir -p ${{ github.workspace }}/ci_test_output
+
+      - name: Start daemon and wait for healthy
+        run: |
+          docker run -d --name mtg-daemon-ci \
+            -p 17171:17171 \
+            --health-cmd="echo 'STATUS' | nc -w 5 localhost 17171 || exit 1" \
+            --health-interval=15s \
+            --health-timeout=10s \
+            --health-retries=20 \
+            --health-start-period=300s \
+            mtg-daemon:ci
+
+          echo "Waiting for daemon to become healthy..."
+          SECONDS=0
+          TIMEOUT=360
+          while [ $SECONDS -lt $TIMEOUT ]; do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' mtg-daemon-ci 2>/dev/null || echo "not_found")
+            if [ "$STATUS" = "healthy" ]; then
+              echo "Daemon healthy after ${SECONDS}s"
+              break
+            elif [ "$STATUS" = "unhealthy" ]; then
+              echo "Daemon is unhealthy, checking logs..."
+              docker logs --tail 50 mtg-daemon-ci
+              exit 1
+            fi
+            echo "  Status: $STATUS (${SECONDS}s elapsed)"
+            sleep 10
+          done
+
+          if [ $SECONDS -ge $TIMEOUT ]; then
+            echo "Daemon failed to become healthy within ${TIMEOUT}s"
+            docker logs --tail 100 mtg-daemon-ci
+            exit 1
+          fi
+
+      - name: Run collector (5 games, 1 worker)
+        run: |
+          docker run --name mtg-collection-ci \
+            --link mtg-daemon-ci:daemon \
+            -v ${{ github.workspace }}/ci_test_output:/app/training_data \
+            -e PYTHONUNBUFFERED=1 \
+            mtg-collection:ci \
+            python -u scripts/collect_ai_training_data.py \
+              --games 5 \
+              --workers 1 \
+              --host daemon \
+              --port 17171 \
+              --output /app/training_data \
+              --timeout 60
+
+      - name: Verify HDF5 output
+        run: |
+          echo "=== Output directory contents ==="
+          ls -la ${{ github.workspace }}/ci_test_output/
+
+          # Check that at least one HDF5 file exists
+          HDF5_COUNT=$(find ${{ github.workspace }}/ci_test_output -name "*.h5" | wc -l)
+          echo "Found ${HDF5_COUNT} HDF5 file(s)"
+          if [ "$HDF5_COUNT" -eq 0 ]; then
+            echo "ERROR: No HDF5 files produced!"
+            exit 1
+          fi
+
+          # Check file size > 0
+          for f in ${{ github.workspace }}/ci_test_output/*.h5; do
+            SIZE=$(stat --format=%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo "0")
+            echo "  $f: ${SIZE} bytes"
+            if [ "$SIZE" -eq 0 ]; then
+              echo "ERROR: Empty HDF5 file: $f"
+              exit 1
+            fi
+          done
+
+          # Check summary JSON exists
+          SUMMARY_COUNT=$(find ${{ github.workspace }}/ci_test_output -name "summary_*.json" | wc -l)
+          echo "Found ${SUMMARY_COUNT} summary JSON file(s)"
+
+          echo "=== Integration test PASSED ==="
+
+      - name: Validate HDF5 datasets
+        if: success()
+        run: |
+          # Use the collection image (has h5py) to validate HDF5 contents
+          docker run --rm \
+            -v ${{ github.workspace }}/ci_test_output:/data:ro \
+            mtg-collection:ci \
+            python -c "
+          import h5py, sys, glob
+          files = glob.glob('/data/*.h5')
+          if not files:
+              print('No HDF5 files found')
+              sys.exit(1)
+          for path in files:
+              print(f'Validating {path}...')
+              with h5py.File(path, 'r') as f:
+                  expected_keys = ['states', 'turns', 'choices', 'num_actions', 'decision_types']
+                  for key in expected_keys:
+                      assert key in f, f'Missing dataset: {key}'
+                      assert len(f[key]) > 0, f'Empty dataset: {key}'
+                      print(f'  {key}: shape={f[key].shape}')
+                  # Check encoding version
+                  version = f.attrs.get('encoding_version', 0)
+                  print(f'  encoding_version={version}')
+                  # Check game_state_json (v2 feature)
+                  if 'game_state_json' in f:
+                      print(f'  game_state_json: {len(f[\"game_state_json\"])} entries')
+                  print(f'  Total decisions: {len(f[\"states\"])}')
+          print('All HDF5 files validated successfully')
+          "
+
+      - name: Capture daemon logs
+        if: always()
+        run: docker logs mtg-daemon-ci > ${{ github.workspace }}/daemon.log 2>&1 || true
+
+      - name: Capture collector logs
+        if: always()
+        run: docker logs mtg-collection-ci > ${{ github.workspace }}/collector.log 2>&1 || true
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-integration-logs
+          path: |
+            ${{ github.workspace }}/daemon.log
+            ${{ github.workspace }}/collector.log
+            ${{ github.workspace }}/ci_test_output/
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f mtg-daemon-ci mtg-collection-ci 2>/dev/null || true
+
   # Build + push to ECR on main branch only
   ecr-push:
     runs-on: ubuntu-latest

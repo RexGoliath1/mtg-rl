@@ -1,0 +1,51 @@
+# MTG RL Docker Compose - CI Integration Test
+# Builds both images locally and runs a minimal 5-game smoke test
+# to verify daemon<->collector TCP communication and HDF5 output.
+#
+# Usage (from project root):
+#   docker compose -f infrastructure/docker-compose.ci.yml up --build --abort-on-container-exit
+
+services:
+  daemon:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/Dockerfile.daemon
+    container_name: mtg-daemon-ci
+    ports:
+      - "17171:17171"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'STATUS' | nc -w 5 localhost 17171 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 300s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  collection:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/Dockerfile.collection
+    container_name: mtg-collection-ci
+    depends_on:
+      daemon:
+        condition: service_healthy
+    volumes:
+      - ci-output:/app/training_data
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      python -u scripts/collect_ai_training_data.py
+      --games 5
+      --workers 1
+      --host daemon
+      --port 17171
+      --output /app/training_data
+      --timeout 60
+
+volumes:
+  ci-output:
