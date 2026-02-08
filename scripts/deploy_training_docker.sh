@@ -313,7 +313,7 @@ echo "TRAINING: EPOCHS_PLACEHOLDER epochs, batch=BATCH_SIZE_PLACEHOLDER, hidden=
 echo "============================================================"
 
 # Build Docker run flags
-DOCKER_FLAGS="-v /home/ubuntu/training_data:/data -v /home/ubuntu/checkpoints:/checkpoints"
+DOCKER_FLAGS="-v /home/ubuntu/training_data:/data -v /home/ubuntu/checkpoints:/checkpoints -v /home/ubuntu/logs:/app/logs"
 
 # Add GPU support if available
 if command -v nvidia-smi &> /dev/null; then
@@ -333,7 +333,7 @@ WANDB_KEY=$(aws secretsmanager get-secret-value \
 
 WANDB_FLAGS=""
 if [ -n "$WANDB_KEY" ]; then
-    WANDB_FLAGS="-e WANDB_API_KEY=$WANDB_KEY -e WANDB_PROJECT=mtg-rl-imitation"
+    WANDB_FLAGS="-e WANDB_API_KEY=$WANDB_KEY -e WANDB_PROJECT=forgerl -e WANDB_ENTITY=sgoncia-self"
     echo "W&B tracking enabled"
 else
     WANDB_FLAGS="-e WANDB_MODE=disabled"
@@ -368,6 +368,7 @@ echo "============================================================"
 # --- Upload results to S3 ---
 echo "Uploading results to S3..."
 aws s3 sync /home/ubuntu/checkpoints/ "s3://S3_BUCKET_PLACEHOLDER/training_runs/RUN_ID_PLACEHOLDER/checkpoints/"
+aws s3 sync /home/ubuntu/logs/ "s3://S3_BUCKET_PLACEHOLDER/training_runs/RUN_ID_PLACEHOLDER/tensorboard/" 2>/dev/null || true
 aws s3 cp /var/log/imitation-train.log "s3://S3_BUCKET_PLACEHOLDER/training_runs/RUN_ID_PLACEHOLDER/training_log.txt"
 
 # Copy best model to stable path

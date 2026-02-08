@@ -7,13 +7,17 @@ Uses a simple MLP policy network to learn from expert decisions.
 
 import h5py
 import numpy as np
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
 from datetime import datetime
 import json
+
+from src.utils.wandb_integration import WandbTracker
 
 
 class ImitationDataset(Dataset):
@@ -187,6 +191,9 @@ def main():
     parser.add_argument("--hidden-dim", type=int, default=256, help="Hidden dimension")
     parser.add_argument("--max-actions", type=int, default=64, help="Max action space size")
     parser.add_argument("--output", default="checkpoints/imitation_policy.pt", help="Output model path")
+    parser.add_argument("--wandb-project", default="forgerl", help="W&B project name")
+    parser.add_argument("--wandb-entity", default="sgoncia-self", help="W&B entity")
+    parser.add_argument("--log-dir", default="logs/imitation", help="TensorBoard log dir")
     args = parser.parse_args()
 
     # Device
@@ -226,7 +233,22 @@ def main():
         max_actions=args.max_actions
     ).to(device)
 
-    print(f"\nModel parameters: {sum(p.numel() for p in model.parameters()):,}")
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f"\nModel parameters: {n_params:,}")
+
+    # W&B tracking (uses WANDB_API_KEY env var if set, else disabled)
+    tracker = WandbTracker(
+        project=args.wandb_project,
+        entity=args.wandb_entity,
+        name=f"imitation_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+        config=vars(args) | {"model_params": n_params, "device": str(device),
+                              "train_samples": len(train_dataset), "val_samples": len(val_dataset)},
+        tags=["imitation-learning", f"hidden-{args.hidden_dim}"],
+        enabled=os.environ.get("WANDB_MODE") != "disabled",
+    )
+
+    # TensorBoard
+    tb_writer = SummaryWriter(log_dir=args.log_dir)
 
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
@@ -250,6 +272,15 @@ def main():
         print(f"Epoch {epoch+1:3d}/{args.epochs} | "
               f"Train Loss: {train_loss:.4f} Acc: {train_acc*100:.1f}% | "
               f"Val Loss: {val_loss:.4f} Acc: {val_acc*100:.1f}% Top3: {val_top3*100:.1f}%")
+
+        # Log to W&B + TensorBoard
+        tracker.log_epoch(epoch + 1,
+            train_metrics={"loss": train_loss, "accuracy": train_acc},
+            val_metrics={"loss": val_loss, "accuracy": val_acc, "top3_accuracy": val_top3},
+            extra={"lr": scheduler.get_last_lr()[0]})
+        tb_writer.add_scalars("loss", {"train": train_loss, "val": val_loss}, epoch + 1)
+        tb_writer.add_scalars("accuracy", {"train": train_acc, "val": val_acc, "val_top3": val_top3}, epoch + 1)
+        tb_writer.add_scalar("lr", scheduler.get_last_lr()[0], epoch + 1)
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
@@ -277,6 +308,15 @@ def main():
     print("\nFinal model performance:")
     print(f"  Top-1 Accuracy: {final_acc*100:.1f}%")
     print(f"  Top-3 Accuracy: {final_top3*100:.1f}%")
+
+    # Log final metrics + save model artifact to W&B
+    tracker.save_model(str(output_path), name="imitation-policy",
+        metadata={"val_acc": float(final_acc), "val_top3": float(final_top3)},
+        aliases=["latest"])
+    tracker.alert("Training Complete",
+        f"Imitation policy: {final_acc*100:.1f}% top-1, {final_top3*100:.1f}% top-3")
+    tracker.finish()
+    tb_writer.close()
 
     # Save training summary
     summary = {

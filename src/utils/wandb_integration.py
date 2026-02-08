@@ -52,6 +52,7 @@ class WandbTracker:
         tags: Optional[list] = None,
         notes: Optional[str] = None,
         enabled: bool = True,
+        entity: Optional[str] = None,
     ):
         """
         Initialize W&B tracking.
@@ -63,6 +64,7 @@ class WandbTracker:
             tags: Tags for filtering runs
             notes: Run description
             enabled: Whether to actually log to W&B
+            entity: W&B entity (user or team name)
         """
         self.enabled = enabled and WANDB_AVAILABLE
 
@@ -84,6 +86,7 @@ class WandbTracker:
             tags=tags or ["behavioral-cloning"],
             notes=notes,
             reinit=True,
+            entity=entity,
         )
 
         # Define metrics for better visualization
