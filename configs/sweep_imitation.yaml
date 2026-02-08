@@ -1,0 +1,53 @@
+# Hyperparameter sweep for imitation learning on Forge game data
+# Model: ForgeGameStateEncoder (33M params) + action head
+# Data: HDF5 v2 with game_state_json
+#
+# Usage:
+#   uv run python3 scripts/run_sweep.py --config configs/sweep_imitation.yaml
+#   uv run python3 scripts/run_sweep.py --config configs/sweep_imitation.yaml --max-configs 20
+#   uv run python3 scripts/run_sweep.py --config configs/sweep_imitation.yaml --strategy grid  # exhaustive
+
+base:
+  # Model architecture (fixed across sweep)
+  model: ForgeGameStateEncoder
+  encoder_version: v2
+  max_actions: 203
+  mechanics_h5: data/card_mechanics_commander.h5
+  data_dir: training_data/imitation_aws
+  output_dir: checkpoints/sweep
+
+  # W&B logging
+  wandb_project: forgerl
+  wandb_entity: sgoncia-self
+  wandb_tags:
+    - imitation-learning
+    - sweep
+
+sweep:
+  learning_rate: [1e-4, 3e-4, 1e-3]
+  batch_size: [64, 128, 256]
+  weight_decay: [0, 1e-5, 1e-4]
+  warmup_steps: [0, 100, 500]
+  epochs: [20, 50]
+  scheduler: [cosine, linear, none]
+  dropout: [0.0, 0.1]
+
+  # Full grid = 3 * 3 * 3 * 3 * 2 * 3 * 2 = 972 configs
+  # Use random sampling (--max-configs) for tractable sweeps
+
+evaluation:
+  metric: val_accuracy          # Primary metric for ranking
+  secondary_metric: val_top3    # Secondary metric (reported, not ranked)
+  early_stopping_patience: 5    # Stop if val_accuracy doesn't improve for N epochs
+  checkpoint_every: 5           # Save checkpoint every N epochs (in addition to best)
+  train_val_split: 0.9          # 90% train, 10% val
+  seed: 42                      # Reproducible splits
+
+compute:
+  # Cost estimates for AWS g4dn.xlarge ($0.526/hr spot)
+  estimated_time_per_config_20ep: "~8 min"
+  estimated_time_per_config_50ep: "~18 min"
+  full_grid_configs: 972
+  recommended_sample_size: 30
+  estimated_cost_30_configs: "$5-8"    # ~30 * 15 min avg = 7.5 hrs * $0.526
+  estimated_cost_full_grid: "$130-180" # Too expensive; use random sampling
