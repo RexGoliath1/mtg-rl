@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir .
 #    This only re-runs the COPY, not the pip install.
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
-RUN mkdir -p /app/decks
+COPY decks/ /app/decks/
 
 # Set environment
 ENV PYTHONUNBUFFERED=1
