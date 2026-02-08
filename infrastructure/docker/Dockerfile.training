@@ -45,6 +45,8 @@ ENV DAEMON_PORT=17171
 ENV S3_BUCKET=""
 ENV CHECKPOINT_DIR=/app/checkpoints
 ENV PYTHONUNBUFFERED=1
+# Ensure /app/src/ (real source) takes precedence over site-packages stub
+ENV PYTHONPATH=/app
 
 # Default command - run profiling
 CMD ["python", "/app/scripts/profile_forge_games.py", "--host", "${DAEMON_HOST}", "--port", "${DAEMON_PORT}", "--num-games", "100"]
