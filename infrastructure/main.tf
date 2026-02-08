@@ -33,7 +33,7 @@ terraform {
 variable "aws_region" {
   description = "AWS region for deployment"
   type        = string
-  default     = "us-west-2"  # Where our S3 bucket and resources are
+  default     = "us-east-1"
 }
 
 variable "environment" {

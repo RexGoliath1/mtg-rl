@@ -53,9 +53,11 @@ RUN mkdir -p /forge/res \
 # Copy the built jar
 COPY --from=builder /build/forge.jar /forge/forge.jar
 
-# Only copy daemon-essential res/ subdirectories (154 MB, not full 393 MB)
+# Only copy daemon-essential res/ subdirectories (~155 MB, not full 393 MB)
 # Excludes: adventure(134MB), skins(18MB), music(16MB), quest(16MB),
-#           languages(45MB), conquest(5MB), effects(1.6MB), fonts, sound, tutorial, puzzle
+#           most of languages(45MB), conquest(5MB), effects(1.6MB), fonts, sound, tutorial, puzzle
+# NOTE: en-US language bundle is REQUIRED for Forge Localizer initialization
+COPY --from=builder /build/forge-gui/res/languages/en-US.properties /forge/res/languages/en-US.properties
 COPY --from=builder /build/forge-gui/res/cardsfolder/ /forge/res/cardsfolder/
 COPY --from=builder /build/forge-gui/res/editions/ /forge/res/editions/
 COPY --from=builder /build/forge-gui/res/tokenscripts/ /forge/res/tokenscripts/
