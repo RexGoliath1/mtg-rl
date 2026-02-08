@@ -1,0 +1,64 @@
+name: Claude PR Review
+
+on:
+  # Automatic review on every PR
+  pull_request:
+    types: [opened, synchronize]
+  # On-demand via @claude mentions in comments
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude-review:
+    # Run on PRs automatically, or when @claude is mentioned
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+          prompt: |
+            You are reviewing a pull request for the ForgeRL project — a reinforcement
+            learning system for Magic: The Gathering built on Forge (Java MTG engine).
+
+            Review this PR for:
+            1. Code correctness and potential bugs
+            2. Security issues (no secrets in code, no injection vulnerabilities)
+            3. Consistency with existing patterns in the codebase
+            4. Test coverage — flag if new logic lacks tests
+            5. Merge conflict risk with other open PRs
+
+            Key project conventions:
+            - Python package managed by UV with pyproject.toml
+            - VOCAB_SIZE must stay in sync across vocabulary.py, precompute_embeddings.py, game_state_encoder.py
+            - Use python3 not python (macOS compatibility)
+            - Lint: ruff check with E501 ignored
+            - No sys.path hacks — use installed src package
+            - Cloud-first: no local runs > 50 games or > 5 training epochs
+
+            Be constructive but thorough. Flag blockers as ❌, suggestions as 💡, and approvals as ✅.
+
+          claude_args: |
+            --model claude-sonnet-4-5-20250929
+            --max-turns 5
