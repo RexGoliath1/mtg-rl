@@ -276,7 +276,12 @@ def encode_decision(decision: dict) -> tuple:
 
 
 def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
-    """Save decisions to HDF5 file."""
+    """Save decisions to HDF5 file.
+
+    Stores both the legacy 17-dim state encoding AND the raw game state JSON.
+    The raw JSON enables re-encoding with ForgeGameStateEncoder at training
+    time, producing full 512-dim card-level mechanics embeddings.
+    """
     if not decisions:
         return
 
@@ -286,6 +291,7 @@ def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
     choices = []
     num_actions_list = []
     decision_types = []
+    game_state_jsons = []
 
     type_map = {"choose_action": 0, "declare_attackers": 1, "declare_blockers": 2, "unknown": 3}
 
@@ -296,6 +302,10 @@ def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
         choices.append(choice_idx)
         num_actions_list.append(num_actions)
         decision_types.append(type_map.get(dtype, 3))
+
+        # Serialize full game state for rich encoding at training time
+        game_state = d.get("game_state", {})
+        game_state_jsons.append(json.dumps(game_state, separators=(",", ":")))
 
     # Stack into arrays
     states = np.stack(state_vecs)
@@ -312,7 +322,13 @@ def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
         f.create_dataset("num_actions", data=num_actions, compression="gzip")
         f.create_dataset("decision_types", data=dtypes, compression="gzip")
 
+        # Store raw game state JSON for ForgeGameStateEncoder at training time
+        dt = h5py.special_dtype(vlen=str)
+        f.create_dataset("game_state_json", data=game_state_jsons, dtype=dt,
+                         compression="gzip", compression_opts=4)
+
         # Store metadata as attributes
+        f.attrs["encoding_version"] = 2  # v1=17-dim only, v2=17-dim + raw JSON
         for k, v in metadata.items():
             if isinstance(v, (str, int, float)):
                 f.attrs[k] = v
@@ -444,7 +460,7 @@ Avg Duration (ms) & {avg_duration:.0f} \\\\
 \\item Focus: card selection, turn flow, combat decisions
 \\item NOT optimizing for win rate (self-play handles that)
 \\item Storage: HDF5 with gzip compression (\\textasciitilde 20x smaller than JSON)
-\\item State encoding: 17-dimensional vector
+\\item State encoding: 17-dim legacy + raw JSON for 512-dim mechanics encoding
 \\end{{itemize}}
 
 \\section{{Coverage Analysis}}
