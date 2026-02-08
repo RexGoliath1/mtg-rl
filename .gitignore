@@ -87,6 +87,9 @@ decks/**/deck_list.txt
 # Claude Code local settings
 .claude/
 
+# Forge JAR cache (CI build optimization)
+.forge-jar-cache/
+
 # ── Archived docs (key insights in Claude memory) ────────
 CARD_ENCODING.md
 FORGE_AI_ANALYSIS.md
