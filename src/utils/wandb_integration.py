@@ -39,7 +39,6 @@ try:
     WANDB_AVAILABLE = True
 except ImportError:
     WANDB_AVAILABLE = False
-    print("Warning: wandb not installed. Run 'pip install wandb' for experiment tracking.")
 
 
 class WandbTracker:
@@ -126,6 +125,39 @@ class WandbTracker:
         if extra:
             log_dict.update(extra)
 
+        wandb.log(log_dict)
+
+    def log_metrics(self, metrics: Dict[str, Any], step: Optional[int] = None):
+        """
+        Log arbitrary metrics dict (flat key/value pairs).
+
+        This is the general-purpose logging entry point used by training
+        loops that don't split into train/val categories.
+
+        Args:
+            metrics: Flat dict of metric names to values.
+            step: Optional global step (epoch or iteration number).
+        """
+        if not self.enabled:
+            return
+        log_dict = dict(metrics)
+        if step is not None:
+            log_dict["global_step"] = step
+        wandb.log(log_dict)
+
+    def log_game(self, game_metrics: Dict[str, Any], game_number: int):
+        """
+        Log per-game metrics from self-play or imitation data collection.
+
+        Args:
+            game_metrics: Dict with keys like game_length, winner, etc.
+            game_number: Sequential game counter.
+        """
+        if not self.enabled:
+            return
+        log_dict = {"game_number": game_number}
+        for key, value in game_metrics.items():
+            log_dict[f"game/{key}"] = value
         wandb.log(log_dict)
 
     def log_test_results(self, test_metrics: Dict[str, float]):

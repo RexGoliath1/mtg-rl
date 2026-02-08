@@ -32,12 +32,19 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from safetensors.torch import save_file as safetensors_save
 
+try:
+    from torch.utils.tensorboard import SummaryWriter
+    TB_AVAILABLE = True
+except ImportError:
+    TB_AVAILABLE = False
+
 from src.forge.forge_client import (
     ForgeClient, Decision, DecisionType, ActionOption
 )
 from src.forge.game_state_encoder import ForgeGameStateEncoder
 from src.forge.policy_value_heads import ActionConfig, create_action_mask
 from src.training.self_play import AlphaZeroNetwork
+from src.utils.wandb_integration import WandbTracker, WANDB_AVAILABLE
 
 
 # ============================================================================
@@ -784,6 +791,9 @@ class ImitationTrainer:
         lr: float = 1e-3,
         batch_size: int = 64,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        use_tensorboard: bool = False,
+        tb_log_dir: str = "runs/imitation",
+        wandb_tracker: Optional["WandbTracker"] = None,
     ):
         self.network = network.to(device)
         self.device = device
@@ -795,6 +805,17 @@ class ImitationTrainer:
         )
 
         self.training_history: List[Dict] = []
+
+        # --- TensorBoard ---
+        self.tb_writer: Optional[SummaryWriter] = None
+        if use_tensorboard and TB_AVAILABLE:
+            self.tb_writer = SummaryWriter(log_dir=tb_log_dir)
+            print(f"[TensorBoard] Logging to {tb_log_dir}")
+        elif use_tensorboard and not TB_AVAILABLE:
+            print("[TensorBoard] Not available (install tensorboard)")
+
+        # --- Weights & Biases ---
+        self.wandb_tracker = wandb_tracker
 
     def train_epoch(self, dataloader: DataLoader) -> Dict[str, float]:
         """Train for one epoch."""
@@ -896,7 +917,33 @@ class ImitationTrainer:
                       f"accuracy={metrics['accuracy']:.3f}, "
                       f"lr={metrics['lr']:.2e}")
 
+            # --- TensorBoard logging ---
+            if self.tb_writer is not None:
+                self.tb_writer.add_scalar("imitation/loss", metrics["loss"], epoch)
+                self.tb_writer.add_scalar("imitation/policy_loss", metrics["policy_loss"], epoch)
+                self.tb_writer.add_scalar("imitation/accuracy", metrics["accuracy"], epoch)
+                self.tb_writer.add_scalar("imitation/lr", metrics["lr"], epoch)
+
+            # --- W&B logging ---
+            if self.wandb_tracker is not None:
+                self.wandb_tracker.log_metrics({
+                    "imitation/loss": metrics["loss"],
+                    "imitation/policy_loss": metrics["policy_loss"],
+                    "imitation/accuracy": metrics["accuracy"],
+                    "imitation/lr": metrics["lr"],
+                }, step=epoch)
+
         return self.training_history
+
+    def close(self):
+        """Flush and close TensorBoard writer and W&B tracker."""
+        if self.tb_writer is not None:
+            self.tb_writer.flush()
+            self.tb_writer.close()
+            self.tb_writer = None
+        if self.wandb_tracker is not None:
+            self.wandb_tracker.finish()
+            self.wandb_tracker = None
 
     def save(self, path: str):
         """Save model checkpoint in SafeTensors format.
@@ -1099,6 +1146,9 @@ def main():
     parser.add_argument("--checkpoint", default="checkpoints/imitation.pt", help="Checkpoint path")
     parser.add_argument("--collect-only", action="store_true", help="Only collect data, don't train")
     parser.add_argument("--train-only", action="store_true", help="Only train on existing data")
+    parser.add_argument("--tensorboard", action="store_true", help="Enable TensorBoard logging (logs to runs/imitation)")
+    parser.add_argument("--wandb", action="store_true", help="Enable Weights & Biases logging")
+    parser.add_argument("--tb-log-dir", default="runs/imitation", help="TensorBoard log directory")
     args = parser.parse_args()
 
     print("=" * 70)
@@ -1155,10 +1205,37 @@ def main():
     print(f"  Policy:  {sum(p.numel() for p in network.policy_head.parameters()):,}")
     print(f"  Value:   {sum(p.numel() for p in network.value_head.parameters()):,}")
 
-    trainer = ImitationTrainer(network, lr=1e-3, batch_size=64)
+    # --- Optional logging ---
+    wandb_tracker = None
+    if args.wandb and WANDB_AVAILABLE:
+        wandb_tracker = WandbTracker(
+            project="mtg-imitation",
+            config={
+                "games": args.games,
+                "epochs": args.epochs,
+                "batch_size": 64,
+                "lr": 1e-3,
+                "deck1": args.deck1,
+                "deck2": args.deck2,
+            },
+            tags=["imitation-learning"],
+            notes=f"Imitation training: {args.games} games, {args.epochs} epochs",
+        )
+    elif args.wandb and not WANDB_AVAILABLE:
+        print("[W&B] wandb not installed -- skipping")
+
+    trainer = ImitationTrainer(
+        network,
+        lr=1e-3,
+        batch_size=64,
+        use_tensorboard=args.tensorboard,
+        tb_log_dir=args.tb_log_dir,
+        wandb_tracker=wandb_tracker,
+    )
 
     trainer.train(samples, epochs=args.epochs, verbose=True)
     trainer.save(args.checkpoint)
+    trainer.close()
 
     # Phase 3: Evaluation
     print("\n" + "=" * 70)
