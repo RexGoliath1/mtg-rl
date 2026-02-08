@@ -43,16 +43,10 @@ class ImitationDataset(Dataset):
             self.decision_types = f['decision_types'][:]
             self.turns = f['turns'][:]
 
-        # Filter out invalid/trivial decisions:
-        # 1. choice must be >= 0 (not -1 = auto-pass)
-        # 2. choice must be < num_actions (valid expert choice)
-        # 3. choice must be < max_actions (fits in our action space)
-        # 4. num_actions must be > 1 (meaningful choice, not forced)
+        # Filter: choice must be >= 0 (not -1 = auto-pass) and fit in action space
         valid_mask = (
             (self.choices >= 0) &
-            (self.choices < self.num_actions) &
-            (self.choices < self.max_actions) &
-            (self.num_actions > 1)  # Only decisions with actual choice
+            (self.choices < self.max_actions)
         )
         self.states = self.states[valid_mask]
         self.choices = self.choices[valid_mask]
@@ -60,8 +54,13 @@ class ImitationDataset(Dataset):
         self.decision_types = self.decision_types[valid_mask]
         self.turns = self.turns[valid_mask]
 
+        # Fix num_actions: if 0 or less than choice, infer from choice index
+        # (collection v1 didn't always populate num_actions for valid decisions)
+        needs_fix = self.num_actions <= self.choices
+        self.num_actions[needs_fix] = self.choices[needs_fix] + 1
+
         # Clip num_actions to max_actions for masking
-        self.num_actions = np.clip(self.num_actions, 0, self.max_actions)
+        self.num_actions = np.clip(self.num_actions, 1, self.max_actions)
 
         print(f"Loaded {len(self.states):,} valid decisions")
         print(f"State shape: {self.states.shape}")
