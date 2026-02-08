@@ -80,7 +80,8 @@ RUN mkdir -p /forge/res/decks/
 COPY decks/ /tmp/decks/
 RUN cp /tmp/decks/*.dck /forge/userdata/decks/constructed/ 2>/dev/null || true \
     && find /tmp/decks -mindepth 2 -name "*.dck" -exec cp {} /forge/userdata/decks/constructed/ \; \
-    && rm -rf /tmp/decks
+    && rm -rf /tmp/decks \
+    && echo "Decks in constructed/:" && ls /forge/userdata/decks/constructed/ | wc -l
 
 # Create forge profile properties (in working directory)
 RUN echo "userDir=/forge/userdata/" > /forge/forge.profile.properties \

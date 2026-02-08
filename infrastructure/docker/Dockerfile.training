@@ -6,7 +6,7 @@
 # For GPU training (production):
 #   docker build -f Dockerfile.training .
 
-ARG BASE_IMAGE=pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime
+ARG BASE_IMAGE=pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
 FROM ${BASE_IMAGE}
 
 LABEL maintainer="MTG RL Training"

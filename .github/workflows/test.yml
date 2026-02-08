@@ -140,6 +140,10 @@ jobs:
             exit 1
           fi
 
+      - name: List daemon decks (debug)
+        run: |
+          docker exec mtg-daemon-ci ls /forge/userdata/decks/constructed/ | head -20 || echo "Could not list decks"
+
       - name: Run collector (5 games, 1 worker)
         run: |
           docker run --name mtg-collection-ci \
@@ -153,7 +157,8 @@ jobs:
               --host daemon \
               --port 17171 \
               --output /app/training_data \
-              --timeout 60
+              --timeout 60 \
+              --decks boros_aggro.dck red_aggro.dck mono_red_aggro.dck
 
       - name: Verify HDF5 output
         run: |
