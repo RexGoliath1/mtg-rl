@@ -1,0 +1,52 @@
+# MTG RL Docker Compose - Production (EC2 with ECR images)
+# Used by deploy_data_collection.sh for AWS data collection.
+#
+# ECR_REGISTRY, COLLECTION_GAMES, COLLECTION_WORKERS, etc. are
+# injected as environment variables by the EC2 userdata script.
+#
+# Usage:
+#   ECR_REGISTRY=123456789.dkr.ecr.us-east-1.amazonaws.com \
+#     docker compose -f docker-compose.prod.yml up
+
+services:
+  daemon:
+    image: ${ECR_REGISTRY}/mtg-rl-daemon:latest
+    container_name: mtg-daemon
+    ports:
+      - "17171:17171"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'STATUS' | nc -w 5 localhost 17171 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  collection:
+    image: ${ECR_REGISTRY}/mtg-rl-collection:latest
+    container_name: mtg-collection
+    depends_on:
+      daemon:
+        condition: service_healthy
+    volumes:
+      - training-data:/app/training_data
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      python -u scripts/collect_ai_training_data.py
+      --games ${COLLECTION_GAMES:-1000}
+      --workers ${COLLECTION_WORKERS:-8}
+      --host daemon
+      --port 17171
+      --output /app/training_data
+      --save-interval 500
+      --timeout ${COLLECTION_TIMEOUT:-60}
+
+volumes:
+  training-data:
