@@ -32,6 +32,9 @@ from torch.utils.data import Dataset, DataLoader
 from src.forge.forge_client import (
     ForgeClient, Decision, DecisionType, ActionOption
 )
+from src.forge.game_state_encoder import ForgeGameStateEncoder
+from src.forge.policy_value_heads import ActionConfig, create_action_mask
+from src.training.self_play import AlphaZeroNetwork
 
 
 # ============================================================================
@@ -706,54 +709,55 @@ class SimpleImitationNetwork(nn.Module):
 
 
 class ImitationDataset(Dataset):
-    """Dataset for imitation learning from collected samples."""
+    """Dataset for imitation learning from collected samples.
 
-    def __init__(self, samples: List[TrainingSample], state_dim: int = 512, action_dim: int = 64):
+    Uses ForgeGameStateEncoder to produce the same state encoding as
+    self-play training, enabling direct weight transfer.
+    """
+
+    def __init__(
+        self,
+        samples: List[TrainingSample],
+        encoder: ForgeGameStateEncoder,
+        action_config: Optional[ActionConfig] = None,
+    ):
         self.samples = samples
-        self.state_dim = state_dim
-        self.action_dim = action_dim
+        self.encoder = encoder
+        self.action_config = action_config or ActionConfig()
+        self.action_dim = self.action_config.total_actions
 
     def __len__(self):
         return len(self.samples)
 
+    @torch.no_grad()
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         sample = self.samples[idx]
 
-        # Convert state to features (placeholder - will use proper encoder)
+        # Encode state using the same encoder as self-play
         state = self._encode_state(sample.state_json)
 
-        # Action target
+        # Action target (clamp to valid range)
         action = min(sample.action_index, self.action_dim - 1)
 
-        # Action mask (all ones for now - will be proper mask later)
-        mask = torch.ones(self.action_dim)
+        # Build action mask from legal actions
+        legal_actions = [
+            {"type": "pass", "index": 0}
+            if idx_val == -1
+            else {"type": "cast", "index": idx_val}
+            for idx_val in sample.legal_action_indices
+        ]
+        mask = torch.from_numpy(create_action_mask(legal_actions, self.action_config))
 
         return state, torch.tensor(action, dtype=torch.long), mask
 
     def _encode_state(self, state_json: dict) -> torch.Tensor:
-        """
-        Encode game state to tensor.
-
-        This is a simplified encoding. Will be replaced with proper
-        GameStateEncoder for production.
-        """
-        features = []
-
-        # Player features
-        for player in state_json.get("players", []):
-            features.extend([
-                player.get("life", 20) / 20.0,
-                len(player.get("hand", [])) / 10.0,
-                len(player.get("battlefield", [])) / 20.0,
-                len(player.get("graveyard", [])) / 20.0,
-                player.get("library_size", 40) / 60.0,
-            ])
-
-        # Pad to fixed size
-        while len(features) < self.state_dim:
-            features.append(0.0)
-
-        return torch.tensor(features[:self.state_dim], dtype=torch.float32)
+        """Encode game state using ForgeGameStateEncoder."""
+        try:
+            embedding = self.encoder.encode_json(state_json)
+            return embedding.squeeze(0)  # [output_dim]
+        except Exception:
+            # Fallback: return zeros if encoding fails (e.g., empty state)
+            return torch.zeros(self.encoder.config.output_dim, dtype=torch.float32)
 
 
 class ImitationTrainer:
@@ -788,31 +792,37 @@ class ImitationTrainer:
         correct = 0
         total = 0
 
+        is_alphazero = isinstance(self.network, AlphaZeroNetwork)
+
         for states, actions, masks in dataloader:
             states = states.to(self.device)
             actions = actions.to(self.device)
             masks = masks.to(self.device)
 
-            # Forward
-            policy, value = self.network(states, masks)
+            if is_alphazero:
+                # AlphaZeroNetwork: states are pre-encoded (512-dim from encoder)
+                # Pass through policy/value heads directly
+                logits = self.network.policy_head(states, masks, return_logits=True)
+                value = self.network.value_head(states)
 
-            # Policy loss (cross-entropy)
-            policy_loss = F.cross_entropy(policy.log().clamp(-100, 0), actions)
+                # Cross-entropy on logits (more numerically stable)
+                policy_loss = F.cross_entropy(logits, actions)
+                predictions = logits.argmax(dim=-1)
+            else:
+                # Legacy SimpleImitationNetwork path
+                policy, value = self.network(states, masks)
+                policy_loss = F.cross_entropy(policy.log().clamp(-100, 0), actions)
+                predictions = policy.argmax(dim=-1)
 
-            # Total loss (just policy for now)
             loss = policy_loss
 
-            # Backward
             self.optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.network.parameters(), 1.0)
             self.optimizer.step()
 
-            # Track metrics
             total_loss += loss.item()
             total_policy_loss += policy_loss.item()
-
-            predictions = policy.argmax(dim=-1)
             correct += (predictions == actions).sum().item()
             total += actions.size(0)
 
@@ -845,7 +855,14 @@ class ImitationTrainer:
         Returns:
             Training history
         """
-        dataset = ImitationDataset(samples)
+        # Get encoder from network if using AlphaZeroNetwork
+        if isinstance(self.network, AlphaZeroNetwork):
+            encoder = self.network.encoder
+            dataset = ImitationDataset(samples, encoder=encoder)
+        else:
+            # Legacy path for SimpleImitationNetwork
+            encoder = ForgeGameStateEncoder()
+            dataset = ImitationDataset(samples, encoder=encoder)
         dataloader = DataLoader(
             dataset,
             batch_size=self.batch_size,
@@ -869,19 +886,31 @@ class ImitationTrainer:
         return self.training_history
 
     def save(self, path: str):
-        """Save model checkpoint."""
-        torch.save({
+        """Save model checkpoint.
+
+        Uses a format compatible with AlphaZeroNetwork.load() so weights
+        can be loaded directly into self-play training.
+        """
+        save_dict = {
             'model_state_dict': self.network.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'training_history': self.training_history,
-        }, path)
+        }
+        # If using AlphaZeroNetwork, also save in self-play compatible format
+        if isinstance(self.network, AlphaZeroNetwork):
+            save_dict['encoder_config'] = self.network.encoder_config
+            save_dict['state_dict'] = self.network.state_dict()
+        torch.save(save_dict, path)
         print(f"Saved checkpoint to {path}")
 
     def load(self, path: str):
         """Load model checkpoint."""
-        checkpoint = torch.load(path, map_location=self.device)
-        self.network.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
+        # Support both old format (model_state_dict) and new (state_dict)
+        state_key = 'model_state_dict' if 'model_state_dict' in checkpoint else 'state_dict'
+        self.network.load_state_dict(checkpoint[state_key])
+        if 'optimizer_state_dict' in checkpoint:
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.training_history = checkpoint.get('training_history', [])
         print(f"Loaded checkpoint from {path}")
 
@@ -894,6 +923,9 @@ class ImitationAgent:
     """
     Agent that uses the trained network for decisions.
     Falls back to heuristic agent when confidence is low.
+
+    Uses StateMapper to produce the same state encoding as self-play,
+    enabling direct weight transfer between imitation and self-play.
     """
 
     def __init__(
@@ -902,6 +934,7 @@ class ImitationAgent:
         fallback: HeuristicAgent,
         confidence_threshold: float = 0.3,
         max_decisions_per_turn: int = 50,
+        temperature: float = 1.0,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
     ):
         self.network = network.to(device)
@@ -911,9 +944,16 @@ class ImitationAgent:
         self.fallback = fallback
         self.confidence_threshold = confidence_threshold
         self.max_decisions_per_turn = max_decisions_per_turn
+        self.temperature = temperature
+
+        # Use StateMapper for proper encoding (same as self-play)
+        from src.forge.state_mapper import StateMapper, action_index_to_response
+        self.mapper = StateMapper()
+        self._action_index_to_response = action_index_to_response
 
         self.decisions_this_turn = 0
         self.current_turn = 0
+        self.our_player_name: Optional[str] = None
 
         # Stats
         self.total_decisions = 0
@@ -933,6 +973,10 @@ class ImitationAgent:
         self.decisions_this_turn += 1
         self.total_decisions += 1
 
+        # Auto-detect our player name
+        if self.our_player_name is None:
+            self.our_player_name = decision.player
+
         # Safety: fall back if too many decisions
         if self.decisions_this_turn > self.max_decisions_per_turn:
             self.fallback_decisions += 1
@@ -944,17 +988,24 @@ class ImitationAgent:
         # Try network decision
         try:
             with torch.no_grad():
-                # Encode state
-                state = self._encode_state(decision)
-                mask = self._get_action_mask(decision)
+                # Encode state using StateMapper (same encoding as self-play)
+                encoded = self.mapper.encode_decision(decision, self.our_player_name)
 
-                policy, value = self.network(state, mask)
+                state = encoded.state_tensor.unsqueeze(0).to(self.device)
+                mask = encoded.action_mask.unsqueeze(0).to(self.device)
+
+                # Forward through network
+                policy_logits, value = self.network(state, mask)
+
+                # Apply temperature and mask
+                logits = policy_logits.squeeze(0) / self.temperature
+                logits = logits.masked_fill(mask.squeeze(0) == 0, float('-inf'))
+                policy = F.softmax(logits, dim=-1)
 
                 # Get confidence (max probability)
                 confidence = policy.max().item()
 
                 if confidence < self.confidence_threshold:
-                    # Low confidence - use fallback
                     self.fallback_decisions += 1
                     response, meta = self.fallback.decide(decision)
                     meta["used_fallback"] = True
@@ -964,72 +1015,22 @@ class ImitationAgent:
 
                 # Use network decision
                 action_idx = policy.argmax().item()
-                response = self._index_to_response(action_idx, decision)
+                response = self._action_index_to_response(
+                    action_idx, decision, encoded
+                )
 
                 return response, {
                     "used_fallback": False,
                     "network_confidence": confidence,
-                    "value_estimate": value.item(),
+                    "value_estimate": value.squeeze().item(),
                 }
 
         except Exception as e:
-            # Error - use fallback
             self.fallback_decisions += 1
             response, meta = self.fallback.decide(decision)
             meta["used_fallback"] = True
             meta["fallback_reason"] = f"error: {str(e)}"
             return response, meta
-
-    def _encode_state(self, decision: Decision) -> torch.Tensor:
-        """Encode decision state for network input."""
-        # Simplified encoding - will use proper encoder later
-        state_json = decision.raw_data.get("game_state", {})
-
-        features = []
-        for player in state_json.get("players", []):
-            features.extend([
-                player.get("life", 20) / 20.0,
-                len(player.get("hand", [])) / 10.0,
-                len(player.get("battlefield", [])) / 20.0,
-                len(player.get("graveyard", [])) / 20.0,
-                player.get("library_size", 40) / 60.0,
-            ])
-
-        while len(features) < 512:
-            features.append(0.0)
-
-        return torch.tensor([features[:512]], dtype=torch.float32, device=self.device)
-
-    def _get_action_mask(self, decision: Decision) -> torch.Tensor:
-        """Get action mask for legal actions."""
-        mask = torch.zeros(1, 64, device=self.device)
-
-        # Set legal actions
-        if decision.actions:
-            for action in decision.actions:
-                idx = min(action.index + 1, 63)  # +1 for pass at 0
-                if idx >= 0:
-                    mask[0, idx] = 1.0
-
-        # Always allow pass
-        mask[0, 0] = 1.0
-
-        return mask
-
-    def _index_to_response(self, idx: int, decision: Decision) -> str:
-        """Convert network action index to Forge response."""
-        if idx == 0:
-            return "-1"  # Pass
-
-        # Convert to Forge action index
-        forge_idx = idx - 1
-
-        if decision.actions:
-            for action in decision.actions:
-                if action.index == forge_idx:
-                    return str(forge_idx)
-
-        return "-1"  # Default to pass
 
     def get_stats(self) -> Dict[str, Any]:
         """Get agent statistics."""
@@ -1108,7 +1109,14 @@ def main():
     print("PHASE 2: TRAINING")
     print("=" * 70)
 
-    network = SimpleImitationNetwork(state_dim=512, action_dim=64)
+    # Use AlphaZeroNetwork (same architecture as self-play) for weight transfer
+    network = AlphaZeroNetwork()
+    total_params = sum(p.numel() for p in network.parameters())
+    print(f"Network: AlphaZeroNetwork ({total_params:,} params)")
+    print(f"  Encoder: {sum(p.numel() for p in network.encoder.parameters()):,}")
+    print(f"  Policy:  {sum(p.numel() for p in network.policy_head.parameters()):,}")
+    print(f"  Value:   {sum(p.numel() for p in network.value_head.parameters()):,}")
+
     trainer = ImitationTrainer(network, lr=1e-3, batch_size=64)
 
     trainer.train(samples, epochs=args.epochs, verbose=True)
