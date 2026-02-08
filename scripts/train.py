@@ -267,8 +267,8 @@ def cmd_collect(args: argparse.Namespace) -> None:
     success = poll_s3_completion(
         S3_BUCKET,
         f"imitation_data/{run_id}/collection_complete.json",
-        timeout_minutes=180,
-        poll_interval_seconds=120,
+        interval=120,
+        timeout=10800,  # 3 hours
     )
     if success:
         print(_ok(f"Collection complete!  s3://{S3_BUCKET}/imitation_data/{run_id}/"))
