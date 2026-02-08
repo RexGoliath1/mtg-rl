@@ -12,6 +12,7 @@ Features:
 Usage:
     python3 scripts/card_recommender.py
     python3 scripts/card_recommender.py --port 8000
+    python3 scripts/card_recommender.py --reload   # auto-restart on file changes
 
 Then open http://localhost:8000 in your browser.
 """
@@ -2304,10 +2305,90 @@ Rhystic Study"></textarea>
 # Main
 # ---------------------------------------------------------------------------
 
+def run_with_reload(args):
+    """Run server with auto-reload on file changes."""
+    import subprocess
+    import sys
+
+    from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import Observer
+
+    script_path = os.path.abspath(__file__)
+    project_root = os.path.dirname(os.path.dirname(script_path))
+
+    watch_files = {
+        os.path.abspath(script_path),
+        os.path.join(project_root, "src", "mechanics", "card_parser.py"),
+        os.path.join(project_root, "src", "mechanics", "vocabulary.py"),
+    }
+    watch_dirs = {os.path.dirname(f) for f in watch_files}
+
+    proc = None
+
+    def start_server():
+        nonlocal proc
+        cmd = [sys.executable, script_path, "--port", str(args.port)]
+        proc = subprocess.Popen(cmd)
+        print(f"[reload] Server started (pid={proc.pid})")
+
+    def stop_server():
+        nonlocal proc
+        if proc and proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+            print("[reload] Server stopped")
+        proc = None
+
+    class ReloadHandler(FileSystemEventHandler):
+        def on_modified(self, event):
+            if event.is_directory:
+                return
+            if os.path.abspath(event.src_path) in watch_files:
+                print(f"\n[reload] File changed: {os.path.basename(event.src_path)}")
+                print("[reload] Restarting server...")
+                stop_server()
+                time.sleep(1)
+                start_server()
+
+    observer = Observer()
+    for d in watch_dirs:
+        observer.schedule(ReloadHandler(), d, recursive=False)
+    observer.start()
+
+    print(f"[reload] Watching {len(watch_files)} files for changes")
+    for f in sorted(watch_files):
+        print(f"  - {os.path.relpath(f, project_root)}")
+
+    start_server()
+
+    try:
+        while True:
+            time.sleep(1)
+            if proc and proc.poll() is not None:
+                print("[reload] Server process exited unexpectedly, restarting...")
+                time.sleep(1)
+                start_server()
+    except KeyboardInterrupt:
+        print("\n[reload] Shutting down...")
+    finally:
+        observer.stop()
+        observer.join()
+        stop_server()
+
+
 def main():
     parser = argparse.ArgumentParser(description="MTG Card Recommender Server")
     parser.add_argument("--port", type=int, default=8000, help="Port (default: 8000)")
+    parser.add_argument("--reload", action="store_true", help="Auto-restart on source file changes")
     args = parser.parse_args()
+
+    if args.reload:
+        run_with_reload(args)
+        return
 
     print(f"\n{'=' * 60}")
     print("MTG Card Recommender Server")
