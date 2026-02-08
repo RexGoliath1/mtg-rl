@@ -87,8 +87,9 @@ decks/**/deck_list.txt
 # Claude Code local settings
 .claude/
 
-# Forge JAR cache (CI build optimization)
-.forge-jar-cache/
+# Forge JAR cache (CI build optimization — .keep sentinel is tracked)
+.forge-jar-cache/*
+!.forge-jar-cache/.keep
 
 # ── Archived docs (key insights in Claude memory) ────────
 CARD_ENCODING.md

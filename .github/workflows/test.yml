@@ -102,11 +102,13 @@ jobs:
       - name: Prepare JAR cache directory
         run: |
           mkdir -p .forge-jar-cache
+          touch .forge-jar-cache/.keep
           if [ -f .forge-jar-cache/forge.jar ]; then
             echo "Cache HIT — forge.jar found ($(stat --format=%s .forge-jar-cache/forge.jar) bytes)"
           else
             echo "Cache MISS — Maven build will run inside Docker"
           fi
+          ls -la .forge-jar-cache/
 
       - name: Build daemon image
         uses: docker/build-push-action@v6
@@ -323,11 +325,13 @@ jobs:
       - name: Prepare JAR cache directory
         run: |
           mkdir -p .forge-jar-cache
+          touch .forge-jar-cache/.keep
           if [ -f .forge-jar-cache/forge.jar ]; then
             echo "Cache HIT — forge.jar found ($(stat --format=%s .forge-jar-cache/forge.jar) bytes)"
           else
             echo "Cache MISS — Maven build will run inside Docker"
           fi
+          ls -la .forge-jar-cache/
 
       - name: Build and push collection image
         uses: docker/build-push-action@v6

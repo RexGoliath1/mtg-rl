@@ -14,10 +14,9 @@ FROM maven:3.9-eclipse-temurin-17 AS builder
 
 WORKDIR /build
 
-# Copy any pre-built JAR from the build context (.forge-jar-cache/ always
-# exists — CI creates it with at least a .keep sentinel). The wildcard
-# ensures COPY doesn't fail when forge.jar is absent.
-COPY .forge-jar-cache/forge.jar* /tmp/jar-cache/
+# Copy pre-built JAR from CI cache if available.
+# The .forge-jar-cache/ dir always has a .keep sentinel so COPY never fails.
+COPY .forge-jar-cache/ /tmp/jar-cache/
 
 # Clone Forge source (always needed for res/ files in Stage 2)
 ARG FORGE_REPO=https://github.com/RexGoliath1/forge.git
