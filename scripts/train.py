@@ -222,11 +222,28 @@ def cmd_collect(args: argparse.Namespace) -> None:
     print(_info("Packaging code..."))
     code_tar = create_code_tarball(PROJECT_DIR)
     forge_tar = create_forge_tarball(PROJECT_DIR)
-    code_s3_key = f"packages/{run_id}/code.tar.gz"
-    forge_s3_key = f"packages/{run_id}/forge.tar.gz"
-    upload_to_s3(code_tar, S3_BUCKET, code_s3_key)
+    # Upload to test_packages/ (matches userdata template path)
+    code_filename = f"{run_id}_code.tar.gz"
+    forge_filename = f"{run_id}_forge.tar.gz"
+    upload_to_s3(code_tar, S3_BUCKET, f"test_packages/{code_filename}")
     if forge_tar:
-        upload_to_s3(forge_tar, S3_BUCKET, forge_s3_key)
+        upload_to_s3(forge_tar, S3_BUCKET, f"test_packages/{forge_filename}")
+    else:
+        # Reuse latest pre-built Forge JAR from S3 if no local build
+        import boto3
+        s3 = boto3.client("s3", region_name=REGION)
+        resp = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix="test_packages/forge_jar_")
+        forge_jars = sorted(
+            [obj["Key"] for obj in resp.get("Contents", [])],
+            reverse=True,
+        )
+        if forge_jars:
+            latest_jar = forge_jars[0].split("/")[-1]
+            forge_filename = latest_jar
+            print(_ok(f"Reusing pre-built Forge JAR: {latest_jar}"))
+        else:
+            print(_warn("No Forge JAR available — instance will build from source (~7 min)"))
+            forge_filename = ""
     print(_ok("Packages uploaded"))
 
     # Network setup
@@ -242,8 +259,8 @@ def cmd_collect(args: argparse.Namespace) -> None:
         collection_config=cfg,
         run_id=run_id,
         timestamp=ts,
-        code_package=code_s3_key,
-        forge_package=forge_s3_key if forge_tar else "",
+        code_package=code_filename,
+        forge_package=forge_filename if forge_tar else "",
     )
 
     # Launch
