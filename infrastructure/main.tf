@@ -368,7 +368,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "checkpoints" {
 }
 
 # =============================================================================
-# ECR Repository for Docker Images
+# ECR Repositories for Docker Images
 # =============================================================================
 
 resource "aws_ecr_repository" "training" {
@@ -380,9 +380,69 @@ resource "aws_ecr_repository" "training" {
   }
 }
 
-# Lifecycle policy to limit stored images
+resource "aws_ecr_repository" "daemon" {
+  name                 = "${var.project_name}-daemon"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+resource "aws_ecr_repository" "collection" {
+  name                 = "${var.project_name}-collection"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+# Lifecycle policies to limit stored images
 resource "aws_ecr_lifecycle_policy" "training" {
   repository = aws_ecr_repository.training.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 5 images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 5
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_ecr_lifecycle_policy" "daemon" {
+  repository = aws_ecr_repository.daemon.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 5 images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 5
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_ecr_lifecycle_policy" "collection" {
+  repository = aws_ecr_repository.collection.name
 
   policy = jsonencode({
     rules = [
@@ -653,6 +713,16 @@ output "ecr_repository_url" {
   value       = aws_ecr_repository.training.repository_url
 }
 
+output "ecr_daemon_repository_url" {
+  description = "ECR repository URL for Forge daemon images"
+  value       = aws_ecr_repository.daemon.repository_url
+}
+
+output "ecr_collection_repository_url" {
+  description = "ECR repository URL for collection images"
+  value       = aws_ecr_repository.collection.repository_url
+}
+
 output "training_role_arn" {
   description = "IAM role ARN for training instances"
   value       = aws_iam_role.training.arn
@@ -672,7 +742,10 @@ output "deployment_summary" {
     Environment: ${var.environment}
 
     S3 Bucket: ${aws_s3_bucket.checkpoints.bucket}
-    ECR Repository: ${aws_ecr_repository.training.repository_url}
+    ECR Repositories:
+      Training:   ${aws_ecr_repository.training.repository_url}
+      Daemon:     ${aws_ecr_repository.daemon.repository_url}
+      Collection: ${aws_ecr_repository.collection.repository_url}
 
     Training Instance: ${var.enable_training_instance ? "ENABLED" : "DISABLED"}
     Instance Type: ${var.training_instance_type}
