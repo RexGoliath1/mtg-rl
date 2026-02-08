@@ -71,6 +71,102 @@ jobs:
           cache-from: type=gha,scope=training
           cache-to: type=gha,mode=max,scope=training
 
+  # Smoke test: validate training image works (imports, data loading, training)
+  # Catches PYTHONPATH, rglob, and num_actions filtering bugs before ECR push
+  docker-smoke-test:
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build training image (slim base)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile.training
+          push: false
+          load: true
+          tags: mtg-training:smoke
+          build-args: BASE_IMAGE=python:3.11-slim
+          cache-from: type=gha,scope=training
+
+      - name: Generate synthetic test HDF5
+        run: |
+          # Create synthetic data mimicking collection v1 schema
+          # Includes num_actions=0 edge case that caused attempt 6 failure
+          mkdir -p /tmp/smoke_data/subdir
+          docker run --rm -v /tmp/smoke_data:/out mtg-training:smoke \
+            python3 -c "
+          import h5py, numpy as np
+          np.random.seed(42)
+          n = 500
+          states = np.random.randn(n, 17).astype(np.float32)
+          choices = np.random.randint(0, 10, size=n).astype(np.int32)
+          # Mimic collection v1 bug: 60% of num_actions are 0
+          num_actions = np.zeros(n, dtype=np.int32)
+          num_actions[::3] = np.random.randint(2, 20, size=len(num_actions[::3]))
+          decision_types = np.random.randint(0, 5, size=n).astype(np.int32)
+          turns = np.random.randint(1, 15, size=n).astype(np.int32)
+          # Save in subdirectory (tests rglob vs glob)
+          with h5py.File('/out/subdir/test_data.h5', 'w') as f:
+              f.create_dataset('states', data=states)
+              f.create_dataset('choices', data=choices)
+              f.create_dataset('num_actions', data=num_actions)
+              f.create_dataset('decision_types', data=decision_types)
+              f.create_dataset('turns', data=turns)
+          print(f'Created test HDF5: {n} decisions, {(num_actions==0).sum()} with num_actions=0')
+          "
+          ls -la /tmp/smoke_data/subdir/
+
+      - name: "Smoke 1: Validate Python imports"
+        run: |
+          docker run --rm mtg-training:smoke \
+            python3 -c "
+          from src.forge.game_state_encoder import ForgeGameStateEncoder
+          from src.training.self_play import SelfPlayTrainer
+          from src.models.shared_card_encoder import SharedCardEncoder
+          from src.utils.wandb_integration import WandbTracker
+          print('All imports successful')
+          "
+
+      - name: "Smoke 2: Validate HDF5 data loading (rglob)"
+        run: |
+          docker run --rm -v /tmp/smoke_data:/data:ro mtg-training:smoke \
+            python3 -c "
+          from pathlib import Path
+          import h5py
+          # Must find file in subdirectory via rglob (not glob)
+          files = list(Path('/data').rglob('*.h5'))
+          assert files, 'No HDF5 found — rglob failed'
+          f = h5py.File(files[0], 'r')
+          n = len(f['states'])
+          assert n > 0, 'Empty HDF5'
+          print(f'Loaded {n} decisions from {files[0]}')
+          f.close()
+          "
+
+      - name: "Smoke 3: Run 1 training epoch"
+        run: |
+          docker run --rm \
+            -v /tmp/smoke_data:/data:ro \
+            -e WANDB_MODE=disabled \
+            mtg-training:smoke \
+            python3 scripts/train_imitation.py \
+              --data-dir /data \
+              --epochs 1 \
+              --batch-size 64 \
+              --max-actions 64 \
+              --output /tmp/smoke_model.pt \
+              --log-dir /tmp/smoke_logs
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf /tmp/smoke_data
+
   # End-to-end daemon<->collector integration test (main branch only)
   docker-integration-test:
     runs-on: ubuntu-latest
@@ -285,7 +381,7 @@ jobs:
   ecr-push:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [lint-and-test, docker-build]
+    needs: [lint-and-test, docker-build, docker-smoke-test]
     permissions:
       id-token: write
       contents: read
