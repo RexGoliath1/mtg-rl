@@ -783,26 +783,46 @@ class ImitationDataset(Dataset):
 class ImitationTrainer:
     """
     Trains neural network to imitate heuristic agent decisions.
+
+    Performance features:
+    - Mixed precision (AMP) for ~2x throughput on V100/T4
+    - Cosine LR schedule with linear warmup
+    - Gradient clipping (max_norm=1.0)
+    - DataLoader with num_workers, pin_memory, persistent_workers
     """
 
     def __init__(
         self,
         network: nn.Module,
         lr: float = 1e-3,
-        batch_size: int = 64,
+        batch_size: int = 256,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
         use_tensorboard: bool = False,
         tb_log_dir: str = "runs/imitation",
         wandb_tracker: Optional["WandbTracker"] = None,
+        num_workers: int = 4,
+        warmup_epochs: int = 5,
+        total_epochs: int = 30,
+        grad_accum_steps: int = 1,
     ):
         self.network = network.to(device)
         self.device = device
         self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.warmup_epochs = warmup_epochs
+        self.total_epochs = total_epochs
+        self.grad_accum_steps = grad_accum_steps
 
         self.optimizer = torch.optim.AdamW(network.parameters(), lr=lr)
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            self.optimizer, T_max=100, eta_min=1e-5
+            self.optimizer, T_max=max(total_epochs - warmup_epochs, 1), eta_min=1e-6
         )
+        self._base_lr = lr
+        self._current_epoch = 0
+
+        # Mixed precision (AMP) -- only on CUDA
+        self._use_amp = device.startswith("cuda")
+        self._scaler = torch.amp.GradScaler("cuda", enabled=self._use_amp)
 
         self.training_history: List[Dict] = []
 
@@ -817,9 +837,27 @@ class ImitationTrainer:
         # --- Weights & Biases ---
         self.wandb_tracker = wandb_tracker
 
+        if self._use_amp:
+            print("[AMP] Mixed precision training enabled")
+
+    def _get_lr(self) -> float:
+        """Get current learning rate, applying linear warmup if applicable."""
+        if self._current_epoch < self.warmup_epochs:
+            # Linear warmup: ramp from 0 to base_lr over warmup_epochs
+            return self._base_lr * (self._current_epoch + 1) / self.warmup_epochs
+        return self.scheduler.get_last_lr()[0]
+
+    def _apply_warmup(self):
+        """Set optimizer LR during warmup phase."""
+        if self._current_epoch < self.warmup_epochs:
+            lr = self._get_lr()
+            for param_group in self.optimizer.param_groups:
+                param_group["lr"] = lr
+
     def train_epoch(self, dataloader: DataLoader) -> Dict[str, float]:
-        """Train for one epoch."""
+        """Train for one epoch with AMP, gradient accumulation, and warmup."""
         self.network.train()
+        self._apply_warmup()
 
         total_loss = 0
         total_policy_loss = 0
@@ -828,45 +866,54 @@ class ImitationTrainer:
 
         is_alphazero = isinstance(self.network, AlphaZeroNetwork)
 
-        for states, actions, masks in dataloader:
-            states = states.to(self.device)
-            actions = actions.to(self.device)
-            masks = masks.to(self.device)
+        self.optimizer.zero_grad()
 
-            if is_alphazero:
-                # AlphaZeroNetwork: states are pre-encoded (512-dim from encoder)
-                # Pass through policy/value heads directly
-                logits = self.network.policy_head(states, masks, return_logits=True)
-                value = self.network.value_head(states)
+        for batch_idx, (states, actions, masks) in enumerate(dataloader):
+            states = states.to(self.device, non_blocking=True)
+            actions = actions.to(self.device, non_blocking=True)
+            masks = masks.to(self.device, non_blocking=True)
 
-                # Cross-entropy on logits (more numerically stable)
-                policy_loss = F.cross_entropy(logits, actions)
-                predictions = logits.argmax(dim=-1)
-            else:
-                # Legacy SimpleImitationNetwork path
-                policy, value = self.network(states, masks)
-                policy_loss = F.cross_entropy(policy.log().clamp(-100, 0), actions)
-                predictions = policy.argmax(dim=-1)
+            # Mixed precision forward pass
+            with torch.amp.autocast("cuda", enabled=self._use_amp):
+                if is_alphazero:
+                    logits = self.network.policy_head(states, masks, return_logits=True)
 
-            loss = policy_loss
+                    policy_loss = F.cross_entropy(logits, actions)
+                    predictions = logits.argmax(dim=-1)
+                else:
+                    policy, value = self.network(states, masks)
+                    policy_loss = F.cross_entropy(policy.log().clamp(-100, 0), actions)
+                    predictions = policy.argmax(dim=-1)
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.network.parameters(), 1.0)
-            self.optimizer.step()
+                loss = policy_loss / self.grad_accum_steps
 
-            total_loss += loss.item()
+            # Scaled backward pass for AMP
+            self._scaler.scale(loss).backward()
+
+            # Step optimizer every grad_accum_steps
+            if (batch_idx + 1) % self.grad_accum_steps == 0 or (batch_idx + 1) == len(dataloader):
+                self._scaler.unscale_(self.optimizer)
+                torch.nn.utils.clip_grad_norm_(self.network.parameters(), 1.0)
+                self._scaler.step(self.optimizer)
+                self._scaler.update()
+                self.optimizer.zero_grad()
+
+            total_loss += loss.item() * self.grad_accum_steps
             total_policy_loss += policy_loss.item()
             correct += (predictions == actions).sum().item()
             total += actions.size(0)
 
-        self.scheduler.step()
+        # Step cosine scheduler only after warmup
+        if self._current_epoch >= self.warmup_epochs:
+            self.scheduler.step()
+
+        self._current_epoch += 1
 
         metrics = {
             "loss": total_loss / len(dataloader),
             "policy_loss": total_policy_loss / len(dataloader),
             "accuracy": correct / total if total > 0 else 0,
-            "lr": self.scheduler.get_last_lr()[0],
+            "lr": self._get_lr(),
         }
 
         self.training_history.append(metrics)
@@ -897,11 +944,17 @@ class ImitationTrainer:
             # Legacy path for SimpleImitationNetwork
             encoder = ForgeGameStateEncoder()
             dataset = ImitationDataset(samples, encoder=encoder)
+
+        # Optimized DataLoader: pin_memory for faster GPU transfer,
+        # persistent_workers to avoid fork overhead each epoch
+        use_workers = self.num_workers if self.num_workers > 0 else 0
         dataloader = DataLoader(
             dataset,
             batch_size=self.batch_size,
             shuffle=True,
-            num_workers=0,
+            num_workers=use_workers,
+            pin_memory=self.device.startswith("cuda"),
+            persistent_workers=use_workers > 0,
         )
 
         if verbose:
@@ -1143,6 +1196,11 @@ def main():
     parser.add_argument("--games", type=int, default=10, help="Number of games for data collection")
     parser.add_argument("--epochs", type=int, default=10, help="Training epochs")
     parser.add_argument("--eval-games", type=int, default=5, help="Evaluation games")
+    parser.add_argument("--batch-size", type=int, default=256, help="Training batch size")
+    parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
+    parser.add_argument("--warmup-epochs", type=int, default=5, help="LR warmup epochs")
+    parser.add_argument("--grad-accum", type=int, default=1, help="Gradient accumulation steps")
+    parser.add_argument("--num-workers", type=int, default=4, help="DataLoader workers")
     parser.add_argument("--checkpoint", default="checkpoints/imitation.pt", help="Checkpoint path")
     parser.add_argument("--collect-only", action="store_true", help="Only collect data, don't train")
     parser.add_argument("--train-only", action="store_true", help="Only train on existing data")
@@ -1213,8 +1271,10 @@ def main():
             config={
                 "games": args.games,
                 "epochs": args.epochs,
-                "batch_size": 64,
-                "lr": 1e-3,
+                "batch_size": args.batch_size,
+                "lr": args.lr,
+                "warmup_epochs": args.warmup_epochs,
+                "grad_accum_steps": args.grad_accum,
                 "deck1": args.deck1,
                 "deck2": args.deck2,
             },
@@ -1226,11 +1286,15 @@ def main():
 
     trainer = ImitationTrainer(
         network,
-        lr=1e-3,
-        batch_size=64,
+        lr=args.lr,
+        batch_size=args.batch_size,
         use_tensorboard=args.tensorboard,
         tb_log_dir=args.tb_log_dir,
         wandb_tracker=wandb_tracker,
+        num_workers=args.num_workers,
+        warmup_epochs=args.warmup_epochs,
+        total_epochs=args.epochs,
+        grad_accum_steps=args.grad_accum,
     )
 
     trainer.train(samples, epochs=args.epochs, verbose=True)
