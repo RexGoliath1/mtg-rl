@@ -413,19 +413,21 @@
 
 <div class="viewcode-block" id="MechanicsCache.__init__">
 <a class="viewcode-back" href="../../../api/forge.html#src.forge.game_state_encoder.MechanicsCache.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h5_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h5_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vocab_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1403</span><span class="p">,</span> <span class="n">max_params</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">37</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Load mechanics embeddings from HDF5 file.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            h5_path: Path to card_mechanics_*.h5 file</span>
+<span class="sd">            vocab_size: Fallback vocab size when HDF5 is unavailable</span>
+<span class="sd">            max_params: Fallback max params when HDF5 is unavailable</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">h5_path</span> <span class="o">=</span> <span class="n">h5_path</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mechanics_matrix</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">params_matrix</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">card_index</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">vocab_size</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_params</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vocab_size</span> <span class="o">=</span> <span class="n">vocab_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_params</span> <span class="o">=</span> <span class="n">max_params</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_loaded</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_load</span><span class="p">()</span></div>
@@ -465,8 +467,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loaded</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">(</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vocab_size</span> <span class="ow">or</span> <span class="mi">1311</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_params</span> <span class="ow">or</span> <span class="mi">20</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vocab_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_params</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
             <span class="p">)</span>
 
         <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">card_index</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">card_name</span><span class="p">)</span>
@@ -1288,7 +1290,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">GameStateConfig</span><span class="p">()</span>
 
         <span class="c1"># Load mechanics cache</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">mechanics_cache</span> <span class="o">=</span> <span class="n">MechanicsCache</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">mechanics_h5_path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mechanics_cache</span> <span class="o">=</span> <span class="n">MechanicsCache</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">mechanics_h5_path</span><span class="p">,</span>
+            <span class="n">vocab_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">vocab_size</span><span class="p">,</span>
+            <span class="n">max_params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_params</span><span class="p">,</span>
+        <span class="p">)</span>
 
         <span class="c1"># Shared card embedding MLP (used by all zone encoders and stack encoder)</span>
         <span class="c1"># 42 = state features (zone 8 + bools 7 + counters 10 + combat 4 + mods 2 + temporal 1 + types 7 + P/T 2 + CMC 1)</span>
@@ -1662,138 +1668,6 @@
         <span class="k">return</span> <span class="n">encoder</span></div>
 </div>
 
-
-
-<span class="c1"># =============================================================================</span>
-<span class="c1"># TESTING</span>
-<span class="c1"># =============================================================================</span>
-
-<div class="viewcode-block" id="test_game_state_encoder">
-<a class="viewcode-back" href="../../../api/forge.html#src.forge.game_state_encoder.test_game_state_encoder">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">test_game_state_encoder</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test the game state encoder.&quot;&quot;&quot;</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Testing Forge Game State Encoder&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
-
-    <span class="c1"># Create encoder</span>
-    <span class="n">config</span> <span class="o">=</span> <span class="n">GameStateConfig</span><span class="p">()</span>
-    <span class="n">encoder</span> <span class="o">=</span> <span class="n">ForgeGameStateEncoder</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-
-    <span class="c1"># Count parameters</span>
-    <span class="n">total_params</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">encoder</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Encoder parameters: </span><span class="si">{</span><span class="n">total_params</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-    <span class="c1"># Test with mock game state (includes new per-card and per-player fields)</span>
-    <span class="n">mock_state</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;turn&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
-        <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="s2">&quot;main1&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;activePlayer&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="s2">&quot;priorityPlayer&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="s2">&quot;players&quot;</span><span class="p">:</span> <span class="p">[</span>
-            <span class="p">{</span>
-                <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Player1&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;life&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
-                <span class="s2">&quot;poison&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-                <span class="s2">&quot;library_size&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
-                <span class="s2">&quot;hand_size&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-                <span class="s2">&quot;lands_played_this_turn&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-                <span class="s2">&quot;max_land_plays&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-                <span class="s2">&quot;has_lost&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-                <span class="s2">&quot;mana&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;W&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;U&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;R&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;G&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
-                <span class="s2">&quot;hand&quot;</span><span class="p">:</span> <span class="p">[</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Lightning Bolt&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;is_instant&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;cmc&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Counterspell&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;is_instant&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;cmc&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Sol Ring&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;is_artifact&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;cmc&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
-                <span class="p">],</span>
-                <span class="s2">&quot;battlefield&quot;</span><span class="p">:</span> <span class="p">[</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Grizzly Bears&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s2">&quot;tapped&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;is_creature&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;power&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;toughness&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;cmc&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Forest&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span> <span class="s2">&quot;tapped&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;is_land&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Mountain&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span> <span class="s2">&quot;tapped&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;is_land&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
-                <span class="p">],</span>
-                <span class="s2">&quot;graveyard&quot;</span><span class="p">:</span> <span class="p">[</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Giant Growth&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="s2">&quot;is_instant&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;cmc&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
-                <span class="p">],</span>
-                <span class="s2">&quot;exile&quot;</span><span class="p">:</span> <span class="p">[],</span>
-                <span class="s2">&quot;command&quot;</span><span class="p">:</span> <span class="p">[],</span>
-            <span class="p">},</span>
-            <span class="p">{</span>
-                <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Opponent&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;life&quot;</span><span class="p">:</span> <span class="mi">18</span><span class="p">,</span>
-                <span class="s2">&quot;poison&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-                <span class="s2">&quot;library_size&quot;</span><span class="p">:</span> <span class="mi">45</span><span class="p">,</span>
-                <span class="s2">&quot;hand_size&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-                <span class="s2">&quot;lands_played_this_turn&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-                <span class="s2">&quot;max_land_plays&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-                <span class="s2">&quot;has_lost&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-                <span class="s2">&quot;mana&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;W&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;U&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;R&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;G&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>
-                <span class="s2">&quot;hand&quot;</span><span class="p">:</span> <span class="p">[</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Unknown Card&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Unknown Card&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">101</span><span class="p">},</span>
-                <span class="p">],</span>
-                <span class="s2">&quot;battlefield&quot;</span><span class="p">:</span> <span class="p">[</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Snapcaster Mage&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">110</span><span class="p">,</span> <span class="s2">&quot;tapped&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;is_creature&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;power&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;toughness&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;cmc&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Island&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">111</span><span class="p">,</span> <span class="s2">&quot;tapped&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;is_land&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Island&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">112</span><span class="p">,</span> <span class="s2">&quot;tapped&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;is_land&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
-                <span class="p">],</span>
-                <span class="s2">&quot;graveyard&quot;</span><span class="p">:</span> <span class="p">[],</span>
-                <span class="s2">&quot;exile&quot;</span><span class="p">:</span> <span class="p">[],</span>
-                <span class="s2">&quot;command&quot;</span><span class="p">:</span> <span class="p">[],</span>
-            <span class="p">},</span>
-        <span class="p">],</span>
-        <span class="s2">&quot;stack&quot;</span><span class="p">:</span> <span class="p">[],</span>
-        <span class="s2">&quot;legalActions&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;cast:1:Lightning Bolt&quot;</span><span class="p">,</span> <span class="s2">&quot;pass&quot;</span><span class="p">],</span>
-    <span class="p">}</span>
-
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Encoding mock game state...&quot;</span><span class="p">)</span>
-    <span class="n">encoder</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
-    <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
-        <span class="n">state_embedding</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">encode_json</span><span class="p">(</span><span class="n">mock_state</span><span class="p">)</span>
-
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;State embedding shape: </span><span class="si">{</span><span class="n">state_embedding</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;State embedding mean: </span><span class="si">{</span><span class="n">state_embedding</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;State embedding std: </span><span class="si">{</span><span class="n">state_embedding</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-    <span class="c1"># Test with stack</span>
-    <span class="n">mock_state_with_stack</span> <span class="o">=</span> <span class="n">mock_state</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="n">mock_state_with_stack</span><span class="p">[</span><span class="s2">&quot;stack&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Lightning Bolt&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;targets&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">110</span><span class="p">]},</span>
-    <span class="p">]</span>
-
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Encoding state with stack...&quot;</span><span class="p">)</span>
-    <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
-        <span class="n">state_with_stack</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">encode_json</span><span class="p">(</span><span class="n">mock_state_with_stack</span><span class="p">)</span>
-
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;State (with stack) shape: </span><span class="si">{</span><span class="n">state_with_stack</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-    <span class="c1"># Check embeddings are different</span>
-    <span class="n">diff</span> <span class="o">=</span> <span class="p">(</span><span class="n">state_embedding</span> <span class="o">-</span> <span class="n">state_with_stack</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Difference from empty stack: </span><span class="si">{</span><span class="n">diff</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-    <span class="c1"># Test save/load</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Testing save/load...&quot;</span><span class="p">)</span>
-    <span class="n">encoder</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;/tmp/test_forge_encoder.pt&quot;</span><span class="p">)</span>
-    <span class="n">loaded</span> <span class="o">=</span> <span class="n">ForgeGameStateEncoder</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;/tmp/test_forge_encoder.pt&quot;</span><span class="p">)</span>
-    <span class="n">loaded</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
-
-    <span class="c1"># Re-encode with original to get consistent comparison</span>
-    <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
-        <span class="n">orig_emb</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">encode_json</span><span class="p">(</span><span class="n">mock_state</span><span class="p">)</span>
-        <span class="n">loaded_emb</span> <span class="o">=</span> <span class="n">loaded</span><span class="o">.</span><span class="n">encode_json</span><span class="p">(</span><span class="n">mock_state</span><span class="p">)</span>
-
-    <span class="n">load_diff</span> <span class="o">=</span> <span class="p">(</span><span class="n">orig_emb</span> <span class="o">-</span> <span class="n">loaded_emb</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Load difference (should be ~0): </span><span class="si">{</span><span class="n">load_diff</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Forge Game State Encoder test completed!&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span></div>
-
-
-
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="n">test_game_state_encoder</span><span class="p">()</span>
 </pre></div>
         </article>
       </div>
