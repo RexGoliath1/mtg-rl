@@ -46,24 +46,20 @@ ROOT_DECKS_DIR = Path(__file__).parent.parent / "decks"
 
 
 def load_deck_pool() -> List[str]:
-    """Load all available decks from decks/modern/ directory.
+    """Load all available decks from decks/ directory tree.
 
-    Returns absolute paths so Forge daemon can find decks regardless of CWD.
+    Returns just filenames (not paths) since the Forge daemon searches its
+    own configured decks directory. This works both locally and in Docker
+    where collector and daemon are separate containers.
     """
     decks = []
 
-    # Load Modern decks (primary source - 60 decks, 564 unique cards)
-    if MODERN_DECKS_DIR.exists():
-        for dck in MODERN_DECKS_DIR.glob("*.dck"):
-            decks.append(str(dck.resolve()))
-
-    # Also load root-level decks for additional coverage
-    if ROOT_DECKS_DIR.exists():
-        for dck in ROOT_DECKS_DIR.glob("*.dck"):
-            decks.append(str(dck.resolve()))
+    for deck_dir in [MODERN_DECKS_DIR, ROOT_DECKS_DIR]:
+        if deck_dir.exists():
+            for dck in deck_dir.glob("*.dck"):
+                decks.append(dck.name)
 
     if not decks:
-        # Fallback if no decks found
         decks = ["red_aggro.dck", "white_weenie.dck"]
 
     return sorted(set(decks))

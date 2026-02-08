@@ -75,8 +75,12 @@ COPY --from=builder /build/forge-gui/res/geneticaidecks/ /forge/res/geneticaidec
 COPY --from=builder /build/forge-gui/res/licenses/ /forge/res/licenses/
 RUN mkdir -p /forge/res/decks/
 
-# Copy deck files
-COPY decks/ /forge/userdata/decks/constructed/
+# Copy deck files (flatten all .dck files into constructed/ so daemon can find them)
+# Copy order: root first, then subdirs, so subdirectory versions win on name conflicts
+COPY decks/ /tmp/decks/
+RUN cp /tmp/decks/*.dck /forge/userdata/decks/constructed/ 2>/dev/null || true \
+    && find /tmp/decks -mindepth 2 -name "*.dck" -exec cp {} /forge/userdata/decks/constructed/ \; \
+    && rm -rf /tmp/decks
 
 # Create forge profile properties (in working directory)
 RUN echo "userDir=/forge/userdata/" > /forge/forge.profile.properties \

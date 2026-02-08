@@ -63,12 +63,15 @@ runs/
 logs/
 replays/
 tensorboard/
+training_data/
+training_output/
 
 # Generated reports
 reports/
 
-# Training decks (local only, not tracked)
-decks/
+# Training decks - track .dck files, ignore generated data
+decks/*.csv
+decks/**/deck_list.txt
 
 # Terraform state (config tracked, state not)
 .terraform/
@@ -102,6 +105,9 @@ infrastructure/TERRAFORM_VS_AWSCLI.md
 # Large reference files
 MagicCompRules*.txt
 *.pdf
+
+# Videos
+videos/
 
 # Legacy / one-off files
 requirements.txt
