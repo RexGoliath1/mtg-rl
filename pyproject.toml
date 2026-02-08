@@ -51,7 +51,7 @@ packages = ["src"]
 exclude = ["forge-repo", "wandb"]
 
 [tool.ruff.lint]
-ignore = ["E501"]
+ignore = ["E501", "E402"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
