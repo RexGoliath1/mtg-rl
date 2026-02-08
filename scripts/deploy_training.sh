@@ -1,5 +1,28 @@
 #!/bin/bash
 # =============================================================================
+# DEPRECATED: Use train.py deploy-training instead
+# =============================================================================
+# This script is now wrapped by the unified CLI:
+#   python3 scripts/train.py deploy-training --instance-type g4dn.xlarge
+#   python3 scripts/train.py deploy-training --dry-run
+#
+# To use this legacy script directly, set FORCE_LEGACY=1:
+#   FORCE_LEGACY=1 ./scripts/deploy_training.sh --instance-type g4dn.xlarge
+# =============================================================================
+
+if [ "${FORCE_LEGACY}" != "1" ]; then
+    echo "DEPRECATED: This script is now wrapped by the unified CLI."
+    echo ""
+    echo "Use instead:"
+    echo "  python3 scripts/train.py deploy-training --instance-type g4dn.xlarge"
+    echo "  python3 scripts/train.py deploy-training --dry-run"
+    echo "  python3 scripts/train.py deploy-training --s3-bucket my-bucket"
+    echo ""
+    echo "Set FORCE_LEGACY=1 to use this script anyway."
+    exit 1
+fi
+
+# =============================================================================
 # Deploy Training to AWS
 # =============================================================================
 #
@@ -11,7 +34,7 @@
 #   - Docker (optional, for container builds)
 #
 # Usage:
-#   ./scripts/deploy_training.sh [options]
+#   FORCE_LEGACY=1 ./scripts/deploy_training.sh [options]
 #
 # Options:
 #   --instance-type    EC2 instance type (default: g4dn.xlarge)
@@ -20,7 +43,7 @@
 #   --dry-run          Show what would be deployed without deploying
 #
 # Example:
-#   ./scripts/deploy_training.sh --instance-type g4dn.xlarge --s3-bucket my-bucket
+#   FORCE_LEGACY=1 ./scripts/deploy_training.sh --instance-type g4dn.xlarge --s3-bucket my-bucket
 # =============================================================================
 
 set -e

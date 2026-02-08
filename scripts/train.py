@@ -3,13 +3,16 @@
 ForgeRL Unified Training CLI
 
 Replaces 9+ shell scripts with one Python command for all training operations:
-  collect  - Launch data collection on AWS
-  train    - Launch GPU training on AWS
-  run      - Full pipeline (collect -> train -> notify)
-  local    - Local smoke test (no AWS)
-  status   - Check running instances and S3 data
-  connect  - Connect to running instance
-  kill     - Terminate all training instances
+  collect          - Launch data collection on AWS
+  train            - Launch GPU training on AWS
+  run              - Full pipeline (collect -> train -> notify)
+  local            - Local smoke test (no AWS)
+  status           - Check running instances and S3 data
+  connect          - Connect to running instance
+  kill             - Terminate all training instances
+  docker-push      - Build and push Docker images to ECR
+  ssh              - SSH into running instance via EC2 Instance Connect
+  deploy-training  - Launch EC2 spot instance for GPU training (Terraform)
 
 Usage:
     python3 scripts/train.py local --epochs 5
@@ -19,6 +22,9 @@ Usage:
     python3 scripts/train.py status
     python3 scripts/train.py connect --tensorboard --jupyter
     python3 scripts/train.py kill
+    python3 scripts/train.py docker-push --all
+    python3 scripts/train.py ssh logs
+    python3 scripts/train.py deploy-training --instance-type g4dn.xlarge
 """
 
 import argparse
@@ -640,6 +646,96 @@ def cmd_kill(args: argparse.Namespace) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: docker-push  (wraps deploy_docker.sh)
+# ---------------------------------------------------------------------------
+def cmd_docker_push(args: argparse.Namespace) -> None:
+    """Build and push Docker images to ECR."""
+    script = PROJECT_DIR / "scripts" / "deploy_docker.sh"
+    if not script.exists():
+        print(_err(f"Script not found: {script}"))
+        sys.exit(1)
+
+    cmd = [str(script)]
+    if args.all:
+        cmd.append("--all")
+    else:
+        if args.build:
+            cmd.append("--build")
+        if args.push:
+            cmd.append("--push")
+        if args.deploy:
+            cmd.append("--deploy")
+    if args.local:
+        cmd.append("--local")
+    if args.games is not None:
+        cmd.extend(["--games", str(args.games)])
+
+    print(_heading("DOCKER BUILD & PUSH"))
+    print(f"  Script:  {script}")
+    print(f"  Args:    {' '.join(cmd[1:]) or '(none -- will show help)'}")
+    print()
+
+    env = {**os.environ, "FORCE_LEGACY": "1"}
+    result = subprocess.run(cmd, cwd=str(PROJECT_DIR), env=env)
+    sys.exit(result.returncode)
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: ssh  (wraps ssh-instance.sh)
+# ---------------------------------------------------------------------------
+def cmd_ssh(args: argparse.Namespace) -> None:
+    """SSH into running instance via EC2 Instance Connect."""
+    script = PROJECT_DIR / "scripts" / "ssh-instance.sh"
+    if not script.exists():
+        print(_err(f"Script not found: {script}"))
+        sys.exit(1)
+
+    cmd = [str(script)]
+    if args.mode:
+        cmd.append(args.mode)
+
+    print(_heading("SSH INTO INSTANCE"))
+    print(f"  Script:  {script}")
+    print(f"  Mode:    {args.mode or 'ssh (interactive)'}")
+    print()
+
+    result = subprocess.run(cmd, cwd=str(PROJECT_DIR))
+    sys.exit(result.returncode)
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: deploy-training  (wraps deploy_training.sh)
+# ---------------------------------------------------------------------------
+def cmd_deploy_training(args: argparse.Namespace) -> None:
+    """Launch EC2 spot instance for GPU training via Terraform."""
+    script = PROJECT_DIR / "scripts" / "deploy_training.sh"
+    if not script.exists():
+        print(_err(f"Script not found: {script}"))
+        sys.exit(1)
+
+    cmd = [str(script)]
+    if args.instance_type:
+        cmd.extend(["--instance-type", args.instance_type])
+    if args.spot_price:
+        cmd.extend(["--spot-price", args.spot_price])
+    if args.s3_bucket:
+        cmd.extend(["--s3-bucket", args.s3_bucket])
+    if args.dry_run:
+        cmd.append("--dry-run")
+
+    print(_heading("DEPLOY TRAINING (Terraform)"))
+    print(f"  Script:        {script}")
+    print(f"  Instance type: {args.instance_type}")
+    print(f"  Spot price:    ${args.spot_price}")
+    print(f"  S3 bucket:     {args.s3_bucket or '(auto)'}")
+    print(f"  Dry run:       {args.dry_run}")
+    print()
+
+    result = subprocess.run(cmd, cwd=str(PROJECT_DIR))
+    sys.exit(result.returncode)
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 def _print_dry_run_plan(phase: str, cfg, cost: float) -> None:
@@ -695,6 +791,12 @@ def build_parser() -> argparse.ArgumentParser:
             "  python3 scripts/train.py train --epochs 300 --wandb --dry-run\n"
             "  python3 scripts/train.py status\n"
             "  python3 scripts/train.py kill\n"
+            "  python3 scripts/train.py docker-push --all\n"
+            "  python3 scripts/train.py docker-push --build --push\n"
+            "  python3 scripts/train.py ssh\n"
+            "  python3 scripts/train.py ssh logs\n"
+            "  python3 scripts/train.py deploy-training --dry-run\n"
+            "  python3 scripts/train.py deploy-training --instance-type g4dn.xlarge\n"
         ),
     )
     sub = parser.add_subparsers(dest="command", required=True)
@@ -752,6 +854,30 @@ def build_parser() -> argparse.ArgumentParser:
     p_kill = sub.add_parser("kill", help="Terminate all training instances")
     p_kill.add_argument("--force", action="store_true", help="Skip confirmation prompt")
     p_kill.set_defaults(func=cmd_kill)
+
+    # --- docker-push (wraps deploy_docker.sh) ---
+    p_docker = sub.add_parser("docker-push", help="Build and push Docker images to ECR")
+    p_docker.add_argument("--build", action="store_true", help="Build Docker images locally")
+    p_docker.add_argument("--push", action="store_true", help="Push images to ECR")
+    p_docker.add_argument("--deploy", action="store_true", help="Deploy to EC2")
+    p_docker.add_argument("--all", action="store_true", help="Build + Push + Deploy")
+    p_docker.add_argument("--local", action="store_true", help="Run locally with docker-compose")
+    p_docker.add_argument("--games", type=int, default=None, help="Number of games for profiling (default: 100)")
+    p_docker.set_defaults(func=cmd_docker_push)
+
+    # --- ssh (wraps ssh-instance.sh) ---
+    p_ssh = sub.add_parser("ssh", help="SSH into running instance via EC2 Instance Connect")
+    p_ssh.add_argument("mode", nargs="?", choices=["logs", "status"], default=None,
+                        help="Optional mode: 'logs' to tail logs, 'status' to check daemon")
+    p_ssh.set_defaults(func=cmd_ssh)
+
+    # --- deploy-training (wraps deploy_training.sh) ---
+    p_deploy = sub.add_parser("deploy-training", help="Deploy GPU training via Terraform")
+    p_deploy.add_argument("--instance-type", type=str, default="g4dn.xlarge", help="EC2 instance type")
+    p_deploy.add_argument("--spot-price", type=str, default="0.20", help="Max spot price in USD")
+    p_deploy.add_argument("--s3-bucket", type=str, default=None, help="S3 bucket for checkpoints")
+    p_deploy.add_argument("--dry-run", action="store_true", help="Show Terraform plan without applying")
+    p_deploy.set_defaults(func=cmd_deploy_training)
 
     return parser
 

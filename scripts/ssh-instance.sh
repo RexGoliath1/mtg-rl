@@ -1,11 +1,36 @@
 #!/bin/bash
+# ============================================================================
+# DEPRECATED: Use train.py ssh instead
+# ============================================================================
+# This script is now wrapped by the unified CLI:
+#   python3 scripts/train.py ssh
+#   python3 scripts/train.py ssh logs
+#   python3 scripts/train.py ssh status
+#
+# To use this legacy script directly, set FORCE_LEGACY=1:
+#   FORCE_LEGACY=1 ./scripts/ssh-instance.sh
+#   FORCE_LEGACY=1 ./scripts/ssh-instance.sh logs
+# ============================================================================
+
+if [ "${FORCE_LEGACY}" != "1" ]; then
+    echo "DEPRECATED: This script is now wrapped by the unified CLI."
+    echo ""
+    echo "Use instead:"
+    echo "  python3 scripts/train.py ssh"
+    echo "  python3 scripts/train.py ssh logs"
+    echo "  python3 scripts/train.py ssh status"
+    echo ""
+    echo "Set FORCE_LEGACY=1 to use this script anyway."
+    exit 1
+fi
+
 # SSH into MTG RL training/collection instance using EC2 Instance Connect
 # No PEM files needed - uses your AWS CLI credentials
 #
 # Usage:
-#   ./scripts/ssh-instance.sh              # SSH into running instance
-#   ./scripts/ssh-instance.sh logs         # Tail collection logs
-#   ./scripts/ssh-instance.sh status       # Check Forge daemon status
+#   FORCE_LEGACY=1 ./scripts/ssh-instance.sh              # SSH into running instance
+#   FORCE_LEGACY=1 ./scripts/ssh-instance.sh logs         # Tail collection logs
+#   FORCE_LEGACY=1 ./scripts/ssh-instance.sh status       # Check Forge daemon status
 
 set -e
 

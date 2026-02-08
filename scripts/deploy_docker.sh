@@ -2,13 +2,37 @@
 set -e
 
 # ============================================================================
+# DEPRECATED: Use train.py docker-push instead
+# ============================================================================
+# This script is now wrapped by the unified CLI:
+#   python3 scripts/train.py docker-push --all
+#   python3 scripts/train.py docker-push --build --push
+#   python3 scripts/train.py docker-push --local --games 200
+#
+# To use this legacy script directly, set FORCE_LEGACY=1:
+#   FORCE_LEGACY=1 ./scripts/deploy_docker.sh --all
+# ============================================================================
+
+if [ "${FORCE_LEGACY}" != "1" ]; then
+    echo "DEPRECATED: This script is now wrapped by the unified CLI."
+    echo ""
+    echo "Use instead:"
+    echo "  python3 scripts/train.py docker-push --all"
+    echo "  python3 scripts/train.py docker-push --build --push"
+    echo "  python3 scripts/train.py docker-push --local --games 200"
+    echo ""
+    echo "Set FORCE_LEGACY=1 to use this script anyway."
+    exit 1
+fi
+
+# ============================================================================
 # Docker-based Forge Deployment
 # ============================================================================
 # Builds Docker images, pushes to ECR, and runs on EC2.
 # Much faster than tar-based deployment.
 #
 # Usage:
-#   ./scripts/deploy_docker.sh [--build] [--push] [--deploy] [--all]
+#   FORCE_LEGACY=1 ./scripts/deploy_docker.sh [--build] [--push] [--deploy] [--all]
 # ============================================================================
 
 # Configuration
