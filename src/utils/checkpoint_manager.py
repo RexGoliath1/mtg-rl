@@ -6,6 +6,7 @@ Handles saving/loading model checkpoints with S3 support and
 spot instance termination handling.
 """
 
+import json
 import os
 import sys
 import signal
@@ -18,6 +19,7 @@ from dataclasses import dataclass, asdict
 import requests
 
 import torch
+from safetensors.torch import save_file as safetensors_save, load_file as safetensors_load
 
 
 @dataclass
@@ -228,23 +230,35 @@ class CheckpointManager:
         if checkpoint_name is None:
             checkpoint_name = f"checkpoint_ep{training_state.episode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pt"
 
-        # Build checkpoint dict
+        # --- SafeTensors: model weights ---
+        st_name = checkpoint_name.replace(".pt", ".safetensors")
+        st_path = self.local_dir / st_name
+        safetensors_save(model.state_dict(), str(st_path))
+
+        # --- JSON sidecar: training state (non-tensor metadata) ---
+        json_name = checkpoint_name.replace(".pt", ".json")
+        json_path = self.local_dir / json_name
+        with open(json_path, "w") as f:
+            json.dump(training_state.to_dict(), f, indent=2, default=str)
+
+        # --- Legacy .pt: full checkpoint (optimizer, model, training state) ---
         checkpoint = {
             'training_state': training_state.to_dict(),
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
         }
-
-        # Save locally
         local_path = self.local_dir / checkpoint_name
         torch.save(checkpoint, local_path)
-        print(f"Saved checkpoint: {local_path}")
+        print(f"Saved checkpoint: {st_path} (SafeTensors) + {local_path} (legacy)")
 
         # Save best model
         if is_best:
+            best_st_path = self.local_dir / "best_model.safetensors"
+            safetensors_save(model.state_dict(), str(best_st_path))
+
             best_path = self.local_dir / "best_model.pt"
             torch.save(checkpoint, best_path)
-            print(f"Saved best model: {best_path}")
+            print(f"Saved best model: {best_st_path} (SafeTensors) + {best_path} (legacy)")
 
         # Queue S3 upload
         if self.s3_bucket and not is_emergency:
@@ -350,14 +364,30 @@ class CheckpointManager:
             print("No checkpoint found")
             return None
 
-        # Load checkpoint
-        print(f"Loading checkpoint: {latest_path}")
-        checkpoint = torch.load(latest_path, map_location='cpu')
+        # Try SafeTensors first, then fall back to legacy .pt
+        st_path = latest_path.with_suffix(".safetensors")
+        json_path = latest_path.with_suffix(".json")
 
-        model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        if st_path.exists() and json_path.exists():
+            print(f"Loading checkpoint (SafeTensors): {st_path}")
+            state_dict = safetensors_load(str(st_path), device="cpu")
+            model.load_state_dict(state_dict)
 
-        training_state = TrainingState.from_dict(checkpoint['training_state'])
+            with open(json_path) as f:
+                meta = json.load(f)
+            training_state = TrainingState.from_dict(meta)
+
+            # Optimizer state is only in the legacy .pt file; load it if present
+            if latest_path.exists():
+                legacy = torch.load(latest_path, map_location='cpu', weights_only=False)
+                if 'optimizer_state_dict' in legacy:
+                    optimizer.load_state_dict(legacy['optimizer_state_dict'])
+        else:
+            print(f"Loading checkpoint (legacy .pt): {latest_path}")
+            checkpoint = torch.load(latest_path, map_location='cpu', weights_only=False)
+            model.load_state_dict(checkpoint['model_state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            training_state = TrainingState.from_dict(checkpoint['training_state'])
 
         print(f"Resumed from episode {training_state.episode}, "
               f"win rate: {training_state.best_win_rate:.1%}")

@@ -22,6 +22,7 @@ Usage:
     trainer.train(num_iterations=100)
 """
 
+import json
 import os
 import time
 import random
@@ -34,6 +35,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
+from safetensors.torch import save_file as safetensors_save, load_file as safetensors_load
 
 from src.forge.game_state_encoder import ForgeGameStateEncoder, GameStateConfig
 from src.forge.policy_value_heads import (
@@ -441,7 +443,29 @@ class AlphaZeroNetwork(nn.Module):
         return policy, value
 
     def save(self, path: str):
-        """Save network."""
+        """Save network in SafeTensors format with JSON metadata.
+
+        Writes:
+          - ``<stem>.safetensors`` -- model weights (safe, fast, portable)
+          - ``<stem>.json``        -- encoder config and other metadata
+          - ``<stem>.pt``          -- legacy torch checkpoint for backward compat
+        """
+        stem = path.replace(".pt", "")
+
+        # SafeTensors weights
+        safetensors_save(self.state_dict(), f"{stem}.safetensors")
+
+        # JSON metadata (encoder config)
+        meta = {
+            "encoder_config": {
+                k: getattr(self.encoder_config, k)
+                for k in self.encoder_config.__dataclass_fields__
+            },
+        }
+        with open(f"{stem}.json", "w") as f:
+            json.dump(meta, f, indent=2, default=str)
+
+        # Legacy .pt for backward compatibility
         torch.save({
             "encoder_config": self.encoder_config,
             "state_dict": self.state_dict(),
@@ -449,7 +473,29 @@ class AlphaZeroNetwork(nn.Module):
 
     @classmethod
     def load(cls, path: str, device: Optional[str] = None) -> "AlphaZeroNetwork":
-        """Load network."""
+        """Load network, preferring SafeTensors when available.
+
+        Looks for ``<stem>.safetensors`` + ``<stem>.json`` first.
+        Falls back to legacy ``.pt`` checkpoint for old saves.
+        """
+        stem = path.replace(".pt", "")
+        st_path = f"{stem}.safetensors"
+        json_path = f"{stem}.json"
+
+        if os.path.exists(st_path) and os.path.exists(json_path):
+            # --- SafeTensors path ---
+            with open(json_path) as f:
+                meta = json.load(f)
+
+            encoder_cfg_dict = meta.get("encoder_config", {})
+            encoder_config = GameStateConfig(**encoder_cfg_dict) if encoder_cfg_dict else None
+            network = cls(encoder_config=encoder_config)
+
+            state_dict = safetensors_load(st_path, device=device or "cpu")
+            network.load_state_dict(state_dict)
+            return network
+
+        # --- Legacy .pt fallback ---
         checkpoint = torch.load(path, map_location=device, weights_only=False)
         network = cls(encoder_config=checkpoint["encoder_config"])
         network.load_state_dict(checkpoint["state_dict"])
