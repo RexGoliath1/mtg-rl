@@ -11,6 +11,8 @@ forge-repo/
 
 # Data files (1.7GB)
 data/
+# Exception: mechanics HDF5 needed by ForgeGameStateEncoder v2 in training container
+!data/card_mechanics_commander.h5
 
 # Model checkpoints (143MB)
 checkpoints/

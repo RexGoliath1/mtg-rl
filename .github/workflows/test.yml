@@ -61,6 +61,9 @@ jobs:
           cache-from: type=gha,scope=collection
           cache-to: type=gha,mode=max,scope=collection
 
+      - name: Create stub mechanics HDF5 for CI
+        run: mkdir -p data && touch data/card_mechanics_commander.h5
+
       - name: Build Dockerfile.training (slim base for CI)
         uses: docker/build-push-action@v6
         with:
@@ -82,6 +85,9 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Create stub mechanics HDF5 for CI
+        run: mkdir -p data && touch data/card_mechanics_commander.h5
 
       - name: Build training image (slim base)
         uses: docker/build-push-action@v6
@@ -463,6 +469,9 @@ jobs:
           docker cp "${CONTAINER_ID}:/forge/forge.jar" .forge-jar-cache/forge.jar
           docker rm "${CONTAINER_ID}"
           echo "Cached forge.jar for future runs ($(stat --format=%s .forge-jar-cache/forge.jar) bytes)"
+
+      - name: Create stub mechanics HDF5 for CI
+        run: mkdir -p data && touch data/card_mechanics_commander.h5
 
       - name: Build and push training image
         uses: docker/build-push-action@v6

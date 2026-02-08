@@ -36,11 +36,12 @@ RUN pip install --no-cache-dir ".[training,data]"
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
 
-# 3. Copy pre-computed mechanics HDF5 (needed by ForgeGameStateEncoder v2)
+# 3. Copy pre-computed mechanics HDF5 (needed by ForgeGameStateEncoder v2).
+#    CI creates a stub; production builds include the real 1.3MB file.
 COPY data/card_mechanics_commander.h5 /app/data/card_mechanics_commander.h5
 
 # Create directories
-RUN mkdir -p /app/decks /app/checkpoints /app/logs
+RUN mkdir -p /app/decks /app/checkpoints /app/logs /app/data
 
 # Environment variables
 ENV DAEMON_HOST=localhost
