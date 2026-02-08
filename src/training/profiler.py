@@ -582,3 +582,94 @@ if __name__ == "__main__":
             print(f"  {k}: {v:.1f} MB")
         elif k.endswith("_gb"):
             print(f"  {k}: {v:.2f} GB")
+
+
+# =============================================================================
+# PIPELINE TIMER — lightweight stage-level timing for training pipelines
+# =============================================================================
+
+class PipelineTimer:
+    """Accumulate wall-clock time per named pipeline stage.
+
+    Designed for coarse-grained pipeline profiling (data_collection,
+    encoding, training, evaluation) rather than per-call micro-benchmarks
+    (use ``TrainingProfiler`` for those).
+
+    Usage::
+
+        timer = PipelineTimer()
+        with timer.stage("data_collection"):
+            collect_data()
+        with timer.stage("training"):
+            train_model()
+        print(timer.summary())
+
+    Or with explicit start/stop::
+
+        timer = PipelineTimer()
+        timer.start("encoding")
+        encode_all_samples()
+        timer.stop("encoding")
+    """
+
+    def __init__(self):
+        self._totals: Dict[str, float] = {}
+        self._counts: Dict[str, int] = {}
+        self._running: Dict[str, float] = {}
+        self._order: List[str] = []  # insertion order
+        self._wall_start: float = time.perf_counter()
+
+    # -- context manager interface -------------------------------------------
+
+    @contextmanager
+    def stage(self, name: str):
+        """Context manager that accumulates time for *name*."""
+        self.start(name)
+        try:
+            yield
+        finally:
+            self.stop(name)
+
+    # -- explicit start/stop interface ---------------------------------------
+
+    def start(self, name: str):
+        """Begin timing *name*.  Can be called multiple times (additive)."""
+        if name not in self._totals:
+            self._totals[name] = 0.0
+            self._counts[name] = 0
+            self._order.append(name)
+        self._running[name] = time.perf_counter()
+
+    def stop(self, name: str):
+        """Stop timing *name* and accumulate elapsed seconds."""
+        if name not in self._running:
+            return
+        elapsed = time.perf_counter() - self._running.pop(name)
+        self._totals[name] += elapsed
+        self._counts[name] += 1
+
+    # -- query interface -----------------------------------------------------
+
+    def summary(self) -> Dict[str, float]:
+        """Return ``{stage_name: total_seconds}`` in insertion order."""
+        return {k: self._totals[k] for k in self._order}
+
+    def summary_detailed(self) -> Dict[str, Dict[str, float]]:
+        """Return ``{stage_name: {total_s, count, mean_s}}``."""
+        wall = time.perf_counter() - self._wall_start
+        out: Dict[str, Dict[str, float]] = {}
+        for name in self._order:
+            total = self._totals[name]
+            count = self._counts[name]
+            out[name] = {
+                "total_s": total,
+                "count": count,
+                "mean_s": total / count if count else 0.0,
+                "pct_of_wall": (total / wall * 100) if wall > 0 else 0.0,
+            }
+        return out
+
+    @property
+    def wall_seconds(self) -> float:
+        """Total wall-clock time since this timer was created."""
+        return time.perf_counter() - self._wall_start

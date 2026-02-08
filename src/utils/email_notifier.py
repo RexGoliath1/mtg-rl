@@ -124,38 +124,100 @@ class EmailNotifier:
         self,
         metrics: dict,
         report_path: Optional[str] = None,
+        timing: Optional[dict] = None,
+        timing_detailed: Optional[dict] = None,
+        auto_generate_pdf: bool = True,
     ) -> bool:
-        """Convenience method for training completion notifications.
+        """Send a training-completion email with an auto-generated PDF report.
 
-        Formats a nice summary from metrics dict and attaches report PDF.
+        When *auto_generate_pdf* is True and no *report_path* is given, a
+        comprehensive 4-page training report is generated automatically using
+        ``scripts/send_test_report.generate_training_report``.  The PDF
+        includes a training summary, pipeline timing profile, monitoring
+        links, and training curves.
 
         Args:
-            metrics: Dictionary of training metrics (loss, accuracy, etc.)
-            report_path: Path to vocab health report PDF or other training report
+            metrics: Training metrics dict.  Recognised keys include
+                ``model_name``, ``checkpoint_path``, ``total_time_s``,
+                ``epochs``, ``policy_loss``, ``value_loss``, ``accuracy``,
+                ``best_checkpoint``, ``games_played``, ``win_rate``, and
+                ``history`` (list of per-epoch metric dicts).
+            report_path: Explicit path to a PDF to attach.  When provided
+                the auto-generation step is skipped.
+            timing: ``{stage: total_seconds}`` from ``PipelineTimer.summary()``.
+            timing_detailed: ``{stage: {total_s, count, mean_s, pct_of_wall}}``
+                from ``PipelineTimer.summary_detailed()``.
+            auto_generate_pdf: If True (default) and *report_path* is None,
+                automatically generate the training report PDF.
 
         Returns:
-            True if email sent successfully, False otherwise
+            True if the email was sent successfully, False otherwise.
 
-        Example:
+        Example::
+
             notifier.send_training_complete(
                 metrics={
-                    "final_loss": 0.123,
-                    "best_accuracy": 0.95,
-                    "total_epochs": 100,
-                    "training_time_hours": 2.5,
+                    "model_name": "AlphaZero v2",
+                    "policy_loss": 0.123,
+                    "value_loss": 0.045,
+                    "accuracy": 0.95,
+                    "epochs": 100,
+                    "total_time_s": 7200,
+                    "games_played": 500,
+                    "win_rate": 68.5,
                 },
-                report_path="data/reports/vocab_health_2026-02-07.pdf"
+                timing=pipeline_timer.summary(),
+                timing_detailed=pipeline_timer.summary_detailed(),
             )
         """
-        # Format summary
-        subject = "ForgeRL Training Complete"
+        # ── Auto-generate PDF if needed ────────────────────────────────
+        if report_path is None and auto_generate_pdf:
+            try:
+                # Import here to avoid circular deps at module level
+                import importlib
+                mod = importlib.import_module("scripts.send_test_report")
+                report_path = mod.generate_training_report(
+                    metrics=metrics,
+                    timing=timing,
+                    timing_detailed=timing_detailed,
+                )
+                logger.info(f"Auto-generated training report: {report_path}")
+            except Exception as exc:
+                logger.warning(f"Failed to auto-generate PDF report: {exc}")
+                # Continue without attachment
 
+        # ── Build subject line ─────────────────────────────────────────
+        model_name = metrics.get("model_name", "model")
+        win_rate = metrics.get("win_rate")
+        if win_rate is not None:
+            subject = f"ForgeRL Training Complete: {model_name} -- {win_rate:.1f}% WR"
+        else:
+            subject = f"ForgeRL Training Complete: {model_name}"
+
+        # ── Build body text ────────────────────────────────────────────
         body_lines = ["Training run completed successfully.", ""]
         body_lines.append("Metrics:")
-        for key, value in sorted(metrics.items()):
+        # Show important keys first, then the rest alphabetically
+        priority_keys = [
+            "model_name", "epochs", "policy_loss", "value_loss",
+            "accuracy", "total_time_s", "games_played", "win_rate",
+        ]
+        shown = set()
+        for key in priority_keys:
+            if key in metrics:
+                shown.add(key)
+                value = metrics[key]
+                if isinstance(value, float):
+                    body_lines.append(f"  {key}: {value:.4f}")
+                else:
+                    body_lines.append(f"  {key}: {value}")
+        for key in sorted(metrics.keys()):
+            if key in shown or key == "history":
+                continue
+            value = metrics[key]
             if isinstance(value, float):
                 body_lines.append(f"  {key}: {value:.4f}")
-            else:
+            elif not isinstance(value, (list, dict)):
                 body_lines.append(f"  {key}: {value}")
 
         if report_path:
@@ -164,6 +226,6 @@ class EmailNotifier:
 
         body_text = "\n".join(body_lines)
 
-        # Send email
+        # ── Send ───────────────────────────────────────────────────────
         attachments = [report_path] if report_path else None
         return self.send_report(subject, body_text, attachments)
