@@ -2021,13 +2021,28 @@ Simple format:
 1 Sol Ring
 1 Command Tower
 Rhystic Study"></textarea>
-              <div style="display:flex;gap:12px;margin-top:16px;align-items:center">
+              <div style="display:flex;gap:12px;margin-top:16px;align-items:center;flex-wrap:wrap">
                 <button type="submit" class="submit-btn">Find Commanders</button>
+                <label class="submit-btn" style="background:#0f3460;display:inline-flex;align-items:center;gap:6px;margin:0">
+                  Browse CSV File...
+                  <input type="file" accept=".csv,.txt" onchange="loadFile(this)" style="display:none">
+                </label>
                 <button type="button" class="submit-btn" style="background:#0f3460"
                   onclick="document.getElementById('collection').value = document.getElementById('sample-data').value; document.getElementById('collection-form').submit();">
                   Use Sample Collection (1,000 cards)
                 </button>
               </div>
+              <script>
+              function loadFile(input) {{
+                  if (input.files[0]) {{
+                      const reader = new FileReader();
+                      reader.onload = function(e) {{
+                          document.getElementById('collection').value = e.target.result;
+                      }};
+                      reader.readAsText(input.files[0]);
+                  }}
+              }}
+              </script>
             </form>
           </div>
           <textarea id="sample-data" style="display:none">{sample_escaped}</textarea>
