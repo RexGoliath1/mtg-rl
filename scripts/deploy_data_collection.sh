@@ -2,7 +2,34 @@
 set -e
 
 # ============================================================================
-# Deploy AI Training Data Collection to AWS Spot Instance
+# DEPRECATED: Use deploy_data_collection_docker.sh instead
+# ============================================================================
+# This script uses S3 tarballs which have caused repeated failures
+# (AppleDouble files, glob expansion, missing AWS CLI, X11 issues).
+#
+# The Docker-based replacement pulls pre-built images from ECR:
+#   ./scripts/deploy_data_collection_docker.sh --games 1000
+#
+# Or use the unified CLI:
+#   python3 scripts/train.py collect --games 1000
+#
+# To use this legacy script, set FORCE_LEGACY=1:
+#   FORCE_LEGACY=1 ./scripts/deploy_data_collection.sh --games 1000
+# ============================================================================
+
+if [ "${FORCE_LEGACY}" != "1" ]; then
+    echo "WARNING: This script is deprecated. Use the Docker-based version instead:"
+    echo "  ./scripts/deploy_data_collection_docker.sh $*"
+    echo ""
+    echo "Or the unified CLI:"
+    echo "  python3 scripts/train.py collect --games ${2:-1000}"
+    echo ""
+    echo "Set FORCE_LEGACY=1 to use this script anyway."
+    exit 1
+fi
+
+# ============================================================================
+# Deploy AI Training Data Collection to AWS Spot Instance (Legacy)
 # ============================================================================
 # Launches a spot instance that:
 # 1. Starts Forge daemon
@@ -16,8 +43,8 @@ set -e
 # - forge-repo built locally (or will build on instance)
 #
 # Usage:
-#   ./scripts/deploy_data_collection.sh --games 1000
-#   ./scripts/deploy_data_collection.sh --games 5000 --workers 8
+#   FORCE_LEGACY=1 ./scripts/deploy_data_collection.sh --games 1000
+#   FORCE_LEGACY=1 ./scripts/deploy_data_collection.sh --games 5000 --workers 8
 # ============================================================================
 
 # Configuration
