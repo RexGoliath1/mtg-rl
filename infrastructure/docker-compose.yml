@@ -36,12 +36,14 @@ services:
       timeout: 10s
       retries: 3
       start_period: 120s
+    volumes:
+      - daemon-logs:/forge/logs
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 8G
         reservations:
-          memory: 2G
+          memory: 4G
 
   # RL training against Forge daemon
   training:
@@ -119,3 +121,4 @@ services:
 
 volumes:
   forge-cache:
+  daemon-logs:
