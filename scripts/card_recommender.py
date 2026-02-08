@@ -1524,7 +1524,8 @@ __BODY__
 # ---------------------------------------------------------------------------
 
 def _html_escape(s: str) -> str:
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return (s.replace("&", "&amp;").replace("<", "&lt;")
+             .replace(">", "&gt;").replace('"', "&quot;"))
 
 
 def _color_pips_html(colors: set[str]) -> str:
