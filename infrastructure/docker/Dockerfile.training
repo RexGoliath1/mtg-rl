@@ -1,7 +1,13 @@
 # MTG RL Training Container
 # Runs PPO training against Forge daemon
+#
+# For CI builds (faster, no GPU):
+#   docker build --build-arg BASE_IMAGE=python:3.11-slim -f Dockerfile.training .
+# For GPU training (production):
+#   docker build -f Dockerfile.training .
 
-FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime
+ARG BASE_IMAGE=pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime
+FROM ${BASE_IMAGE}
 
 LABEL maintainer="MTG RL Training"
 LABEL description="Reinforcement learning training for MTG"
@@ -9,18 +15,27 @@ LABEL description="Reinforcement learning training for MTG"
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (curl removed — not needed at runtime)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy project config and install dependencies (torch already in base image)
+# --- Layer caching optimization ---
+# 1. Copy only pyproject.toml and a minimal src stub first.
+#    This layer is cached as long as dependencies don't change.
 COPY pyproject.toml /app/
+RUN mkdir -p /app/src && touch /app/src/__init__.py
+
+# Skip torch if already in base image (pytorch/pytorch base), install everything else
+RUN pip install --no-cache-dir ".[training,data]"
+
+# 2. Now copy the actual source code (changes frequently).
+#    This only re-runs the COPY, not the pip install.
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
-RUN mkdir -p /app/decks
-RUN pip install --no-cache-dir ".[training,data]"
+
+# Create directories
+RUN mkdir -p /app/decks /app/checkpoints /app/logs
 
 # Environment variables
 ENV DAEMON_HOST=localhost
@@ -28,9 +43,6 @@ ENV DAEMON_PORT=17171
 ENV S3_BUCKET=""
 ENV CHECKPOINT_DIR=/app/checkpoints
 ENV PYTHONUNBUFFERED=1
-
-# Create directories
-RUN mkdir -p /app/checkpoints /app/logs
 
 # Default command - run profiling
 CMD ["python", "/app/scripts/profile_forge_games.py", "--host", "${DAEMON_HOST}", "--port", "${DAEMON_PORT}", "--num-games", "100"]

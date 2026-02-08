@@ -10,18 +10,23 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (git removed — not needed at runtime)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy project config and install dependencies
+# --- Layer caching optimization ---
+# 1. Copy only pyproject.toml and a minimal src stub first.
+#    This layer is cached as long as dependencies don't change.
 COPY pyproject.toml /app/pyproject.toml
+RUN mkdir -p /app/src && touch /app/src/__init__.py
+RUN pip install --no-cache-dir .
+
+# 2. Now copy the actual source code (changes frequently).
+#    This only re-runs the COPY, not the pip install.
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
 RUN mkdir -p /app/decks
-RUN pip install --no-cache-dir .
 
 # Set environment
 ENV PYTHONUNBUFFERED=1

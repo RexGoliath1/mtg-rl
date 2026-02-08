@@ -1,0 +1,71 @@
+# Docker build context exclusions
+# Without this file, Docker sends the ENTIRE project (3.6GB) as context.
+# With it, context drops to ~4MB (src + scripts + decks + pyproject.toml).
+
+# Version control
+.git/
+.gitignore
+
+# Forge engine repo (901MB) — built separately in Dockerfile.sim/daemon
+forge-repo/
+
+# Data files (1.7GB)
+data/
+
+# Model checkpoints (143MB)
+checkpoints/
+
+# Infrastructure (648MB .terraform)
+infrastructure/.terraform/
+infrastructure/terraform.tfstate
+infrastructure/terraform.tfstate.backup
+infrastructure/terraform.tfvars
+
+# Logs and experiment tracking
+logs/
+wandb/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE and editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation and research (not needed in containers)
+research/
+docs/
+*.md
+!pyproject.toml
+
+# Test files (not needed in production containers)
+tests/
+
+# UV lockfile (containers use pip, not uv)
+uv.lock
+
+# Misc
+*.pdf
+*.png
+*.jpg
+*.jpeg
+MagicCompRules*.txt
