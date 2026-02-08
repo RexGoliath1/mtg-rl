@@ -19,7 +19,6 @@ from datetime import datetime
 import h5py
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 # Add project root to path
@@ -27,9 +26,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.mechanics.vocabulary import Mechanic, VOCAB_SIZE
 from src.forge.game_state_encoder import (
-    ForgeGameStateEncoder, GameStateConfig, CardEmbeddingMLP
+    GameStateConfig
 )
-from src.forge.policy_value_heads import PolicyHead, ValueHead, PolicyValueConfig, ActionConfig
+from src.forge.policy_value_heads import ActionConfig
 from src.training.self_play import AlphaZeroNetwork
 
 
@@ -61,10 +60,6 @@ def find_dead_enums(h5_path: str):
     # Also count "structural zeros" - indices not mapped to any enum
     defined_indices = set(m.value for m in Mechanic)
     structural_zeros = [i for i in dead_indices if i not in defined_indices]
-
-    # Active enums (fire at least once)
-    active_indices = np.where(col_sums > 0)[0]
-    active_enums = [(idx, index_to_name.get(idx, f"IDX_{idx}")) for idx in active_indices if idx in defined_indices]
 
     return dead_enums, structural_zeros, col_sums, num_cards
 
@@ -164,7 +159,6 @@ def gradient_flow_analysis(network, batch, dead_indices, action_config):
 
     # Create targets
     batch_size = state.shape[0]
-    action_mask = torch.ones(batch_size, action_config.total_actions)
     target_actions = torch.randint(0, action_config.total_actions, (batch_size,))
     target_values = torch.randn(batch_size, 1) * 0.5
 
@@ -291,7 +285,7 @@ def main():
         report_lines.append(msg)
 
     log("=" * 80)
-    log(f"FEATURE ABLATION EXPERIMENT: Dead Vocabulary Enum Analysis")
+    log("FEATURE ABLATION EXPERIMENT: Dead Vocabulary Enum Analysis")
     log(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     log(f"VOCAB_SIZE: {VOCAB_SIZE}")
     log("=" * 80)
@@ -320,7 +314,7 @@ def main():
         log(f"  {idx:5d}  {name}")
 
     # Category breakdown
-    log(f"\nDead Enums by Category:")
+    log("\nDead Enums by Category:")
     categories = {}
     for idx, name in dead_enums:
         if idx < 100:
@@ -359,7 +353,7 @@ def main():
             log(f"    - {n}")
 
     # Top 10 most-fired enums for contrast
-    log(f"\nTop 10 Most-Fired Enums (for contrast):")
+    log("\nTop 10 Most-Fired Enums (for contrast):")
     named_sums = []
     for m in Mechanic:
         if m.value < len(col_sums):
@@ -379,7 +373,7 @@ def main():
     config = GameStateConfig()
     action_config = ActionConfig()
 
-    log(f"\nInstantiating AlphaZeroNetwork...")
+    log("\nInstantiating AlphaZeroNetwork...")
     log(f"  d_model={config.d_model}, d_ff={config.d_ff}, n_heads={config.n_heads}")
 
     network = AlphaZeroNetwork(encoder_config=config)
@@ -395,12 +389,12 @@ def main():
 
     if dead_grads is not None:
         log(f"\nSingle forward+backward pass (loss={loss:.4f}):")
-        log(f"  Dead feature gradient norms:")
+        log("  Dead feature gradient norms:")
         log(f"    Mean: {np.mean(dead_grads):.6f}")
         log(f"    Std:  {np.std(dead_grads):.6f}")
         log(f"    Max:  {np.max(dead_grads):.6f}")
         log(f"    Min:  {np.min(dead_grads):.6f}")
-        log(f"  Active feature gradient norms:")
+        log("  Active feature gradient norms:")
         log(f"    Mean: {np.mean(active_grads):.6f}")
         log(f"    Std:  {np.std(active_grads):.6f}")
         log(f"    Max:  {np.max(active_grads):.6f}")
@@ -411,9 +405,9 @@ def main():
         log(f"\n  FINDING: Dead features {'DO' if has_nonzero_dead_grads else 'do NOT'} "
             f"receive non-zero gradients")
         if has_nonzero_dead_grads:
-            log(f"  RISK: Network can learn spurious patterns through dead-feature weights")
-            log(f"  Note: Even with zero INPUT, gradients flow through bias terms and")
-            log(f"        cross-connections in the shared embedding MLP")
+            log("  RISK: Network can learn spurious patterns through dead-feature weights")
+            log("  Note: Even with zero INPUT, gradients flow through bias terms and")
+            log("        cross-connections in the shared embedding MLP")
     else:
         log("  WARNING: No gradients found (may indicate detached computation)")
 
@@ -442,14 +436,14 @@ def main():
         results[mode] = result
 
         log(f"  Final loss: {result['losses'][-1]:.4f}")
-        log(f"  Loss trajectory: {[f'{l:.3f}' for l in result['losses']]}")
+        log(f"  Loss trajectory: {[f'{v:.3f}' for v in result['losses']]}")
         log(f"  Dead feature avg gradient norm (last step): {result['dead_grad_norms'][-1]:.6f}")
         log(f"  Active feature avg gradient norm (last step): {result['active_grad_norms'][-1]:.6f}")
 
         # Weight growth stats
         growths = list(result['weight_growth'].values())
         if growths:
-            log(f"  Dead-feature weight growth (L2 delta):")
+            log("  Dead-feature weight growth (L2 delta):")
             log(f"    Mean: {np.mean(growths):.6f}")
             log(f"    Max:  {np.max(growths):.6f}")
             log(f"    Std:  {np.std(growths):.6f}")
@@ -468,7 +462,7 @@ def main():
 
         log(f"\n--- {desc} ---")
         if weight_norms:
-            log(f"  Dead-feature final weight norms:")
+            log("  Dead-feature final weight norms:")
             log(f"    Mean: {np.mean(weight_norms):.6f}")
             log(f"    Max:  {np.max(weight_norms):.6f}")
             log(f"    Std:  {np.std(weight_norms):.6f}")
@@ -492,47 +486,47 @@ def main():
     masked_dead_growth = np.mean(list(results['masked']['weight_growth'].values()))
     l1_dead_growth = np.mean(list(results['l1']['weight_growth'].values()))
 
-    log(f"\n2. GRADIENT FLOW:")
-    log(f"   Dead features DO receive gradients (via bias terms and cross-connections).")
-    log(f"   Average dead-feature weight growth over 10 steps:")
+    log("\n2. GRADIENT FLOW:")
+    log("   Dead features DO receive gradients (via bias terms and cross-connections).")
+    log("   Average dead-feature weight growth over 10 steps:")
     log(f"     Baseline: {baseline_dead_growth:.6f}")
     log(f"     Masked:   {masked_dead_growth:.6f}")
     log(f"     L1 reg:   {l1_dead_growth:.6f}")
 
-    log(f"\n3. COMPARISON:")
+    log("\n3. COMPARISON:")
     baseline_final_loss = results['baseline']['losses'][-1]
     masked_final_loss = results['masked']['losses'][-1]
     l1_final_loss = results['l1']['losses'][-1]
     log(f"   Final loss - Baseline: {baseline_final_loss:.4f}, "
         f"Masked: {masked_final_loss:.4f}, L1: {l1_final_loss:.4f}")
 
-    log(f"\n4. RECOMMENDATION:")
+    log("\n4. RECOMMENDATION:")
     log(f"   The dead features represent {len(dead_enums)}/{len(list(Mechanic))} "
         f"({len(dead_enums)/len(list(Mechanic))*100:.1f}%) of named enums.")
     log(f"   They add {len(dead_enums)} zero-columns out of {VOCAB_SIZE} total input dimensions.")
     log(f"   Impact: {len(dead_enums)/VOCAB_SIZE*100:.1f}% of the vocab input is wasted.")
-    log(f"")
-    log(f"   APPROACH A (Input Masking): Explicitly zero dead features at inference/training.")
-    log(f"     Pro: Prevents any noise leakage. Zero implementation cost.")
-    log(f"     Con: No parameter reduction. Weights still exist.")
-    log(f"")
-    log(f"   APPROACH B (L1 Regularization): Drive dead-feature weights toward zero.")
-    log(f"     Pro: Gradual cleanup. Works during normal training.")
-    log(f"     Con: Adds hyperparameter (lambda). May affect active features slightly.")
-    log(f"")
-    log(f"   APPROACH C (Leave Alone): Do nothing.")
-    log(f"     Pro: No code changes. Dead features are zero-input anyway.")
-    log(f"     Con: Weights can drift via bias-mediated gradients (shown above).")
-    log(f"")
-    log(f"   RECOMMENDED: LEAVE ALONE for now, monitor during first real training run.")
-    log(f"   Rationale:")
-    log(f"   - 39 dead enums is 2.8% of VOCAB_SIZE -- negligible parameter overhead")
-    log(f"   - Xavier init keeps weights small; gradient flow through dead features")
-    log(f"     is 10-100x weaker than active features")
-    log(f"   - Input masking would prevent noise but adds code complexity for minimal gain")
-    log(f"   - L1 is best applied during RL fine-tuning (Phase 2), not BC (Phase 1)")
-    log(f"   - After first BC run, revisit: check if any dead-feature weights have grown")
-    log(f"     significantly (>1 std above active feature mean)")
+    log("")
+    log("   APPROACH A (Input Masking): Explicitly zero dead features at inference/training.")
+    log("     Pro: Prevents any noise leakage. Zero implementation cost.")
+    log("     Con: No parameter reduction. Weights still exist.")
+    log("")
+    log("   APPROACH B (L1 Regularization): Drive dead-feature weights toward zero.")
+    log("     Pro: Gradual cleanup. Works during normal training.")
+    log("     Con: Adds hyperparameter (lambda). May affect active features slightly.")
+    log("")
+    log("   APPROACH C (Leave Alone): Do nothing.")
+    log("     Pro: No code changes. Dead features are zero-input anyway.")
+    log("     Con: Weights can drift via bias-mediated gradients (shown above).")
+    log("")
+    log("   RECOMMENDED: LEAVE ALONE for now, monitor during first real training run.")
+    log("   Rationale:")
+    log("   - 39 dead enums is 2.8% of VOCAB_SIZE -- negligible parameter overhead")
+    log("   - Xavier init keeps weights small; gradient flow through dead features")
+    log("     is 10-100x weaker than active features")
+    log("   - Input masking would prevent noise but adds code complexity for minimal gain")
+    log("   - L1 is best applied during RL fine-tuning (Phase 2), not BC (Phase 1)")
+    log("   - After first BC run, revisit: check if any dead-feature weights have grown")
+    log("     significantly (>1 std above active feature mean)")
 
     elapsed = time.time() - start_time
     log(f"\nTotal experiment time: {elapsed:.1f}s")

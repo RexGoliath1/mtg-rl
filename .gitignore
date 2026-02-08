@@ -1,126 +1,54 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
 *.egg
-MANIFEST
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# celery beat schedule file
-celerybeat-schedule
-
-# SageMath parsed files
-*.sage.py
+build/
+dist/
+.Python
 
 # Environments
 .env
 .venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
 
-# Spyder project settings
-.spyderproject
-.spyproject
+# Testing / Coverage
+htmlcov/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+coverage.xml
 
-# Rope project settings
-.ropeproject
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
 
-# mkdocs documentation
-/site
+# Logs
+*.log
+
+# Sphinx docs
+docs/_build/
 
 # mypy
 .mypy_cache/
-.dmypy.json
-dmypy.json
 
-# Project specific
+# ── Project-Specific ──────────────────────────────────────
+
+# Forge MTG engine (separate repo)
 forge-repo/
-checkpoints/
-logs/
-replays/
 
-# Model weights (large files)
+# Model weights
+checkpoints/
 *.pt
 *.pth
 *.onnx
 *.safetensors
 
-# Claude Code local settings / memory (contains personal preferences)
-.claude/
-
-# Data files (17lands, training data)
+# Data files (HDF5, training data, bulk JSON, CSVs)
 /data/
 *.csv
 *.csv.gz
@@ -129,60 +57,34 @@ replays/
 *.pickle
 *.pkl
 
-# Embeddings cache
-embeddings_cache/
-
 # Training artifacts
 wandb/
 runs/
+logs/
+replays/
 tensorboard/
 
-# Videos and media
-videos/
-*.mp4
-*.avi
-*.gif
+# Generated reports
+reports/
 
-# macOS
-.DS_Store
+# Training decks (local only, not tracked)
+decks/
 
-# IDE
-.idea/
-.vscode/
-*.swp
-
-# Terraform
+# Terraform state (config tracked, state not)
 .terraform/
 *.tfstate
 *.tfstate.*
 *.tfvars
 !terraform.tfvars.example
 
-# SSH keys and credentials (NEVER commit these)
+# SSH keys / credentials
 *.pem
 *.key
-id_rsa*
-id_ed25519*
-*.pub
-ssh_keys/
 
-# Training data outputs (large, regeneratable, user decks)
-training_data/
-training_output/
-reports/
-user_decks/
-decks/
+# Claude Code local settings
+.claude/
 
-# Legacy requirements files (superseded by pyproject.toml + UV)
-requirements.txt
-requirements.training.txt
-
-# User conversation buffer (notes, screenshots, inspiration docs)
-ClaudeConversation.txt
-ClaudeConversation/
-*Screenshot*.png
-
-# Archived documentation (key insights preserved in Claude memory)
+# ── Archived docs (key insights in Claude memory) ────────
 CARD_ENCODING.md
 FORGE_AI_ANALYSIS.md
 FORGE_PERFORMANCE_ANALYSIS.md
@@ -197,7 +99,13 @@ WHITEPAPER.md
 research/alphazero_mtg_architecture.md
 infrastructure/TERRAFORM_VS_AWSCLI.md
 
-# Full rules text (large reference file, not code)
+# Large reference files
 MagicCompRules*.txt
-best practices.pdf
+*.pdf
+
+# Legacy / one-off files
+requirements.txt
+requirements.training.txt
+ClaudeConversation.txt
 claude_code_export.tar.gz
+*Screenshot*.png
