@@ -152,6 +152,26 @@ if os.path.exists(SCRYFALL_BULK_PATH):
 else:
     print(f"Warning: {SCRYFALL_BULK_PATH} not found, image caching disabled (will use Scryfall API)")
 
+
+# ---------------------------------------------------------------------------
+# Server-side collection storage (avoids embedding ~200KB in hidden form fields)
+# ---------------------------------------------------------------------------
+
+_COLLECTION_STORE: dict[str, str] = {}  # token -> collection_text
+
+
+def _store_collection(text: str) -> str:
+    """Store collection text server-side and return a short token."""
+    token = hashlib.sha256(text.encode()).hexdigest()[:16]
+    _COLLECTION_STORE[token] = text
+    return token
+
+
+def _retrieve_collection(token: str) -> str:
+    """Retrieve collection text by token, or empty string if not found."""
+    return _COLLECTION_STORE.get(token, "")
+
+
 # Pre-compute CREATURE_TYPE_MATTERS index for tribal filtering
 CTM_IDX = Mechanic.CREATURE_TYPE_MATTERS.value if Mechanic.CREATURE_TYPE_MATTERS.value < len(MECHANICS[0]) else None
 
@@ -1742,7 +1762,9 @@ class RecommenderHandler(BaseHTTPRequestHandler):
             self._serve_commander_select(collection_text)
         elif self.path == "/collection/recommend":
             params = parse_qs(body)
-            collection_text = params.get("collection", [""])[0]
+            # Resolve collection: try token first, fall back to raw text
+            collection_token = params.get("collection_token", [""])[0]
+            collection_text = _retrieve_collection(collection_token) if collection_token else params.get("collection", [""])[0]
             commander = params.get("commander", [""])[0]
             cards_per_theme = int(params.get("cards_per_theme", ["3"])[0])
             self._serve_collection_results(commander, collection_text, cards_per_theme)
@@ -2221,28 +2243,24 @@ Rhystic Study"></textarea>
           </div>
         </div>"""
 
-        # Commander grid with Scryfall images
+        # Commander grid — use /card-image proxy for lazy image loading (no batch API calls)
         if not commanders:
             cmd_html = '<div class="warning">No legendary creatures found in your collection. Add some to use as commanders.</div>'
         else:
-            # Fetch commander images
-            print(f"  Fetching {len(commanders)} commander images from Scryfall...")
-            cmd_infos = batch_scryfall_lookup(commanders)
+            # Store collection server-side, pass only a short token in forms
+            collection_token = _store_collection(collection_text)
 
-            # Build commander cards as clickable forms
+            # Build commander cards as clickable forms (images load lazily via proxy)
             cards_html = ""
-            collection_escaped = _html_escape(collection_text)
-            for info in cmd_infos:
-                name = info.get("name", "")
-                image_uri = info.get("image_uri", "")
+            for name in commanders:
                 ci = META_COLOR_IDENTITY.get(name, [])
                 ci_str = "".join(sorted(ci)) if ci else "C"
-
-                img_tag = f'<img src="{image_uri}" alt="{_html_escape(name)}" loading="lazy">' if image_uri else f'<div class="card-img-placeholder" style="height:120px">{_html_escape(name)}</div>'
+                local_src = f"/card-image?name={urllib.parse.quote(name)}"
+                img_tag = f'<img src="{local_src}" alt="{_html_escape(name)}" loading="lazy">'
 
                 cards_html += f"""
                 <form method="POST" action="/collection/recommend" style="display:contents" data-colors="{ci_str}">
-                  <input type="hidden" name="collection" value="{collection_escaped}">
+                  <input type="hidden" name="collection_token" value="{collection_token}">
                   <input type="hidden" name="commander" value="{_html_escape(name)}">
                   <button type="submit" class="commander-card" style="all:unset;cursor:pointer">
                     <div class="commander-card">
@@ -2354,29 +2372,21 @@ Rhystic Study"></textarea>
         eligible_count = result["eligible_count"]
         commander_ci = result["commander_ci"]
 
-        # Gather all rec names for Scryfall lookup
+        # Build card info map — _card_html uses /card-image proxy for images,
+        # so we only need the name (no batch Scryfall API calls needed)
         all_rec_names = [r["name"] for tr in themed_recs for r in tr.get("recommendations", [])]
+        card_infos_map = {name: {"name": name} for name in [commander_name] + all_rec_names}
 
-        # Also fetch commander image
-        all_fetch_names = [commander_name] + all_rec_names
-        print(f"  Fetching {len(all_fetch_names)} card images from Scryfall...")
-        card_infos_list = batch_scryfall_lookup(all_fetch_names)
-        card_infos_map = {info["name"]: info for info in card_infos_list}
-
-        # Commander card display
-        cmd_info = card_infos_map.get(commander_name, {"name": commander_name})
-        cmd_image = cmd_info.get("image_uri", "")
+        # Commander card display — use local proxy for image
         ci_str = "".join(sorted(commander_ci)) if commander_ci else "C"
-        cmd_img_html = f'<img src="{cmd_image}" style="width:200px;border-radius:10px" alt="{_html_escape(commander_name)}">' if cmd_image else ""
+        cmd_local_src = f"/card-image?name={urllib.parse.quote(commander_name)}"
+        cmd_img_html = f'<img src="{cmd_local_src}" style="width:200px;border-radius:10px" alt="{_html_escape(commander_name)}">'
 
         commander_html = f"""
         <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:24px">
           <div>{cmd_img_html}</div>
           <div>
             <h2 style="margin-bottom:4px">{_html_escape(commander_name)}</h2>
-            <div style="color:var(--text-muted);font-size:0.85rem;margin-bottom:8px">
-              {_html_escape(cmd_info.get("type_line", ""))}
-            </div>
             <div class="color-pips" style="margin-bottom:8px">{_color_pips_html(commander_ci)}</div>
             <div style="font-size:0.8rem;color:var(--text-muted)">
               {eligible_count} eligible cards in your collection (color-filtered)
@@ -2412,12 +2422,12 @@ Rhystic Study"></textarea>
         if not recs_html:
             recs_html = '<div class="warning">Not enough eligible cards in your collection for this commander. Try a commander with more matching colors.</div>'
 
-        # View More button
+        # View More button — use server-side collection token
         next_cpt = cards_per_theme + 3
-        collection_escaped = _html_escape(collection_text)
+        collection_token = _store_collection(collection_text)
         view_more_html = f"""
         <form method="POST" action="/collection/recommend" style="text-align:center;margin:20px 0">
-          <input type="hidden" name="collection" value="{collection_escaped}">
+          <input type="hidden" name="collection_token" value="{collection_token}">
           <input type="hidden" name="commander" value="{_html_escape(commander_name)}">
           <input type="hidden" name="cards_per_theme" value="{next_cpt}">
           <button type="submit" class="submit-btn" style="background:#0f3460">View More ({next_cpt} per theme)</button>
