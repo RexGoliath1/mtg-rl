@@ -70,8 +70,8 @@ COPY --from=builder /build/forge-gui/res/sealed/ /forge/res/sealed/
 COPY --from=builder /build/forge-gui/res/cube/ /forge/res/cube/
 COPY --from=builder /build/forge-gui/res/deckgendecks/ /forge/res/deckgendecks/
 COPY --from=builder /build/forge-gui/res/geneticaidecks/ /forge/res/geneticaidecks/
-COPY --from=builder /build/forge-gui/res/decks/ /forge/res/decks/
 COPY --from=builder /build/forge-gui/res/licenses/ /forge/res/licenses/
+RUN mkdir -p /forge/res/decks/
 
 # Copy deck files
 COPY decks/ /forge/userdata/decks/constructed/
