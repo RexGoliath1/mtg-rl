@@ -1,0 +1,24 @@
+#!/bin/bash
+# Pre-push hook: runs lint + tests before allowing push
+# Install: git config core.hooksPath .githooks
+
+echo "🔍 Running pre-push checks..."
+
+# Run lint
+echo "  → Linting..."
+uv run python3 -m ruff check . --ignore E501 --exclude forge-repo,wandb
+if [ $? -ne 0 ]; then
+    echo "❌ Lint failed. Fix issues before pushing."
+    exit 1
+fi
+
+# Run tests
+echo "  → Running tests..."
+uv run python3 -m pytest tests/test_parser.py -v --tb=short
+if [ $? -ne 0 ]; then
+    echo "❌ Tests failed. Fix issues before pushing."
+    exit 1
+fi
+
+echo "✅ Pre-push checks passed"
+exit 0
