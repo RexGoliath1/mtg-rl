@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Forge MTG Headless Simulation Docker Image
 # Based on Java 17 for Forge compatibility
 
@@ -16,12 +17,36 @@ RUN perl -i -0777 -pe 's/<plugin>\s*<groupId>com\.akathist\.maven\.plugins\.laun
     perl -i -0777 -pe 's/<plugin>\s*<groupId>se\.bjurr\.gitchangelog<\/groupId>.*?<\/plugin>//gs' \
     forge-gui-desktop/pom.xml
 
-# Build Forge
-RUN mvn clean package -DskipTests \
-    -pl !forge-gui-android,!forge-gui-ios,!forge-gui-mobile,!forge-gui-mobile-dev,!forge-installer,!adventure-editor,!forge-lda \
+# Install maven-buildtime-extension for per-module/goal timing breakdown
+# (output appears in docker build logs — search for "Build Time" summary)
+RUN mkdir -p .mvn && \
+    echo '<?xml version="1.0" encoding="UTF-8"?>' > .mvn/extensions.xml && \
+    echo '<extensions>' >> .mvn/extensions.xml && \
+    echo '  <extension>' >> .mvn/extensions.xml && \
+    echo '    <groupId>co.leantechniques</groupId>' >> .mvn/extensions.xml && \
+    echo '    <artifactId>maven-buildtime-extension</artifactId>' >> .mvn/extensions.xml && \
+    echo '    <version>3.0.5</version>' >> .mvn/extensions.xml && \
+    echo '  </extension>' >> .mvn/extensions.xml && \
+    echo '</extensions>' >> .mvn/extensions.xml
+
+# Build only forge-gui-desktop and its transitive dependencies (forge-core,
+# forge-game, forge-ai, forge-gui). Uses positive module selection instead of
+# a long exclusion list.
+#
+# Optimizations applied:
+#   - BuildKit cache mount: reuses ~/.m2/repository across builds
+#   - Parallel build (-T 1C): one thread per CPU core
+#   - Positive module selection (-pl forge-gui-desktop -am): builds only what we need
+#   - No 'clean' phase: Docker builds start from a fresh clone anyway
+#   - buildtime.output.log=true: prints per-goal timing to stdout (visible in build logs)
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn package -DskipTests \
+    -T 1C \
+    -pl forge-gui-desktop \
+    -am \
     -Dmaven.javadoc.skip=true \
     -Dcheckstyle.skip=true \
-    -am
+    -Dbuildtime.output.log=true
 
 # Find and copy the jar
 RUN find /build -name "forge-gui-desktop-*-jar-with-dependencies.jar" -exec cp {} /build/forge.jar \;
