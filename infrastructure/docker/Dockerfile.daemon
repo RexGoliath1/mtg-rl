@@ -9,8 +9,10 @@ FROM maven:3.9-eclipse-temurin-17 AS builder
 
 WORKDIR /build
 
-# Copy the Forge source
-COPY forge-repo/ ./
+# Clone Forge source (self-contained — no local forge-repo/ needed)
+ARG FORGE_REPO=https://github.com/RexGoliath1/forge.git
+ARG FORGE_BRANCH=feature/rl-daemon-mode
+RUN git clone --depth 1 -b ${FORGE_BRANCH} ${FORGE_REPO} .
 
 # Remove problematic plugins using perl
 RUN perl -i -0777 -pe 's/<plugin>\s*<groupId>com\.akathist\.maven\.plugins\.launch4j<\/groupId>.*?<\/plugin>//gs' \
@@ -51,8 +53,25 @@ RUN mkdir -p /forge/res \
 # Copy the built jar
 COPY --from=builder /build/forge.jar /forge/forge.jar
 
-# Copy resources (card data, editions, etc.)
-COPY --from=builder /build/forge-gui/res/ /forge/res/
+# Only copy daemon-essential res/ subdirectories (154 MB, not full 393 MB)
+# Excludes: adventure(134MB), skins(18MB), music(16MB), quest(16MB),
+#           languages(45MB), conquest(5MB), effects(1.6MB), fonts, sound, tutorial, puzzle
+COPY --from=builder /build/forge-gui/res/cardsfolder/ /forge/res/cardsfolder/
+COPY --from=builder /build/forge-gui/res/editions/ /forge/res/editions/
+COPY --from=builder /build/forge-gui/res/tokenscripts/ /forge/res/tokenscripts/
+COPY --from=builder /build/forge-gui/res/ai/ /forge/res/ai/
+COPY --from=builder /build/forge-gui/res/blockdata/ /forge/res/blockdata/
+COPY --from=builder /build/forge-gui/res/draft/ /forge/res/draft/
+COPY --from=builder /build/forge-gui/res/formats/ /forge/res/formats/
+COPY --from=builder /build/forge-gui/res/lists/ /forge/res/lists/
+COPY --from=builder /build/forge-gui/res/defaults/ /forge/res/defaults/
+COPY --from=builder /build/forge-gui/res/setlookup/ /forge/res/setlookup/
+COPY --from=builder /build/forge-gui/res/sealed/ /forge/res/sealed/
+COPY --from=builder /build/forge-gui/res/cube/ /forge/res/cube/
+COPY --from=builder /build/forge-gui/res/deckgendecks/ /forge/res/deckgendecks/
+COPY --from=builder /build/forge-gui/res/geneticaidecks/ /forge/res/geneticaidecks/
+COPY --from=builder /build/forge-gui/res/decks/ /forge/res/decks/
+COPY --from=builder /build/forge-gui/res/licenses/ /forge/res/licenses/
 
 # Copy deck files
 COPY decks/ /forge/userdata/decks/constructed/
