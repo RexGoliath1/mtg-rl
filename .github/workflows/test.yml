@@ -70,7 +70,9 @@ jobs:
           context: .
           file: infrastructure/docker/Dockerfile.training
           push: false
-          build-args: BASE_IMAGE=python:3.11-slim
+          build-args: |
+            BASE_IMAGE=python:3.11-slim
+            INSTALL_CPU_TORCH=true
           cache-from: type=gha,scope=training
           cache-to: type=gha,mode=max,scope=training
 
@@ -97,7 +99,9 @@ jobs:
           push: false
           load: true
           tags: mtg-training:smoke
-          build-args: BASE_IMAGE=python:3.11-slim
+          build-args: |
+            BASE_IMAGE=python:3.11-slim
+            INSTALL_CPU_TORCH=true
           cache-from: type=gha,scope=training
 
       - name: Generate synthetic test HDF5
