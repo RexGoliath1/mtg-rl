@@ -1,0 +1,1154 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>src.environments.rl_environment - ForgeRL</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">ForgeRL</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  <span class="sidebar-brand-text">ForgeRL</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html">ForgeRL</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ARCHITECTURE.html">ForgeRL Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tools.html">Local Tools</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/mechanics.html">Mechanics System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/forge.html">Forge Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/training.html">Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/agents.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/utils.html">Utils</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for src.environments.rl_environment</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">MTG Reinforcement Learning Environment</span>
+
+<span class="sd">Architecture designed for the massive state/action space of Magic: The Gathering.</span>
+
+<span class="sd">Key Design Decisions:</span>
+<span class="sd">1. Hierarchical Action Space - Break down decisions into sub-decisions</span>
+<span class="sd">2. Card Embeddings - Learn representations for cards rather than one-hot encoding</span>
+<span class="sd">3. Attention-based State Encoding - Handle variable-length game states</span>
+<span class="sd">4. Self-Play Training - Train against copies of itself</span>
+<span class="sd">5. Curriculum Learning - Start with simplified scenarios</span>
+
+<span class="sd">State Representation:</span>
+<span class="sd">- Player state (life, mana, cards in zones)</span>
+<span class="sd">- Opponent visible state (life, board, graveyard)</span>
+<span class="sd">- Hidden state estimation (opponent hand size, library size)</span>
+<span class="sd">- Game phase/turn information</span>
+<span class="sd">- Available actions encoded</span>
+
+<span class="sd">Action Representation:</span>
+<span class="sd">- Action type (pass, play_card, activate_ability, attack, block)</span>
+<span class="sd">- Target selection (which card, which target)</span>
+<span class="sd">- Uses action masking for legal moves only</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+
+
+<div class="viewcode-block" id="ActionType">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.ActionType">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ActionType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">PASS</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">PLAY_SPELL</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">PLAY_LAND</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">ACTIVATE_ABILITY</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">DECLARE_ATTACKERS</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">DECLARE_BLOCKERS</span> <span class="o">=</span> <span class="mi">5</span></div>
+
+
+
+<div class="viewcode-block" id="ManaPool">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.ManaPool">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ManaPool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Representation of a player&#39;s mana pool.&quot;&quot;&quot;</span>
+    <span class="n">total</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">white</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">blue</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">black</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">red</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">green</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">colorless</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="ManaPool.from_dict">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.ManaPool.from_dict">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;ManaPool&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+                <span class="n">total</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">white</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">blue</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">black</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">red</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">green</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;green&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">colorless</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;colorless&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="CardState">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.CardState">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CardState</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Representation of a card in the game.&quot;&quot;&quot;</span>
+    <span class="n">card_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">card_type</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># creature, instant, sorcery, land, etc.</span>
+    <span class="n">mana_cost</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">cmc</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">power</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">toughness</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">damage</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">is_tapped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_creature</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_land</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_artifact</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_enchantment</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_planeswalker</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">summoning_sick</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">loyalty</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">counters</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">keywords</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">oracle_text</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="c1"># Shared embedder instance (lazy loaded)</span>
+    <span class="n">_embedder</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="CardState.from_dict">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.CardState.from_dict">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;CardState&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse card from JSON dict.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">card_id</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">card_type</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;types&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">mana_cost</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mana_cost&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">cmc</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cmc&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">power</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;power&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">toughness</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;toughness&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">damage</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;damage&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">is_tapped</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;tapped&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="n">is_creature</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_creature&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="n">is_land</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_land&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="n">is_artifact</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_artifact&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="n">is_enchantment</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_enchantment&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="n">is_planeswalker</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_planeswalker&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="n">summoning_sick</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;summoning_sick&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="n">loyalty</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;loyalty&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">counters</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;counters&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">keywords</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;keywords&#39;</span><span class="p">,</span> <span class="p">[]),</span>
+            <span class="n">oracle_text</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;oracle_text&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CardState.get_embedder">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.CardState.get_embedder">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_embedder</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get or create shared embedder instance.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_embedder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">src.models.card_embeddings</span><span class="w"> </span><span class="kn">import</span> <span class="n">CardEmbedding</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="n">_embedder</span> <span class="o">=</span> <span class="n">CardEmbedding</span><span class="p">(</span><span class="n">use_text_embeddings</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="n">_embedder</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_embedder</span></div>
+
+
+<div class="viewcode-block" id="CardState.to_vector">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.CardState.to_vector">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_vector</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">card_embedding_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">89</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert card to fixed-size vector representation.</span>
+
+<span class="sd">        Uses the CardEmbedding system for structured feature extraction.</span>
+<span class="sd">        Falls back to simple features if card_embeddings module unavailable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">embedder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_embedder</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">embedder</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Use the full embedding system</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">embedding</span> <span class="o">=</span> <span class="n">embedder</span><span class="o">.</span><span class="n">embed_card</span><span class="p">(</span>
+                    <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                    <span class="n">mana_cost</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mana_cost</span><span class="p">,</span>
+                    <span class="n">type_line</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">card_type</span><span class="p">,</span>
+                    <span class="n">oracle_text</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">oracle_text</span><span class="p">,</span>
+                    <span class="n">power</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">power</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_creature</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="n">toughness</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">toughness</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_creature</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="n">loyalty</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loyalty</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_planeswalker</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="n">keywords</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">keywords</span><span class="p">,</span>
+                    <span class="n">cmc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cmc</span>
+                <span class="p">)</span>
+                <span class="c1"># Add game context features</span>
+                <span class="n">context</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+                    <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_tapped</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+                    <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">summoning_sick</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">damage</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+                <span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">embedding</span><span class="p">,</span> <span class="n">context</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>  <span class="c1"># Fall through to simple features</span>
+
+        <span class="c1"># Fallback: simple feature vector</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmc</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">power</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">toughness</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">damage</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_tapped</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_creature</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_land</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_artifact</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_enchantment</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_planeswalker</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">summoning_sick</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">loyalty</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="c1"># Common keywords</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s1">&#39;Flying&#39;</span> <span class="ow">in</span> <span class="n">kw</span> <span class="k">for</span> <span class="n">kw</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keywords</span><span class="p">)</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s1">&#39;Trample&#39;</span> <span class="ow">in</span> <span class="n">kw</span> <span class="k">for</span> <span class="n">kw</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keywords</span><span class="p">)</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s1">&#39;First strike&#39;</span> <span class="ow">in</span> <span class="n">kw</span> <span class="k">for</span> <span class="n">kw</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keywords</span><span class="p">)</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s1">&#39;Haste&#39;</span> <span class="ow">in</span> <span class="n">kw</span> <span class="k">for</span> <span class="n">kw</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keywords</span><span class="p">)</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s1">&#39;Lifelink&#39;</span> <span class="ow">in</span> <span class="n">kw</span> <span class="k">for</span> <span class="n">kw</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keywords</span><span class="p">)</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s1">&#39;Deathtouch&#39;</span> <span class="ow">in</span> <span class="n">kw</span> <span class="k">for</span> <span class="n">kw</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keywords</span><span class="p">)</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s1">&#39;Vigilance&#39;</span> <span class="ow">in</span> <span class="n">kw</span> <span class="k">for</span> <span class="n">kw</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keywords</span><span class="p">)</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s1">&#39;Reach&#39;</span> <span class="ow">in</span> <span class="n">kw</span> <span class="k">for</span> <span class="n">kw</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keywords</span><span class="p">)</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="c1"># Pad to match embedding dim</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">features</span> <span class="o">+</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">card_embedding_dim</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PlayerState">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.PlayerState">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PlayerState</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;State of a player in the game.&quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">life</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">poison</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">mana_pool</span><span class="p">:</span> <span class="n">ManaPool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">ManaPool</span><span class="p">)</span>
+    <span class="n">hand_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">library_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">lands_played_this_turn</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">max_land_plays</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">has_lost</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">graveyard</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CardState</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">battlefield</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CardState</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">exile</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CardState</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">hand</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CardState</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PlayerState.from_dict">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.PlayerState.from_dict">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;PlayerState&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse player state from JSON dict.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">life</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;life&#39;</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span>
+            <span class="n">poison</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;poison&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">mana_pool</span><span class="o">=</span><span class="n">ManaPool</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mana_pool&#39;</span><span class="p">,</span> <span class="p">{})),</span>
+            <span class="n">hand_size</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hand_size&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">library_size</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;library_size&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">lands_played_this_turn</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lands_played_this_turn&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">max_land_plays</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max_land_plays&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">has_lost</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;has_lost&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="n">graveyard</span><span class="o">=</span><span class="p">[</span><span class="n">CardState</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;graveyard&#39;</span><span class="p">,</span> <span class="p">[])],</span>
+            <span class="n">battlefield</span><span class="o">=</span><span class="p">[</span><span class="n">CardState</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;battlefield&#39;</span><span class="p">,</span> <span class="p">[])],</span>
+            <span class="n">exile</span><span class="o">=</span><span class="p">[</span><span class="n">CardState</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;exile&#39;</span><span class="p">,</span> <span class="p">[])],</span>
+            <span class="n">hand</span><span class="o">=</span><span class="p">[</span><span class="n">CardState</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hand&#39;</span><span class="p">,</span> <span class="p">[])]</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="CombatState">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.CombatState">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CombatState</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Combat state representation.&quot;&quot;&quot;</span>
+    <span class="n">attacking_player</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">attackers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>  <span class="c1"># card_id, name, power, toughness, attacking, blocked_by</span>
+
+<div class="viewcode-block" id="CombatState.from_dict">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.CombatState.from_dict">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;CombatState&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">attacking_player</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;attacking_player&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">attackers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;attackers&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="StackEntry">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.StackEntry">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StackEntry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stack entry representation.&quot;&quot;&quot;</span>
+    <span class="n">entry_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">controller</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">source_card</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">source_card_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="StackEntry.from_dict">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.StackEntry.from_dict">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;StackEntry&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">entry_id</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">description</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;description&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">controller</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;controller&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">source_card</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_card&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">source_card_id</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_card_id&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="GameState">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.GameState">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GameState</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Full game state representation.&quot;&quot;&quot;</span>
+    <span class="n">turn</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">phase</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">active_player</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">priority_player</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">is_game_over</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">our_player</span><span class="p">:</span> <span class="n">PlayerState</span>
+    <span class="n">opponent</span><span class="p">:</span> <span class="n">PlayerState</span>
+    <span class="n">stack</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">StackEntry</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">combat</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CombatState</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="GameState.from_dict">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.GameState.from_dict">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">our_player_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;GameState&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse game state from JSON dict.&quot;&quot;&quot;</span>
+        <span class="n">game_state</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;game_state&#39;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">players</span> <span class="o">=</span> <span class="n">game_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;players&#39;</span><span class="p">,</span> <span class="p">[])</span>
+
+        <span class="c1"># Find our player and opponent</span>
+        <span class="n">our_player_data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">opponent_data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">players</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">our_player_name</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">):</span>
+                <span class="n">our_player_data</span> <span class="o">=</span> <span class="n">p</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">opponent_data</span> <span class="o">=</span> <span class="n">p</span>
+
+        <span class="c1"># Fallback if players not found</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">our_player_data</span><span class="p">:</span>
+            <span class="n">our_player_data</span> <span class="o">=</span> <span class="n">players</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">players</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">opponent_data</span><span class="p">:</span>
+            <span class="n">opponent_data</span> <span class="o">=</span> <span class="n">players</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">players</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="p">{}</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">turn</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;turn&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">phase</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;phase&#39;</span><span class="p">,</span> <span class="s1">&#39;MAIN1&#39;</span><span class="p">),</span>
+            <span class="n">active_player</span><span class="o">=</span><span class="n">game_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;active_player&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">priority_player</span><span class="o">=</span><span class="n">game_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;priority_player&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">is_game_over</span><span class="o">=</span><span class="n">game_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_game_over&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="n">our_player</span><span class="o">=</span><span class="n">PlayerState</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">our_player_data</span><span class="p">),</span>
+            <span class="n">opponent</span><span class="o">=</span><span class="n">PlayerState</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">opponent_data</span><span class="p">),</span>
+            <span class="n">stack</span><span class="o">=</span><span class="p">[</span><span class="n">StackEntry</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">game_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;stack&#39;</span><span class="p">,</span> <span class="p">[])],</span>
+            <span class="n">combat</span><span class="o">=</span><span class="n">CombatState</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">game_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;combat&#39;</span><span class="p">))</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GameState.to_observation">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.GameState.to_observation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_observation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_cards</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert game state to fixed-size observation vector.</span>
+
+<span class="sd">        This is a simplified representation. A full implementation would use:</span>
+<span class="sd">        - Transformer/attention for variable-length card sequences</span>
+<span class="sd">        - Graph neural networks for card interactions</span>
+<span class="sd">        - Separate embeddings for different zones</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Global state</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">turn</span> <span class="o">/</span> <span class="mf">100.0</span><span class="p">,</span>  <span class="c1"># Normalize turn number</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_phase_to_int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">phase</span><span class="p">)</span> <span class="o">/</span> <span class="mf">15.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_player</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">name</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">priority_player</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">name</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_game_over</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="p">])</span>
+
+        <span class="c1"># Our player state</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">life</span> <span class="o">/</span> <span class="mf">40.0</span><span class="p">,</span>  <span class="c1"># Normalize to typical range</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">poison</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">mana_pool</span><span class="o">.</span><span class="n">total</span> <span class="o">/</span> <span class="mf">20.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">mana_pool</span><span class="o">.</span><span class="n">white</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">mana_pool</span><span class="o">.</span><span class="n">blue</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">mana_pool</span><span class="o">.</span><span class="n">black</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">mana_pool</span><span class="o">.</span><span class="n">red</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">mana_pool</span><span class="o">.</span><span class="n">green</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">mana_pool</span><span class="o">.</span><span class="n">colorless</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">hand_size</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">library_size</span> <span class="o">/</span> <span class="mf">60.0</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">battlefield</span><span class="p">)</span> <span class="o">/</span> <span class="n">max_cards</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">graveyard</span><span class="p">)</span> <span class="o">/</span> <span class="n">max_cards</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">exile</span><span class="p">)</span> <span class="o">/</span> <span class="n">max_cards</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">lands_played_this_turn</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">has_lost</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="p">])</span>
+
+        <span class="c1"># Count creature stats on our battlefield</span>
+        <span class="n">our_creature_power</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">power</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_creature</span><span class="p">)</span>
+        <span class="n">our_creature_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_creature</span><span class="p">)</span>
+        <span class="n">our_land_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_land</span><span class="p">)</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+            <span class="n">our_creature_power</span> <span class="o">/</span> <span class="mf">50.0</span><span class="p">,</span>
+            <span class="n">our_creature_count</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="n">our_land_count</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+        <span class="p">])</span>
+
+        <span class="c1"># Opponent state</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">life</span> <span class="o">/</span> <span class="mf">40.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">poison</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">mana_pool</span><span class="o">.</span><span class="n">total</span> <span class="o">/</span> <span class="mf">20.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">hand_size</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">library_size</span> <span class="o">/</span> <span class="mf">60.0</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">battlefield</span><span class="p">)</span> <span class="o">/</span> <span class="n">max_cards</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">graveyard</span><span class="p">)</span> <span class="o">/</span> <span class="n">max_cards</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">has_lost</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="p">])</span>
+
+        <span class="c1"># Count creature stats on opponent battlefield</span>
+        <span class="n">opp_creature_power</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">power</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_creature</span><span class="p">)</span>
+        <span class="n">opp_creature_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_creature</span><span class="p">)</span>
+        <span class="n">opp_land_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_land</span><span class="p">)</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+            <span class="n">opp_creature_power</span> <span class="o">/</span> <span class="mf">50.0</span><span class="p">,</span>
+            <span class="n">opp_creature_count</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="n">opp_land_count</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+        <span class="p">])</span>
+
+        <span class="c1"># Stack state</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">)</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">)</span>
+
+        <span class="c1"># Combat state</span>
+        <span class="n">in_combat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">combat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">combat</span><span class="o">.</span><span class="n">attackers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">obs</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="n">in_combat</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">combat</span><span class="o">.</span><span class="n">attackers</span><span class="p">)</span> <span class="o">/</span> <span class="mf">10.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">combat</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_phase_to_int</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">phase</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="n">phases</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;UNTAP&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;UPKEEP&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;DRAW&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="s1">&#39;MAIN1&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;COMBAT_BEGIN&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;COMBAT_DECLARE_ATTACKERS&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+            <span class="s1">&#39;COMBAT_DECLARE_BLOCKERS&#39;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">&#39;COMBAT_FIRST_STRIKE_DAMAGE&#39;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
+            <span class="s1">&#39;COMBAT_DAMAGE&#39;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">&#39;COMBAT_END&#39;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
+            <span class="s1">&#39;MAIN2&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;END_OF_TURN&#39;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span> <span class="s1">&#39;CLEANUP&#39;</span><span class="p">:</span> <span class="mi">12</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">phases</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">phase</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="Action">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.Action">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents an action the agent can take.&quot;&quot;&quot;</span>
+    <span class="n">action_type</span><span class="p">:</span> <span class="n">ActionType</span>
+    <span class="n">action_index</span><span class="p">:</span> <span class="nb">int</span>  <span class="c1"># Index in the available actions list</span>
+    <span class="n">raw_data</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Action.to_response">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.Action.to_response">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_response</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert action to string response for the game.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_type</span> <span class="o">==</span> <span class="n">ActionType</span><span class="o">.</span><span class="n">PASS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;-1&quot;</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action_index</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="RewardShaper">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.RewardShaper">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RewardShaper</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Shapes rewards to make learning more tractable.</span>
+
+<span class="sd">    Raw MTG rewards are very sparse (win=1, lose=-1).</span>
+<span class="sd">    We add intermediate rewards to guide learning:</span>
+<span class="sd">    - Life differential</span>
+<span class="sd">    - Board presence</span>
+<span class="sd">    - Card advantage</span>
+<span class="sd">    - Mana efficiency</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="RewardShaper.__init__">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.RewardShaper.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">GameState</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_reward</span> <span class="o">=</span> <span class="mf">0.0</span></div>
+
+
+<div class="viewcode-block" id="RewardShaper.compute_reward">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.RewardShaper.compute_reward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_reward</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">state</span><span class="p">:</span> <span class="n">GameState</span><span class="p">,</span>
+        <span class="n">action</span><span class="p">:</span> <span class="n">Action</span><span class="p">,</span>
+        <span class="n">game_over</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+        <span class="n">won</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute shaped reward for a state transition.&quot;&quot;&quot;</span>
+
+        <span class="c1"># Terminal reward</span>
+        <span class="k">if</span> <span class="n">game_over</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">won</span> <span class="k">else</span> <span class="o">-</span><span class="mf">1.0</span>
+
+        <span class="n">reward</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Life differential change</span>
+            <span class="n">our_life_delta</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">life</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">life</span>
+            <span class="n">opp_life_delta</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">life</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">life</span>
+            <span class="n">reward</span> <span class="o">+=</span> <span class="p">(</span><span class="n">our_life_delta</span> <span class="o">-</span> <span class="n">opp_life_delta</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.01</span>
+
+            <span class="c1"># Board presence change (using is_creature attribute)</span>
+            <span class="n">our_creatures</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_creature</span><span class="p">)</span>
+            <span class="n">prev_creatures</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_creature</span><span class="p">)</span>
+            <span class="n">reward</span> <span class="o">+=</span> <span class="p">(</span><span class="n">our_creatures</span> <span class="o">-</span> <span class="n">prev_creatures</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.02</span>
+
+            <span class="c1"># Creature power advantage</span>
+            <span class="n">our_power</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">power</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_creature</span><span class="p">)</span>
+            <span class="n">prev_power</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">power</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_creature</span><span class="p">)</span>
+            <span class="n">opp_power</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">power</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_creature</span><span class="p">)</span>
+            <span class="n">prev_opp_power</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">power</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_creature</span><span class="p">)</span>
+            <span class="n">power_delta</span> <span class="o">=</span> <span class="p">(</span><span class="n">our_power</span> <span class="o">-</span> <span class="n">prev_power</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">opp_power</span> <span class="o">-</span> <span class="n">prev_opp_power</span><span class="p">)</span>
+            <span class="n">reward</span> <span class="o">+=</span> <span class="n">power_delta</span> <span class="o">*</span> <span class="mf">0.005</span>
+
+            <span class="c1"># Card advantage (hand + battlefield vs opponent)</span>
+            <span class="n">our_cards</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">hand_size</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">battlefield</span><span class="p">)</span>
+            <span class="n">opp_cards</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">hand_size</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">battlefield</span><span class="p">)</span>
+            <span class="n">prev_our</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">hand_size</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">battlefield</span><span class="p">)</span>
+            <span class="n">prev_opp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">hand_size</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span><span class="o">.</span><span class="n">opponent</span><span class="o">.</span><span class="n">battlefield</span><span class="p">)</span>
+
+            <span class="n">card_adv_delta</span> <span class="o">=</span> <span class="p">(</span><span class="n">our_cards</span> <span class="o">-</span> <span class="n">opp_cards</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">prev_our</span> <span class="o">-</span> <span class="n">prev_opp</span><span class="p">)</span>
+            <span class="n">reward</span> <span class="o">+=</span> <span class="n">card_adv_delta</span> <span class="o">*</span> <span class="mf">0.01</span>
+
+            <span class="c1"># Land development reward</span>
+            <span class="n">our_lands</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_land</span><span class="p">)</span>
+            <span class="n">prev_lands</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span><span class="o">.</span><span class="n">our_player</span><span class="o">.</span><span class="n">battlefield</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">is_land</span><span class="p">)</span>
+            <span class="n">reward</span> <span class="o">+=</span> <span class="p">(</span><span class="n">our_lands</span> <span class="o">-</span> <span class="n">prev_lands</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.01</span>
+
+        <span class="c1"># Small negative reward for passing (encourage action)</span>
+        <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">action_type</span> <span class="o">==</span> <span class="n">ActionType</span><span class="o">.</span><span class="n">PASS</span><span class="p">:</span>
+            <span class="n">reward</span> <span class="o">-=</span> <span class="mf">0.001</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span> <span class="o">=</span> <span class="n">state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_reward</span> <span class="o">+=</span> <span class="n">reward</span>
+
+        <span class="k">return</span> <span class="n">reward</span></div>
+
+
+<div class="viewcode-block" id="RewardShaper.reset">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.RewardShaper.reset">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_state</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_reward</span> <span class="o">=</span> <span class="mf">0.0</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="MTGEnvironment">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.MTGEnvironment">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MTGEnvironment</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    OpenAI Gym-style environment for MTG.</span>
+
+<span class="sd">    Connects to the Forge game engine via Docker and translates</span>
+<span class="sd">    between game states and RL observations/actions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MTGEnvironment.__init__">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.MTGEnvironment.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">deck1</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;red_aggro.dck&quot;</span><span class="p">,</span>
+        <span class="n">deck2</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;white_weenie.dck&quot;</span><span class="p">,</span>
+        <span class="n">docker_image</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;forge-sim:latest&quot;</span><span class="p">,</span>
+        <span class="n">player_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># Which player the agent controls (1 or 2)</span>
+        <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">120</span><span class="p">,</span>
+        <span class="n">reward_shaping</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deck1</span> <span class="o">=</span> <span class="n">deck1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deck2</span> <span class="o">=</span> <span class="n">deck2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">docker_image</span> <span class="o">=</span> <span class="n">docker_image</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">player_id</span> <span class="o">=</span> <span class="n">player_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward_shaping</span> <span class="o">=</span> <span class="n">reward_shaping</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward_shaper</span> <span class="o">=</span> <span class="n">RewardShaper</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">GameState</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">available_actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">won</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decision_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Observation and action space dimensions</span>
+        <span class="c1"># Global: 5, Our player: 16+3=19, Opponent: 8+3=11, Stack: 1, Combat: 2 = 38</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">observation_dim</span> <span class="o">=</span> <span class="mi">38</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_actions</span> <span class="o">=</span> <span class="mi">50</span>  <span class="c1"># Maximum number of actions to consider</span></div>
+
+
+<div class="viewcode-block" id="MTGEnvironment.reset">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.MTGEnvironment.reset">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset environment and start a new game.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward_shaper</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">won</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decision_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Start game process</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;docker&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span> <span class="s2">&quot;--rm&quot;</span><span class="p">,</span> <span class="s2">&quot;-i&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--entrypoint&quot;</span><span class="p">,</span> <span class="s2">&quot;/bin/bash&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">docker_image</span><span class="p">,</span>
+            <span class="s2">&quot;-c&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;cd /forge &amp;&amp; timeout </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="si">}</span><span class="s2"> xvfb-run -a java -Xmx2048m &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;--add-opens java.base/java.lang=ALL-UNNAMED &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;--add-opens java.base/java.util=ALL-UNNAMED &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;--add-opens java.base/java.text=ALL-UNNAMED &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;--add-opens java.base/java.lang.reflect=ALL-UNNAMED &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;--add-opens java.desktop/java.beans=ALL-UNNAMED &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;-Dsentry.dsn= -jar forge.jar sim &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;-d </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">deck1</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">deck2</span><span class="si">}</span><span class="s2"> -n 1 -i -q -c </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span>
+            <span class="n">cmd</span><span class="p">,</span>
+            <span class="n">stdin</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+            <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+            <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+            <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">bufsize</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Wait for first decision</span>
+        <span class="n">obs</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wait_for_decision</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">obs</span><span class="p">,</span> <span class="n">info</span></div>
+
+
+<div class="viewcode-block" id="MTGEnvironment.step">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.MTGEnvironment.step">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Take an action in the environment.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action_idx: Index of action in available_actions (or -1 to pass)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            observation, reward, terminated, truncated, info</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_observation</span><span class="p">(),</span> <span class="mf">0.0</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="p">{}</span>
+
+        <span class="c1"># Convert action index to response</span>
+        <span class="k">if</span> <span class="n">action_idx</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">action_idx</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">available_actions</span><span class="p">):</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="s2">&quot;-1&quot;</span>  <span class="c1"># Pass</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">Action</span><span class="p">(</span><span class="n">ActionType</span><span class="o">.</span><span class="n">PASS</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">action_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">available_actions</span><span class="p">[</span><span class="n">action_idx</span><span class="p">]</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">action_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">Action</span><span class="p">(</span>
+                <span class="n">ActionType</span><span class="o">.</span><span class="n">PLAY_SPELL</span> <span class="k">if</span> <span class="n">action_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">ActionType</span><span class="o">.</span><span class="n">PASS</span><span class="p">,</span>
+                <span class="n">action_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                <span class="n">action_data</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Send response</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">response</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">BrokenPipeError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_observation</span><span class="p">(),</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;pipe_broken&quot;</span><span class="p">}</span>
+
+        <span class="c1"># Wait for next decision or game end</span>
+        <span class="n">obs</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wait_for_decision</span><span class="p">()</span>
+
+        <span class="c1"># Compute reward</span>
+        <span class="n">reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward_shaper</span><span class="o">.</span><span class="n">compute_reward</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_state</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">won</span>
+        <span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward_shaping</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_state</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+        <span class="k">return</span> <span class="n">obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">info</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_wait_for_decision</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Wait for next decision point from the game.&quot;&quot;&quot;</span>
+        <span class="n">our_player_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Agent(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">player_id</span><span class="si">}</span><span class="s2">)&quot;</span>
+
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+            <span class="c1"># Check for game end</span>
+            <span class="k">if</span> <span class="s2">&quot;has won&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">won</span> <span class="o">=</span> <span class="n">our_player_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                <span class="k">break</span>
+
+            <span class="c1"># Parse decision</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;DECISION:&quot;</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">9</span><span class="p">:])</span>
+            <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Only respond to our player&#39;s decisions</span>
+            <span class="n">player_name</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;player&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">our_player_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">player_name</span><span class="p">:</span>
+                <span class="c1"># Pass for opponent (in single-agent mode)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;-1</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Update state</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_state</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">available_actions</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;actions&#39;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">decision_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_observation</span><span class="p">(),</span> <span class="p">{</span>
+                <span class="s2">&quot;turn&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;turn&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;phase&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+                <span class="s2">&quot;actions&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">available_actions</span><span class="p">,</span>
+                <span class="s2">&quot;decision_count&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">decision_count</span>
+            <span class="p">}</span>
+
+        <span class="c1"># Game ended</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">game_over</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_observation</span><span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;game_over&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;won&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">won</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_parse_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GameState</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse decision data into GameState.&quot;&quot;&quot;</span>
+        <span class="n">our_player_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Agent(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">player_id</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="k">return</span> <span class="n">GameState</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">our_player_name</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_observation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current observation vector.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_state</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observation_dim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_state</span><span class="o">.</span><span class="n">to_observation</span><span class="p">()</span>
+
+<div class="viewcode-block" id="MTGEnvironment.get_action_mask">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.MTGEnvironment.get_action_mask">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_action_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask of valid actions (1=valid, 0=invalid).&quot;&quot;&quot;</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_actions</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">action</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">available_actions</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">max_actions</span><span class="p">]):</span>
+            <span class="n">mask</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">return</span> <span class="n">mask</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_cleanup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up subprocess.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="MTGEnvironment.close">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.MTGEnvironment.close">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Close the environment.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="SimpleAgent">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.SimpleAgent">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SimpleAgent</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simple rule-based agent for testing and as a baseline.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SimpleAgent.select_action">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.SimpleAgent.select_action">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">select_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">],</span> <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Select an action based on simple heuristics.&quot;&quot;&quot;</span>
+
+        <span class="c1"># Priority 1: Play lands</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">action</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">actions</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_land&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">i</span>
+
+        <span class="c1"># Priority 2: Play creatures/spells if we have mana</span>
+        <span class="c1"># (simplified - would check mana properly in real implementation)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">action</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">actions</span><span class="p">):</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">idx</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_land&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                <span class="n">cost_str</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mana_cost&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">cost_str</span> <span class="ow">or</span> <span class="n">cost_str</span> <span class="o">==</span> <span class="s1">&#39;no cost&#39;</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">i</span>
+
+        <span class="c1"># Default: pass</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="train_episode">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.train_episode">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">train_episode</span><span class="p">(</span><span class="n">env</span><span class="p">:</span> <span class="n">MTGEnvironment</span><span class="p">,</span> <span class="n">agent</span><span class="p">:</span> <span class="n">SimpleAgent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run a single training episode.&quot;&quot;&quot;</span>
+    <span class="n">obs</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+    <span class="n">total_reward</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">steps</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">while</span> <span class="ow">not</span> <span class="n">env</span><span class="o">.</span><span class="n">game_over</span> <span class="ow">and</span> <span class="n">steps</span> <span class="o">&lt;</span> <span class="mi">10000</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get_action_mask</span><span class="p">()</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">select_action</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">.</span><span class="n">available_actions</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+
+        <span class="n">obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">truncated</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+        <span class="n">total_reward</span> <span class="o">+=</span> <span class="n">reward</span>
+        <span class="n">steps</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
+            <span class="k">break</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;total_reward&quot;</span><span class="p">:</span> <span class="n">total_reward</span><span class="p">,</span>
+        <span class="s2">&quot;steps&quot;</span><span class="p">:</span> <span class="n">steps</span><span class="p">,</span>
+        <span class="s2">&quot;won&quot;</span><span class="p">:</span> <span class="n">env</span><span class="o">.</span><span class="n">won</span><span class="p">,</span>
+        <span class="s2">&quot;turns&quot;</span><span class="p">:</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;turn&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../api/environments.html#src.environments.rl_environment.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test the RL environment.&quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;MTG RL Environment Test&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+
+    <span class="n">env</span> <span class="o">=</span> <span class="n">MTGEnvironment</span><span class="p">(</span>
+        <span class="n">deck1</span><span class="o">=</span><span class="s2">&quot;red_aggro.dck&quot;</span><span class="p">,</span>
+        <span class="n">deck2</span><span class="o">=</span><span class="s2">&quot;white_weenie.dck&quot;</span><span class="p">,</span>
+        <span class="n">player_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">reward_shaping</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+    <span class="n">agent</span> <span class="o">=</span> <span class="n">SimpleAgent</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Running test episode...&quot;</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">train_episode</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Episode Results:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Total Reward: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;total_reward&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Steps: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Won: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;won&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">env</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Environment closed successfully.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, ForgeRL Contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>

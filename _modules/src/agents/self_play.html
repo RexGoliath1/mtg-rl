@@ -1,0 +1,1480 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>src.agents.self_play - ForgeRL</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">ForgeRL</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  <span class="sidebar-brand-text">ForgeRL</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html">ForgeRL</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ARCHITECTURE.html">ForgeRL Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tools.html">Local Tools</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/mechanics.html">Mechanics System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/forge.html">Forge Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/training.html">Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/agents.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/utils.html">Utils</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for src.agents.self_play</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Self-Play Training Infrastructure for MTG RL</span>
+
+<span class="sd">Implements the core self-play training loop used by AlphaStar and OpenAI Five.</span>
+<span class="sd">Key components:</span>
+<span class="sd">1. ModelPool - Stores past model checkpoints for opponent sampling</span>
+<span class="sd">2. EloTracker - Tracks relative skill levels of models</span>
+<span class="sd">3. OpponentSampler - Samples opponents based on configurable strategies</span>
+<span class="sd">4. SelfPlayTrainer - Orchestrates training against past selves</span>
+
+<span class="sd">Supports two network backends:</span>
+<span class="sd">- &quot;alphazero&quot;: AlphaZeroNetwork from src.training.self_play (default)</span>
+<span class="sd">- &quot;ppo&quot;: MTGPolicyNetwork + PPOAgent (legacy)</span>
+
+<span class="sd">Self-play provides natural curriculum learning:</span>
+<span class="sd">- Early: Easy opponents (early versions of yourself)</span>
+<span class="sd">- Late: Hard opponents (recent improved versions)</span>
+
+<span class="sd">References:</span>
+<span class="sd">- AlphaStar: https://deepmind.google/blog/alphastar-mastering-the-real-time-strategy-game-starcraft-ii/</span>
+<span class="sd">- OpenAI Five: https://arxiv.org/abs/1912.06680</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">asdict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.models.policy_network</span><span class="w"> </span><span class="kn">import</span> <span class="n">MTGPolicyNetwork</span><span class="p">,</span> <span class="n">TransformerConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.agents.ppo_agent</span><span class="w"> </span><span class="kn">import</span> <span class="n">PPOAgent</span><span class="p">,</span> <span class="n">PPOConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.environments.daemon_environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">DaemonMTGEnvironment</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.training.self_play</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlphaZeroNetwork</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># ELO RATING SYSTEM</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="EloTracker">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.EloTracker">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EloTracker</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tracks Elo ratings for models in the self-play pool.</span>
+
+<span class="sd">    Elo provides a relative measure of skill:</span>
+<span class="sd">    - New models start at 1200</span>
+<span class="sd">    - Win against higher-rated -&gt; bigger gain</span>
+<span class="sd">    - Win against lower-rated -&gt; smaller gain</span>
+<span class="sd">    - K-factor determines rating volatility</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="EloTracker.__init__">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.EloTracker.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">32.0</span><span class="p">,</span> <span class="n">initial_rating</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1200.0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_factor</span> <span class="o">=</span> <span class="n">k_factor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial_rating</span> <span class="o">=</span> <span class="n">initial_rating</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+
+<div class="viewcode-block" id="EloTracker.get_rating">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.EloTracker.get_rating">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_rating</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current rating for a model.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">model_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_rating</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EloTracker.expected_score">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.EloTracker.expected_score">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">expected_score</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rating_a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">rating_b</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate expected score for player A against player B.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">((</span><span class="n">rating_b</span> <span class="o">-</span> <span class="n">rating_a</span><span class="p">)</span> <span class="o">/</span> <span class="mf">400.0</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="EloTracker.update_ratings">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.EloTracker.update_ratings">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_ratings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_a</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model_b</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">score_a</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update ratings after a match.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model_a: ID of first model</span>
+<span class="sd">            model_b: ID of second model</span>
+<span class="sd">            score_a: Score for model A (1.0 = win, 0.5 = draw, 0.0 = loss)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Initialize if needed</span>
+        <span class="k">if</span> <span class="n">model_a</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="p">[</span><span class="n">model_a</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_rating</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="p">[</span><span class="n">model_a</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">model_b</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="p">[</span><span class="n">model_b</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_rating</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="p">[</span><span class="n">model_b</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">rating_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="p">[</span><span class="n">model_a</span><span class="p">]</span>
+        <span class="n">rating_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="p">[</span><span class="n">model_b</span><span class="p">]</span>
+
+        <span class="n">expected_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected_score</span><span class="p">(</span><span class="n">rating_a</span><span class="p">,</span> <span class="n">rating_b</span><span class="p">)</span>
+        <span class="n">expected_b</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">expected_a</span>
+        <span class="n">score_b</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">score_a</span>
+
+        <span class="c1"># Update ratings</span>
+        <span class="n">new_rating_a</span> <span class="o">=</span> <span class="n">rating_a</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">k_factor</span> <span class="o">*</span> <span class="p">(</span><span class="n">score_a</span> <span class="o">-</span> <span class="n">expected_a</span><span class="p">)</span>
+        <span class="n">new_rating_b</span> <span class="o">=</span> <span class="n">rating_b</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">k_factor</span> <span class="o">*</span> <span class="p">(</span><span class="n">score_b</span> <span class="o">-</span> <span class="n">expected_b</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="p">[</span><span class="n">model_a</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_rating_a</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="p">[</span><span class="n">model_b</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_rating_b</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="p">[</span><span class="n">model_a</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="p">[</span><span class="n">model_b</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Record history</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="s1">&#39;model_a&#39;</span><span class="p">:</span> <span class="n">model_a</span><span class="p">,</span>
+            <span class="s1">&#39;model_b&#39;</span><span class="p">:</span> <span class="n">model_b</span><span class="p">,</span>
+            <span class="s1">&#39;score_a&#39;</span><span class="p">:</span> <span class="n">score_a</span><span class="p">,</span>
+            <span class="s1">&#39;rating_a_before&#39;</span><span class="p">:</span> <span class="n">rating_a</span><span class="p">,</span>
+            <span class="s1">&#39;rating_b_before&#39;</span><span class="p">:</span> <span class="n">rating_b</span><span class="p">,</span>
+            <span class="s1">&#39;rating_a_after&#39;</span><span class="p">:</span> <span class="n">new_rating_a</span><span class="p">,</span>
+            <span class="s1">&#39;rating_b_after&#39;</span><span class="p">:</span> <span class="n">new_rating_b</span><span class="p">,</span>
+        <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="EloTracker.get_leaderboard">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.EloTracker.get_leaderboard">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_leaderboard</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get sorted leaderboard: (model_id, rating, games_played).&quot;&quot;&quot;</span>
+        <span class="n">items</span> <span class="o">=</span> <span class="p">[(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="o">.</span><span class="n">items</span><span class="p">()]</span>
+        <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EloTracker.save">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.EloTracker.save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save ratings to file.&quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;ratings&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span><span class="p">,</span>
+            <span class="s1">&#39;games_played&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="p">,</span>
+            <span class="s1">&#39;history&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="o">-</span><span class="mi">1000</span><span class="p">:],</span>  <span class="c1"># Keep last 1000 games</span>
+        <span class="p">}</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EloTracker.load">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.EloTracker.load">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load ratings from file.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ratings</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ratings&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;games_played&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;history&#39;</span><span class="p">,</span> <span class="p">[])</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># MODEL POOL</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="ModelCheckpoint">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.ModelCheckpoint">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModelCheckpoint</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Metadata for a model checkpoint.&quot;&quot;&quot;</span>
+    <span class="n">model_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">path</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">games_trained</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">elo_rating</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1200.0</span>
+    <span class="n">win_rate_vs_random</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">network_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ppo&quot;</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ModelPool">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.ModelPool">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModelPool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Pool of model checkpoints for self-play training.</span>
+
+<span class="sd">    Stores past versions of the model that can be used as opponents.</span>
+<span class="sd">    Supports different sampling strategies:</span>
+<span class="sd">    - recent: Prefer recent models</span>
+<span class="sd">    - historical: Uniform over all models</span>
+<span class="sd">    - elo_weighted: Prefer similar-skill models</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ModelPool.__init__">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.ModelPool.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">pool_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">max_pool_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+                 <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pool_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">pool_dir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pool_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_pool_size</span> <span class="o">=</span> <span class="n">max_pool_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span> <span class="ow">or</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ModelCheckpoint</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">elo_tracker</span> <span class="o">=</span> <span class="n">EloTracker</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+
+        <span class="c1"># Load existing checkpoints</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_pool_state</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_pool_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load pool state from disk.&quot;&quot;&quot;</span>
+        <span class="n">state_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pool_dir</span> <span class="o">/</span> <span class="s1">&#39;pool_state.json&#39;</span>
+        <span class="k">if</span> <span class="n">state_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">state_path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">ModelCheckpoint</span><span class="p">(</span><span class="o">**</span><span class="n">cp</span><span class="p">)</span> <span class="k">for</span> <span class="n">cp</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;checkpoints&#39;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="p">]</span>
+
+        <span class="n">elo_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pool_dir</span> <span class="o">/</span> <span class="s1">&#39;elo_ratings.json&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">elo_tracker</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">elo_path</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_pool_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save pool state to disk.&quot;&quot;&quot;</span>
+        <span class="n">state_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pool_dir</span> <span class="o">/</span> <span class="s1">&#39;pool_state.json&#39;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;checkpoints&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">asdict</span><span class="p">(</span><span class="n">cp</span><span class="p">)</span> <span class="k">for</span> <span class="n">cp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">],</span>
+        <span class="p">}</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">state_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">elo_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pool_dir</span> <span class="o">/</span> <span class="s1">&#39;elo_ratings.json&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">elo_tracker</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">elo_path</span><span class="p">))</span>
+
+<div class="viewcode-block" id="ModelPool.add_checkpoint">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.ModelPool.add_checkpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                       <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+                       <span class="n">games_trained</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                       <span class="n">config</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">TransformerConfig</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">network_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
+                       <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add a new model checkpoint to the pool.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model: The network to checkpoint (MTGPolicyNetwork or AlphaZeroNetwork)</span>
+<span class="sd">            games_trained: Number of games trained on</span>
+<span class="sd">            config: Transformer configuration (used for PPO path; ignored for alphazero)</span>
+<span class="sd">            network_type: &quot;alphazero&quot; or &quot;ppo&quot;</span>
+<span class="sd">            metadata: Additional metadata to store</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            model_id: Unique identifier for this checkpoint</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="c1"># Generate unique ID</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">model_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;model_</span><span class="si">{</span><span class="n">games_trained</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">timestamp</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+
+            <span class="c1"># Save model weights</span>
+            <span class="n">model_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pool_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_id</span><span class="si">}</span><span class="s2">.pt&quot;</span>
+
+            <span class="k">if</span> <span class="n">network_type</span> <span class="o">==</span> <span class="s2">&quot;alphazero&quot;</span><span class="p">:</span>
+                <span class="c1"># Use AlphaZeroNetwork&#39;s save format</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">({</span>
+                    <span class="s1">&#39;state_dict&#39;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span>
+                    <span class="s1">&#39;encoder_config&#39;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;encoder_config&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                    <span class="s1">&#39;network_type&#39;</span><span class="p">:</span> <span class="s1">&#39;alphazero&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;games_trained&#39;</span><span class="p">:</span> <span class="n">games_trained</span><span class="p">,</span>
+                <span class="p">},</span> <span class="n">model_path</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Legacy PPO format</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">({</span>
+                    <span class="s1">&#39;state_dict&#39;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span>
+                    <span class="s1">&#39;config&#39;</span><span class="p">:</span> <span class="n">config</span><span class="p">,</span>
+                    <span class="s1">&#39;network_type&#39;</span><span class="p">:</span> <span class="s1">&#39;ppo&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;games_trained&#39;</span><span class="p">:</span> <span class="n">games_trained</span><span class="p">,</span>
+                <span class="p">},</span> <span class="n">model_path</span><span class="p">)</span>
+
+            <span class="c1"># Create checkpoint entry</span>
+            <span class="n">checkpoint</span> <span class="o">=</span> <span class="n">ModelCheckpoint</span><span class="p">(</span>
+                <span class="n">model_id</span><span class="o">=</span><span class="n">model_id</span><span class="p">,</span>
+                <span class="n">path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">model_path</span><span class="p">),</span>
+                <span class="n">games_trained</span><span class="o">=</span><span class="n">games_trained</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">,</span>
+                <span class="n">elo_rating</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">elo_tracker</span><span class="o">.</span><span class="n">get_rating</span><span class="p">(</span><span class="n">model_id</span><span class="p">),</span>
+                <span class="n">network_type</span><span class="o">=</span><span class="n">network_type</span><span class="p">,</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">)</span>
+
+            <span class="c1"># Prune old checkpoints if needed</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_pool_size</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_prune_pool</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_save_pool_state</span><span class="p">()</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Added checkpoint </span><span class="si">{</span><span class="n">model_id</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">network_type</span><span class="si">}</span><span class="s2">) to pool (total: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">model_id</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prune_pool</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove old checkpoints to stay within max_pool_size.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_pool_size</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Keep: most recent, highest elo, evenly spaced by games</span>
+        <span class="n">keep_indices</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="c1"># Always keep most recent 10</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">))):</span>
+            <span class="n">keep_indices</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">i</span><span class="p">)</span>
+
+        <span class="c1"># Keep top 10 by Elo</span>
+        <span class="n">elo_sorted</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">)),</span>
+                          <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">i</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">elo_rating</span><span class="p">,</span>
+                          <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">elo_sorted</span><span class="p">[:</span><span class="mi">10</span><span class="p">]:</span>
+            <span class="n">keep_indices</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+        <span class="c1"># Keep evenly spaced by games trained</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">20</span><span class="p">:</span>
+            <span class="n">games_sorted</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">)),</span>
+                                <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">i</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">games_trained</span><span class="p">)</span>
+            <span class="n">step</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">games_sorted</span><span class="p">)</span> <span class="o">//</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_pool_size</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">keep_indices</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">games_sorted</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">step</span><span class="p">)):</span>
+                <span class="n">keep_indices</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">games_sorted</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+        <span class="c1"># Remove checkpoints not in keep set</span>
+        <span class="n">to_remove</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">keep_indices</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">keep_indices</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">to_remove</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">):</span>
+                <span class="n">to_remove</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="c1"># Delete file</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span> <span class="o">=</span> <span class="p">[</span><span class="n">cp</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">)</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">to_remove</span><span class="p">]</span>
+
+<div class="viewcode-block" id="ModelPool.sample_opponent">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.ModelPool.sample_opponent">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sample_opponent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                        <span class="n">current_model_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="n">strategy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;recent&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ModelCheckpoint</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample an opponent from the pool.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            current_model_id: ID of current model (to avoid self-play)</span>
+<span class="sd">            strategy: Sampling strategy</span>
+<span class="sd">                - &#39;recent&#39;: 80% from last 10, 20% historical</span>
+<span class="sd">                - &#39;uniform&#39;: Uniform random</span>
+<span class="sd">                - &#39;elo_matched&#39;: Prefer similar Elo rating</span>
+<span class="sd">                - &#39;curriculum&#39;: Early models first, then progress</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ModelCheckpoint or None if pool is empty</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Filter out current model</span>
+        <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">cp</span> <span class="k">for</span> <span class="n">cp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span>
+                     <span class="k">if</span> <span class="n">cp</span><span class="o">.</span><span class="n">model_id</span> <span class="o">!=</span> <span class="n">current_model_id</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">candidates</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">strategy</span> <span class="o">==</span> <span class="s1">&#39;recent&#39;</span><span class="p">:</span>
+            <span class="c1"># 80% chance to pick from last 10 models</span>
+            <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">0.8</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">candidates</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">candidates</span><span class="p">[</span><span class="o">-</span><span class="mi">10</span><span class="p">:])</span>
+            <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">candidates</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">strategy</span> <span class="o">==</span> <span class="s1">&#39;uniform&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">candidates</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">strategy</span> <span class="o">==</span> <span class="s1">&#39;elo_matched&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">current_model_id</span><span class="p">:</span>
+                <span class="n">current_elo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">elo_tracker</span><span class="o">.</span><span class="n">get_rating</span><span class="p">(</span><span class="n">current_model_id</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">current_elo</span> <span class="o">=</span> <span class="mf">1200.0</span>
+
+            <span class="c1"># Weight by similarity to current Elo</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">cp</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+                <span class="n">diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">elo_rating</span> <span class="o">-</span> <span class="n">current_elo</span><span class="p">)</span>
+                <span class="n">weight</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">diff</span> <span class="o">/</span> <span class="mf">200.0</span><span class="p">)</span>  <span class="c1"># Gaussian-like weighting</span>
+                <span class="n">weights</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span>
+
+            <span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="o">/</span> <span class="n">total</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">weights</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">choices</span><span class="p">(</span><span class="n">candidates</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">elif</span> <span class="n">strategy</span> <span class="o">==</span> <span class="s1">&#39;curriculum&#39;</span><span class="p">:</span>
+            <span class="c1"># Prefer earlier models at start, later models as training progresses</span>
+            <span class="c1"># Weighted by games_trained (earlier = lower)</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">cp</span><span class="o">.</span><span class="n">games_trained</span> <span class="o">/</span> <span class="mf">10000.0</span><span class="p">)</span> <span class="k">for</span> <span class="n">cp</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">]</span>
+            <span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="o">/</span> <span class="n">total</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">weights</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">choices</span><span class="p">(</span><span class="n">candidates</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">candidates</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ModelPool.load_model">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.ModelPool.load_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                   <span class="n">checkpoint</span><span class="p">:</span> <span class="n">ModelCheckpoint</span><span class="p">,</span>
+                   <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TransformerConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                   <span class="n">device</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load a model from checkpoint. Dispatches based on network_type.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            checkpoint: The checkpoint metadata</span>
+<span class="sd">            config: TransformerConfig (required for PPO, ignored for alphazero)</span>
+<span class="sd">            device: Device to load model onto</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Loaded model (AlphaZeroNetwork or MTGPolicyNetwork)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">load_device</span> <span class="o">=</span> <span class="n">device</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+        <span class="n">checkpoint_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">checkpoint</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">map_location</span><span class="o">=</span><span class="n">load_device</span><span class="p">,</span> <span class="n">weights_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">net_type</span> <span class="o">=</span> <span class="n">checkpoint_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;network_type&#39;</span><span class="p">,</span> <span class="n">checkpoint</span><span class="o">.</span><span class="n">network_type</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">net_type</span> <span class="o">==</span> <span class="s2">&quot;alphazero&quot;</span><span class="p">:</span>
+            <span class="n">encoder_config</span> <span class="o">=</span> <span class="n">checkpoint_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;encoder_config&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">network</span> <span class="o">=</span> <span class="n">AlphaZeroNetwork</span><span class="p">(</span><span class="n">encoder_config</span><span class="o">=</span><span class="n">encoder_config</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">load_device</span><span class="p">)</span>
+            <span class="n">network</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint_data</span><span class="p">[</span><span class="s1">&#39;state_dict&#39;</span><span class="p">])</span>
+            <span class="n">network</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">network</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Legacy PPO path</span>
+            <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">config</span> <span class="o">=</span> <span class="n">checkpoint_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;config&#39;</span><span class="p">,</span> <span class="n">TransformerConfig</span><span class="p">())</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">MTGPolicyNetwork</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">load_device</span><span class="p">)</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint_data</span><span class="p">[</span><span class="s1">&#39;state_dict&#39;</span><span class="p">])</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">model</span></div>
+
+
+<div class="viewcode-block" id="ModelPool.get_latest">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.ModelPool.get_latest">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_latest</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ModelCheckpoint</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the most recent checkpoint.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="ModelPool.get_best_by_elo">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.ModelPool.get_best_by_elo">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_best_by_elo</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ModelCheckpoint</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the highest-rated checkpoint.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">cp</span><span class="p">:</span> <span class="n">cp</span><span class="o">.</span><span class="n">elo_rating</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoints</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># ALPHAZERO AGENT ADAPTER</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="AlphaZeroAgent">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.AlphaZeroAgent">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AlphaZeroAgent</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adapter that wraps AlphaZeroNetwork to match the PPOAgent.get_action() interface.</span>
+
+<span class="sd">    This allows SelfPlayGame to use AlphaZeroNetwork without changing its game loop.</span>
+<span class="sd">    The DaemonMTGEnvironment provides integer action indices and numpy observations,</span>
+<span class="sd">    so we encode the game state through ForgeGameStateEncoder and sample from the</span>
+<span class="sd">    policy head to produce an action index compatible with env.step().</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AlphaZeroAgent.__init__">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.AlphaZeroAgent.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="n">AlphaZeroNetwork</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="n">network</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span> <span class="ow">or</span> <span class="nb">next</span><span class="p">(</span><span class="n">network</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span><span class="o">.</span><span class="n">device</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="n">network</span><span class="o">.</span><span class="n">encoder</span></div>
+
+
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_action</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">game_state</span><span class="p">,</span>
+        <span class="n">action_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">deterministic</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Select an action given the game state and action mask.</span>
+
+<span class="sd">        This mirrors PPOAgent.get_action() so SelfPlayGame.play() works unchanged.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            game_state: GameState object from DaemonMTGEnvironment (has .to_observation())</span>
+<span class="sd">            action_mask: numpy array of valid actions (1=valid, 0=invalid)</span>
+<span class="sd">            deterministic: If True, pick the argmax action</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            action: Selected action index</span>
+<span class="sd">            info: Dict with value estimate (or None)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+
+        <span class="c1"># Encode the observation through the state encoder</span>
+        <span class="c1"># game_state is a GameState from rl_environment with .to_observation()</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="n">game_state</span><span class="o">.</span><span class="n">to_observation</span><span class="p">()</span>
+        <span class="n">state_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Get policy logits and value from AlphaZero heads</span>
+        <span class="n">policy_logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">policy_head</span><span class="p">(</span><span class="n">state_tensor</span><span class="p">,</span> <span class="n">return_logits</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">value_head</span><span class="p">(</span><span class="n">state_tensor</span><span class="p">)</span>
+
+        <span class="c1"># Apply action mask: set invalid actions to -inf before softmax</span>
+        <span class="n">mask_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">action_mask</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Trim or pad policy logits to match action_mask size</span>
+        <span class="n">num_actions</span> <span class="o">=</span> <span class="n">mask_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">policy_dim</span> <span class="o">=</span> <span class="n">policy_logits</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">policy_dim</span> <span class="o">&lt;</span> <span class="n">num_actions</span><span class="p">:</span>
+            <span class="c1"># Pad policy logits with -inf for extra actions</span>
+            <span class="n">padding</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
+                <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_actions</span> <span class="o">-</span> <span class="n">policy_dim</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+            <span class="p">)</span>
+            <span class="n">policy_logits</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">policy_logits</span><span class="p">,</span> <span class="n">padding</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">policy_dim</span> <span class="o">&gt;</span> <span class="n">num_actions</span><span class="p">:</span>
+            <span class="c1"># Truncate to match environment action space</span>
+            <span class="n">policy_logits</span> <span class="o">=</span> <span class="n">policy_logits</span><span class="p">[:,</span> <span class="p">:</span><span class="n">num_actions</span><span class="p">]</span>
+
+        <span class="c1"># Mask invalid actions</span>
+        <span class="n">policy_logits</span> <span class="o">=</span> <span class="n">policy_logits</span><span class="o">.</span><span class="n">masked_fill</span><span class="p">(</span><span class="n">mask_tensor</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">))</span>
+
+        <span class="c1"># Check if any valid actions exist</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">mask_tensor</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="c1"># Softmax to get probabilities</span>
+        <span class="n">probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">policy_logits</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">deterministic</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">probs</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">multinomial</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">action</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span>
+            <span class="s1">&#39;action_probs&#39;</span><span class="p">:</span> <span class="n">probs</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># SELF-PLAY GAME RUNNER</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="SelfPlayConfig">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.SelfPlayConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SelfPlayConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for self-play training.&quot;&quot;&quot;</span>
+    <span class="c1"># Environment settings</span>
+    <span class="n">daemon_host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;localhost&#39;</span>
+    <span class="n">daemon_port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">17171</span>
+    <span class="n">deck1</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;test_red.dck&#39;</span>
+    <span class="n">deck2</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;test_blue.dck&#39;</span>
+    <span class="n">game_timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">120</span>
+
+    <span class="c1"># Training settings</span>
+    <span class="n">total_games</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1_000_000</span>
+    <span class="n">games_per_checkpoint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>  <span class="c1"># Add checkpoint every N games</span>
+    <span class="n">games_per_evaluation</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span>  <span class="c1"># Evaluate vs baseline every N games</span>
+
+    <span class="c1"># Self-play settings</span>
+    <span class="n">opponent_sampling_strategy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;recent&#39;</span>  <span class="c1"># recent, uniform, elo_matched</span>
+    <span class="n">self_play_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span>  <span class="c1"># Ratio of games against self vs pool</span>
+
+    <span class="c1"># PPO settings (used when network_type=&quot;ppo&quot;)</span>
+    <span class="n">n_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">64</span>
+    <span class="n">n_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3e-4</span>
+    <span class="n">gamma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.99</span>
+    <span class="n">gae_lambda</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span>
+    <span class="n">clip_epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span>
+    <span class="n">entropy_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span>
+    <span class="n">value_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
+
+    <span class="c1"># Network settings (used when network_type=&quot;ppo&quot;)</span>
+    <span class="n">d_model</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span>
+    <span class="n">n_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">n_layers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span>
+
+    <span class="c1"># Pool settings</span>
+    <span class="n">pool_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;model_pool&#39;</span>
+    <span class="n">max_pool_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
+
+    <span class="c1"># Parallelism</span>
+    <span class="n">n_parallel_games</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span>
+
+    <span class="c1"># Network type: &quot;alphazero&quot; (default) or &quot;ppo&quot; (legacy)</span>
+    <span class="n">network_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;alphazero&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="SelfPlayGame">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.SelfPlayGame">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SelfPlayGame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Manages a single self-play game between two models.</span>
+
+<span class="sd">    Both players can be the same model (true self-play) or</span>
+<span class="sd">    different models (playing against historical versions).</span>
+
+<span class="sd">    Accepts any agent that implements get_action(game_state, action_mask)</span>
+<span class="sd">    returning (action_idx, info_dict_or_none).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SelfPlayGame.__init__">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.SelfPlayGame.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">env</span><span class="p">:</span> <span class="n">DaemonMTGEnvironment</span><span class="p">,</span>
+                 <span class="n">player1_agent</span><span class="p">,</span>
+                 <span class="n">player2_agent</span><span class="p">,</span>
+                 <span class="n">player1_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">player2_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">collect_transitions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">player1_agent</span> <span class="o">=</span> <span class="n">player1_agent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">player2_agent</span> <span class="o">=</span> <span class="n">player2_agent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">player1_id</span> <span class="o">=</span> <span class="n">player1_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">player2_id</span> <span class="o">=</span> <span class="n">player2_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collect_transitions</span> <span class="o">=</span> <span class="n">collect_transitions</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">transitions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+
+<div class="viewcode-block" id="SelfPlayGame.play">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.SelfPlayGame.play">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">play</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Play a complete game and return results.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict with: winner, player1_won, turns, transitions (if collected)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">obs</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to reset game: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="s1">&#39;player1_won&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+
+        <span class="n">game_transitions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">turn_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">game_over</span> <span class="ow">and</span> <span class="n">turn_count</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">:</span>
+            <span class="n">action_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">get_action_mask</span><span class="p">()</span>
+
+            <span class="c1"># Both agents use player1&#39;s perspective (Agent(1))</span>
+            <span class="c1"># In self-play, we always train from player 1&#39;s perspective</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">current_state</span><span class="p">:</span>
+                <span class="n">action</span><span class="p">,</span> <span class="n">action_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">player1_agent</span><span class="o">.</span><span class="n">get_action</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">current_state</span><span class="p">,</span> <span class="n">action_mask</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+                <span class="n">action_info</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="c1"># Store transition for training</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_transitions</span> <span class="ow">and</span> <span class="n">action_info</span><span class="p">:</span>
+                <span class="n">game_transitions</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s1">&#39;action_info&#39;</span><span class="p">:</span> <span class="n">action_info</span><span class="p">,</span>
+                    <span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="n">action</span><span class="p">,</span>
+                    <span class="s1">&#39;state&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">current_state</span><span class="p">,</span>
+                <span class="p">})</span>
+
+            <span class="c1"># Take action</span>
+            <span class="n">obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">truncated</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+            <span class="c1"># Update last transition with reward</span>
+            <span class="k">if</span> <span class="n">game_transitions</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_transitions</span><span class="p">:</span>
+                <span class="n">game_transitions</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reward</span>
+                <span class="n">game_transitions</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;done&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">done</span>
+
+            <span class="n">turn_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="c1"># Determine winner</span>
+        <span class="n">player1_won</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">won</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;player1_won&#39;</span><span class="p">:</span> <span class="n">player1_won</span><span class="p">,</span>
+            <span class="s1">&#39;player1_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">player1_id</span><span class="p">,</span>
+            <span class="s1">&#39;player2_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">player2_id</span><span class="p">,</span>
+            <span class="s1">&#39;turns&#39;</span><span class="p">:</span> <span class="n">turn_count</span><span class="p">,</span>
+            <span class="s1">&#39;transitions&#39;</span><span class="p">:</span> <span class="n">game_transitions</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_transitions</span> <span class="k">else</span> <span class="p">[],</span>
+        <span class="p">}</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># SELF-PLAY TRAINER</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="SelfPlayTrainer">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.SelfPlayTrainer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SelfPlayTrainer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Main self-play training loop.</span>
+
+<span class="sd">    Orchestrates:</span>
+<span class="sd">    1. Model pool management</span>
+<span class="sd">    2. Opponent sampling</span>
+<span class="sd">    3. Game execution</span>
+<span class="sd">    4. Training updates (PPO for &quot;ppo&quot; mode, placeholder for &quot;alphazero&quot;)</span>
+<span class="sd">    5. Elo tracking</span>
+<span class="sd">    6. Checkpointing</span>
+
+<span class="sd">    Supports two network backends via config.network_type:</span>
+<span class="sd">    - &quot;alphazero&quot;: AlphaZeroNetwork + AlphaZeroAgent (policy/value heads, MCTS-ready)</span>
+<span class="sd">    - &quot;ppo&quot;: MTGPolicyNetwork + PPOAgent (legacy transformer + PPO training)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SelfPlayTrainer.__init__">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.SelfPlayTrainer.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">SelfPlayConfig</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cuda&#39;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Setup directories</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;runs/selfplay_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Save config</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span> <span class="o">/</span> <span class="s1">&#39;config.json&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">asdict</span><span class="p">(</span><span class="n">config</span><span class="p">),</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Initialize model pool</span>
+        <span class="n">pool_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span> <span class="o">/</span> <span class="n">config</span><span class="o">.</span><span class="n">pool_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span> <span class="o">=</span> <span class="n">ModelPool</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">pool_dir</span><span class="p">),</span> <span class="n">config</span><span class="o">.</span><span class="n">max_pool_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">network_type</span> <span class="o">==</span> <span class="s2">&quot;alphazero&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_init_alphazero</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_init_ppo</span><span class="p">()</span>
+
+        <span class="c1"># Metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wins</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">losses</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">recent_results</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_metrics</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Current model ID</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_model_id</span> <span class="o">=</span> <span class="s2">&quot;initial&quot;</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;SelfPlayTrainer initialized&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Network type: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">network_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Device: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Run dir: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Pool size: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_init_alphazero</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize AlphaZero network and agent.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="n">AlphaZeroNetwork</span><span class="p">(</span><span class="n">num_players</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span> <span class="o">=</span> <span class="n">AlphaZeroAgent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="c1"># Keep these as None since PPO-specific</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ppo_config</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transformer_config</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">param_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  AlphaZeroNetwork params: </span><span class="si">{</span><span class="n">param_count</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_init_ppo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize PPO agent (legacy path).&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># PPOAgent owns the network</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ppo_config</span> <span class="o">=</span> <span class="n">PPOConfig</span><span class="p">(</span>
+            <span class="n">learning_rate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">,</span>
+            <span class="n">gamma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">gamma</span><span class="p">,</span>
+            <span class="n">gae_lambda</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">gae_lambda</span><span class="p">,</span>
+            <span class="n">clip_epsilon</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">clip_epsilon</span><span class="p">,</span>
+            <span class="n">n_steps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">n_steps</span><span class="p">,</span>
+            <span class="n">n_epochs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">n_epochs</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span>
+            <span class="n">entropy_coef</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">entropy_coef</span><span class="p">,</span>
+            <span class="n">value_coef</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">value_coef</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">transformer_config</span> <span class="o">=</span> <span class="n">TransformerConfig</span><span class="p">(</span>
+            <span class="n">d_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">d_model</span><span class="p">,</span>
+            <span class="n">n_heads</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">n_heads</span><span class="p">,</span>
+            <span class="n">n_layers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">n_layers</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span> <span class="o">=</span> <span class="n">PPOAgent</span><span class="p">(</span>
+            <span class="n">ppo_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ppo_config</span><span class="p">,</span>
+            <span class="n">transformer_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">transformer_config</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_environment</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DaemonMTGEnvironment</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a new game environment.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">DaemonMTGEnvironment</span><span class="p">(</span>
+            <span class="n">host</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">daemon_host</span><span class="p">,</span>
+            <span class="n">port</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">daemon_port</span><span class="p">,</span>
+            <span class="n">deck1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">deck1</span><span class="p">,</span>
+            <span class="n">deck2</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">deck2</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">game_timeout</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_select_opponent</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Select an opponent for self-play.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (opponent_agent, opponent_id)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Decide: play against self or pool</span>
+        <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">self_play_ratio</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># True self-play: current model vs itself</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_model_id</span>
+
+        <span class="c1"># Sample from pool</span>
+        <span class="n">opponent_checkpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="o">.</span><span class="n">sample_opponent</span><span class="p">(</span>
+            <span class="n">current_model_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_model_id</span><span class="p">,</span>
+            <span class="n">strategy</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">opponent_sampling_strategy</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">opponent_checkpoint</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_model_id</span>
+
+        <span class="c1"># Load opponent model (dispatches by network_type)</span>
+        <span class="n">opponent_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span>
+            <span class="n">opponent_checkpoint</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">transformer_config</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Wrap in appropriate agent</span>
+        <span class="k">if</span> <span class="n">opponent_checkpoint</span><span class="o">.</span><span class="n">network_type</span> <span class="o">==</span> <span class="s2">&quot;alphazero&quot;</span><span class="p">:</span>
+            <span class="n">opponent_agent</span> <span class="o">=</span> <span class="n">AlphaZeroAgent</span><span class="p">(</span><span class="n">opponent_model</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Legacy PPO path</span>
+            <span class="n">opponent_agent</span> <span class="o">=</span> <span class="n">PPOAgent</span><span class="p">(</span>
+                <span class="n">ppo_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ppo_config</span><span class="p">,</span>
+                <span class="n">transformer_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">transformer_config</span><span class="p">,</span>
+                <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+            <span class="p">)</span>
+            <span class="n">opponent_agent</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">opponent_model</span>
+
+        <span class="k">return</span> <span class="n">opponent_agent</span><span class="p">,</span> <span class="n">opponent_checkpoint</span><span class="o">.</span><span class="n">model_id</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_play_training_game</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Play a single training game and collect transitions.&quot;&quot;&quot;</span>
+        <span class="n">env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_environment</span><span class="p">()</span>
+        <span class="n">opponent_agent</span><span class="p">,</span> <span class="n">opponent_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_opponent</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">game</span> <span class="o">=</span> <span class="n">SelfPlayGame</span><span class="p">(</span>
+                <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+                <span class="n">player1_agent</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="p">,</span>
+                <span class="n">player2_agent</span><span class="o">=</span><span class="n">opponent_agent</span><span class="p">,</span>
+                <span class="n">player1_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_model_id</span><span class="p">,</span>
+                <span class="n">player2_id</span><span class="o">=</span><span class="n">opponent_id</span><span class="p">,</span>
+                <span class="n">collect_transitions</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+
+            <span class="n">result</span> <span class="o">=</span> <span class="n">game</span><span class="o">.</span><span class="n">play</span><span class="p">()</span>
+
+            <span class="c1"># Update Elo ratings</span>
+            <span class="n">score</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;player1_won&#39;</span><span class="p">]</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="o">.</span><span class="n">elo_tracker</span><span class="o">.</span><span class="n">update_ratings</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">current_model_id</span><span class="p">,</span> <span class="n">opponent_id</span><span class="p">,</span> <span class="n">score</span>
+            <span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">result</span>
+
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">env</span><span class="o">.</span><span class="n">_cleanup</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_store_transitions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transitions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Store transitions in the PPO buffer (PPO mode only).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">network_type</span> <span class="o">!=</span> <span class="s2">&quot;ppo&quot;</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">transitions</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;action_info&#39;</span> <span class="ow">in</span> <span class="n">t</span> <span class="ow">and</span> <span class="n">t</span><span class="p">[</span><span class="s1">&#39;action_info&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">store_transition</span><span class="p">(</span>
+                    <span class="n">t</span><span class="p">[</span><span class="s1">&#39;action_info&#39;</span><span class="p">],</span>
+                    <span class="n">t</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">],</span>
+                    <span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reward&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                    <span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;done&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform a training step. Dispatches by network_type.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">network_type</span> <span class="o">==</span> <span class="s2">&quot;ppo&quot;</span><span class="p">:</span>
+            <span class="c1"># PPO training step</span>
+            <span class="n">last_value</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">train_step</span><span class="p">(</span><span class="n">last_value</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">metrics</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># AlphaZero: training is done via the Learner in src.training.self_play</span>
+            <span class="c1"># In the self-play loop we just collect games; training happens externally</span>
+            <span class="c1"># or could be wired in here when the replay buffer is ready.</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save model checkpoint to pool.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">network_type</span> <span class="o">==</span> <span class="s2">&quot;alphazero&quot;</span><span class="p">:</span>
+            <span class="n">model_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="o">.</span><span class="n">add_checkpoint</span><span class="p">(</span>
+                <span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="p">,</span>
+                <span class="n">games_trained</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="p">,</span>
+                <span class="n">network_type</span><span class="o">=</span><span class="s2">&quot;alphazero&quot;</span><span class="p">,</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s1">&#39;wins&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">wins</span><span class="p">,</span>
+                    <span class="s1">&#39;losses&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">losses</span><span class="p">,</span>
+                    <span class="s1">&#39;recent_win_rate&#39;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recent_results</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recent_results</span><span class="p">)),</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+            <span class="c1"># Also save main model using AlphaZeroNetwork&#39;s format</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span> <span class="o">/</span> <span class="s1">&#39;current_model.pt&#39;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">model_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="o">.</span><span class="n">add_checkpoint</span><span class="p">(</span>
+                <span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">policy</span><span class="p">,</span>
+                <span class="n">games_trained</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="p">,</span>
+                <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">transformer_config</span><span class="p">,</span>
+                <span class="n">network_type</span><span class="o">=</span><span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s1">&#39;wins&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">wins</span><span class="p">,</span>
+                    <span class="s1">&#39;losses&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">losses</span><span class="p">,</span>
+                    <span class="s1">&#39;recent_win_rate&#39;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recent_results</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recent_results</span><span class="p">)),</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+            <span class="c1"># Also save main model</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span> <span class="o">/</span> <span class="s1">&#39;current_model.pt&#39;</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_model_id</span> <span class="o">=</span> <span class="n">model_id</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_log_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Log training progress.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">win_rate</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recent_results</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recent_results</span><span class="p">))</span>
+        <span class="n">current_elo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="o">.</span><span class="n">elo_tracker</span><span class="o">.</span><span class="n">get_rating</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_model_id</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[Games: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">] &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Win rate (100): </span><span class="si">{</span><span class="n">win_rate</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">% | &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Elo: </span><span class="si">{</span><span class="n">current_elo</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> | &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Pool size: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Save metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_metrics</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;games&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="p">,</span>
+            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="s1">&#39;win_rate&#39;</span><span class="p">:</span> <span class="n">win_rate</span><span class="p">,</span>
+            <span class="s1">&#39;elo&#39;</span><span class="p">:</span> <span class="n">current_elo</span><span class="p">,</span>
+            <span class="s1">&#39;pool_size&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="p">),</span>
+        <span class="p">})</span>
+
+<div class="viewcode-block" id="SelfPlayTrainer.train">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.SelfPlayTrainer.train">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resume</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Main training loop.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resume: If True, try to resume from last checkpoint</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;SELF-PLAY TRAINING&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Network type: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">network_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total games: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">total_games</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Games per checkpoint: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">games_per_checkpoint</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Self-play ratio: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">self_play_ratio</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">resume</span><span class="p">:</span>
+            <span class="n">model_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span> <span class="o">/</span> <span class="s1">&#39;current_model.pt&#39;</span>
+            <span class="k">if</span> <span class="n">model_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">network_type</span> <span class="o">==</span> <span class="s2">&quot;alphazero&quot;</span><span class="p">:</span>
+                    <span class="n">loaded</span> <span class="o">=</span> <span class="n">AlphaZeroNetwork</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">model_path</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">loaded</span><span class="o">.</span><span class="n">state_dict</span><span class="p">())</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Resumed AlphaZero model from </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">model_path</span><span class="p">))</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Resumed PPO model from </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Add initial model to pool</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_checkpoint</span><span class="p">()</span>
+
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">games_since_checkpoint</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">consecutive_errors</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">max_consecutive_errors</span> <span class="o">=</span> <span class="mi">20</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">total_games</span><span class="p">:</span>
+                <span class="c1"># Play a game</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_play_training_game</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="s1">&#39;error&#39;</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
+                    <span class="n">consecutive_errors</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Game error (</span><span class="si">{</span><span class="n">consecutive_errors</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">max_consecutive_errors</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;error&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">consecutive_errors</span> <span class="o">&gt;=</span> <span class="n">max_consecutive_errors</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Too many consecutive errors (</span><span class="si">{</span><span class="n">consecutive_errors</span><span class="si">}</span><span class="s2">), stopping training&quot;</span><span class="p">)</span>
+                        <span class="k">break</span>
+                    <span class="k">continue</span>
+
+                <span class="n">consecutive_errors</span> <span class="o">=</span> <span class="mi">0</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">games_played</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">games_since_checkpoint</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="c1"># Track results</span>
+                <span class="n">won</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;player1_won&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">won</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">wins</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">losses</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">recent_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">1.0</span> <span class="k">if</span> <span class="n">won</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">)</span>
+
+                <span class="c1"># Store transitions for training (PPO mode only)</span>
+                <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;transitions&#39;</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_store_transitions</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;transitions&#39;</span><span class="p">])</span>
+
+                <span class="c1"># Training step when buffer is full (PPO mode)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">network_type</span> <span class="o">==</span> <span class="s2">&quot;ppo&quot;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">ptr</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">n_steps</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_training_step</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">num_updates</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="c1"># Checkpoint periodically</span>
+                <span class="k">if</span> <span class="n">games_since_checkpoint</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">games_per_checkpoint</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_checkpoint</span><span class="p">()</span>
+                    <span class="n">games_since_checkpoint</span> <span class="o">=</span> <span class="mi">0</span>
+
+                <span class="c1"># Log progress</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_log_progress</span><span class="p">()</span>
+
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Training interrupted by user&quot;</span><span class="p">)</span>
+
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># Final checkpoint</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_checkpoint</span><span class="p">()</span>
+
+            <span class="c1"># Save final metrics</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span> <span class="o">/</span> <span class="s1">&#39;training_metrics.json&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">training_metrics</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+            <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;TRAINING COMPLETE&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total games: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total time: </span><span class="si">{</span><span class="n">elapsed</span><span class="o">/</span><span class="mi">3600</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> hours&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Games/hour: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">games_played</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="n">elapsed</span><span class="o">/</span><span class="mi">3600</span><span class="p">)</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final win rate: </span><span class="si">{</span><span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recent_results</span><span class="p">)</span><span class="o">/</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recent_results</span><span class="p">))</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final Elo: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="o">.</span><span class="n">elo_tracker</span><span class="o">.</span><span class="n">get_rating</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_model_id</span><span class="p">)</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Print leaderboard</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Leaderboard:&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">model_id</span><span class="p">,</span> <span class="n">elo</span><span class="p">,</span> <span class="n">games</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_pool</span><span class="o">.</span><span class="n">elo_tracker</span><span class="o">.</span><span class="n">get_leaderboard</span><span class="p">()[:</span><span class="mi">10</span><span class="p">]:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">model_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">elo</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">games</span><span class="si">}</span><span class="s2"> games)&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># EVALUATION</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="evaluate_against_random">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.evaluate_against_random">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">evaluate_against_random</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span>
+                           <span class="n">config</span><span class="p">:</span> <span class="n">SelfPlayConfig</span><span class="p">,</span>
+                           <span class="n">n_games</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Evaluate agent against random baseline.</span>
+
+<span class="sd">    Accepts any agent with get_action(game_state, action_mask, deterministic=True).</span>
+
+<span class="sd">    Returns win rate.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">wins</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_games</span><span class="p">):</span>
+        <span class="n">env</span> <span class="o">=</span> <span class="n">DaemonMTGEnvironment</span><span class="p">(</span>
+            <span class="n">host</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">daemon_host</span><span class="p">,</span>
+            <span class="n">port</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">daemon_port</span><span class="p">,</span>
+            <span class="n">deck1</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">deck1</span><span class="p">,</span>
+            <span class="n">deck2</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">deck2</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">obs</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+            <span class="k">while</span> <span class="ow">not</span> <span class="n">env</span><span class="o">.</span><span class="n">game_over</span><span class="p">:</span>
+                <span class="n">action_mask</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get_action_mask</span><span class="p">()</span>
+
+                <span class="c1"># Agent action</span>
+                <span class="k">if</span> <span class="n">env</span><span class="o">.</span><span class="n">current_state</span><span class="p">:</span>
+                    <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_action</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">current_state</span><span class="p">,</span> <span class="n">action_mask</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">action</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+                <span class="n">obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">truncated</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
+                    <span class="k">break</span>
+
+            <span class="k">if</span> <span class="n">env</span><span class="o">.</span><span class="n">won</span><span class="p">:</span>
+                <span class="n">wins</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">env</span><span class="o">.</span><span class="n">_cleanup</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">wins</span> <span class="o">/</span> <span class="n">n_games</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># MAIN</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../api/agents.html#src.agents.self_play.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Self-Play Training for MTG RL&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--games&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">100000</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Total games to play&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--checkpoint-interval&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Games between checkpoints&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--host&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;localhost&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Daemon host&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--port&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">17171</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Daemon port&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--deck1&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;test_red.dck&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;First deck&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--deck2&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;test_blue.dck&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Second deck&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--strategy&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;recent&quot;</span><span class="p">,</span>
+                       <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;recent&quot;</span><span class="p">,</span> <span class="s2">&quot;uniform&quot;</span><span class="p">,</span> <span class="s2">&quot;elo_matched&quot;</span><span class="p">],</span>
+                       <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Opponent sampling strategy&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--network-type&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;alphazero&quot;</span><span class="p">,</span>
+                       <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;alphazero&quot;</span><span class="p">,</span> <span class="s2">&quot;ppo&quot;</span><span class="p">],</span>
+                       <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Network backend: alphazero (default) or ppo (legacy)&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--resume&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Resume from last checkpoint&quot;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">config</span> <span class="o">=</span> <span class="n">SelfPlayConfig</span><span class="p">(</span>
+        <span class="n">daemon_host</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">host</span><span class="p">,</span>
+        <span class="n">daemon_port</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
+        <span class="n">deck1</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">deck1</span><span class="p">,</span>
+        <span class="n">deck2</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">deck2</span><span class="p">,</span>
+        <span class="n">total_games</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">games</span><span class="p">,</span>
+        <span class="n">games_per_checkpoint</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">checkpoint_interval</span><span class="p">,</span>
+        <span class="n">opponent_sampling_strategy</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span>
+        <span class="n">network_type</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">network_type</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfPlayTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">resume</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">resume</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, ForgeRL Contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>

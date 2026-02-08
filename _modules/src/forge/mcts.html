@@ -1,0 +1,1085 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>src.forge.mcts - ForgeRL</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">ForgeRL</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  <span class="sidebar-brand-text">ForgeRL</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html">ForgeRL</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ARCHITECTURE.html">ForgeRL Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tools.html">Local Tools</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/mechanics.html">Mechanics System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/forge.html">Forge Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/training.html">Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/agents.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/utils.html">Utils</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for src.forge.mcts</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Monte Carlo Tree Search (MCTS) for MTG</span>
+
+<span class="sd">Implementation of AlphaZero-style MCTS for Magic: The Gathering gameplay.</span>
+<span class="sd">Uses the policy network to guide exploration and value network for evaluation.</span>
+
+<span class="sd">Key Differences from Chess/Go MCTS:</span>
+<span class="sd">1. Hidden Information: Sample opponent hands for imperfect info</span>
+<span class="sd">2. Variable Actions: Dynamic legal moves (1-100+) each state</span>
+<span class="sd">3. Stack Resolution: LIFO stack requires careful state tracking</span>
+<span class="sd">4. Multiplayer: Commander has 4 players (addressed separately)</span>
+
+<span class="sd">Algorithm:</span>
+<span class="sd">1. SELECT: Traverse tree using PUCT formula (exploration vs exploitation)</span>
+<span class="sd">2. EXPAND: Add new node using policy network prior</span>
+<span class="sd">3. EVALUATE: Use value network (no rollout needed)</span>
+<span class="sd">4. BACKUP: Update visit counts and values up the tree</span>
+
+<span class="sd">After N simulations, select action based on visit counts.</span>
+
+<span class="sd">Usage:</span>
+<span class="sd">    mcts = MCTS(policy_value_net, forge_client)</span>
+<span class="sd">    action_probs = mcts.search(game_state, num_simulations=800)</span>
+<span class="sd">    action = select_action(action_probs, temperature=1.0)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># CONFIGURATION</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="MCTSConfig">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.MCTSConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MCTSConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for MCTS search.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Search parameters</span>
+    <span class="n">num_simulations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">800</span>    <span class="c1"># Number of MCTS simulations per move</span>
+    <span class="n">c_puct</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.5</span>            <span class="c1"># Exploration constant in PUCT formula</span>
+    <span class="n">dirichlet_alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span>   <span class="c1"># Dirichlet noise alpha for root</span>
+    <span class="n">dirichlet_epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># Fraction of prior to replace with noise</span>
+
+    <span class="c1"># Tree policy</span>
+    <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>       <span class="c1"># Action selection temperature</span>
+    <span class="n">temperature_drop_move</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span>  <span class="c1"># Move to drop temperature to 0 (deterministic)</span>
+
+    <span class="c1"># Value head</span>
+    <span class="n">value_discount</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.99</span>   <span class="c1"># Discount factor for future rewards</span>
+
+    <span class="c1"># Practical limits</span>
+    <span class="n">max_depth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">200</span>           <span class="c1"># Maximum search depth</span>
+    <span class="n">max_tree_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100000</span>    <span class="c1"># Maximum nodes in tree</span>
+
+    <span class="c1"># Hidden information handling</span>
+    <span class="n">num_info_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>     <span class="c1"># Number of opponent hand samples</span>
+    <span class="n">determinization</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;single&quot;</span>  <span class="c1"># &quot;single&quot; or &quot;ensemble&quot;</span>
+
+    <span class="c1"># Device</span>
+    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># MCTS NODE</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="MCTSNode">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.MCTSNode">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MCTSNode</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A node in the MCTS tree.</span>
+
+<span class="sd">    Each node represents a game state after taking an action.</span>
+<span class="sd">    Stores statistics for the tree policy (PUCT).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MCTSNode.__init__">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.MCTSNode.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">prior</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">parent</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s1">&#39;MCTSNode&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">action</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a new MCTS node.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            prior: Prior probability from policy network P(a|s)</span>
+<span class="sd">            parent: Parent node in the tree</span>
+<span class="sd">            action: Action taken to reach this node</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">prior</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">=</span> <span class="n">action</span>
+
+        <span class="c1"># Statistics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">visit_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value_sum</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">MCTSNode</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># State info (populated when expanded)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">game_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">legal_actions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_terminal</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">terminal_value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Average value of this node (Q-value).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visit_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_sum</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">visit_count</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_expanded</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether this node has been expanded.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="MCTSNode.expand">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.MCTSNode.expand">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">expand</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">action_priors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">legal_actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">game_state</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Expand this node with children for each legal action.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action_priors: Prior probabilities from policy network</span>
+<span class="sd">            legal_actions: List of legal action indices</span>
+<span class="sd">            game_state: Current game state</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">game_state</span> <span class="o">=</span> <span class="n">game_state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">legal_actions</span> <span class="o">=</span> <span class="n">legal_actions</span>
+
+        <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">legal_actions</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">action</span><span class="p">]</span> <span class="o">=</span> <span class="n">MCTSNode</span><span class="p">(</span>
+                <span class="n">prior</span><span class="o">=</span><span class="n">action_priors</span><span class="p">[</span><span class="n">action</span><span class="p">],</span>
+                <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">action</span><span class="o">=</span><span class="n">action</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MCTSNode.select_child">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.MCTSNode.select_child">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">select_child</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c_puct</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="s1">&#39;MCTSNode&#39;</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Select best child using PUCT formula.</span>
+
+<span class="sd">        PUCT(s, a) = Q(s, a) + c_puct * P(s, a) * sqrt(N(s)) / (1 + N(s, a))</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            c_puct: Exploration constant</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (action, child_node) with highest PUCT value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">total_visits</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">visit_count</span> <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="n">sqrt_total</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">total_visits</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">best_score</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">)</span>
+        <span class="n">best_action</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">best_child</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">action</span><span class="p">,</span> <span class="n">child</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># Exploitation: average value</span>
+            <span class="n">exploitation</span> <span class="o">=</span> <span class="n">child</span><span class="o">.</span><span class="n">value</span>
+
+            <span class="c1"># Exploration: prior * sqrt(parent visits) / (1 + child visits)</span>
+            <span class="n">exploration</span> <span class="o">=</span> <span class="n">c_puct</span> <span class="o">*</span> <span class="n">child</span><span class="o">.</span><span class="n">prior</span> <span class="o">*</span> <span class="n">sqrt_total</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">child</span><span class="o">.</span><span class="n">visit_count</span><span class="p">)</span>
+
+            <span class="n">score</span> <span class="o">=</span> <span class="n">exploitation</span> <span class="o">+</span> <span class="n">exploration</span>
+
+            <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="n">best_score</span><span class="p">:</span>
+                <span class="n">best_score</span> <span class="o">=</span> <span class="n">score</span>
+                <span class="n">best_action</span> <span class="o">=</span> <span class="n">action</span>
+                <span class="n">best_child</span> <span class="o">=</span> <span class="n">child</span>
+
+        <span class="k">return</span> <span class="n">best_action</span><span class="p">,</span> <span class="n">best_child</span></div>
+
+
+<div class="viewcode-block" id="MCTSNode.backup">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.MCTSNode.backup">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">backup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Backup value through the tree.</span>
+
+<span class="sd">        Updates visit count and value sum for this node and all ancestors.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value: Value to backup (from perspective of player who moved)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">node</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">while</span> <span class="n">node</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">visit_count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">value_sum</span> <span class="o">+=</span> <span class="n">value</span>
+            <span class="c1"># Flip value for opponent&#39;s perspective</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="o">-</span><span class="n">value</span>
+            <span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">parent</span></div>
+
+
+<div class="viewcode-block" id="MCTSNode.get_action_probs">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.MCTSNode.get_action_probs">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_action_probs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get action probabilities based on visit counts.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            temperature: Temperature for action selection</span>
+<span class="sd">                - 0: Deterministic (max visit count)</span>
+<span class="sd">                - 1: Proportional to visit counts</span>
+<span class="sd">                - &gt;1: More uniform</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Action probabilities (sparse, only legal actions non-zero)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_expanded</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">visits</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">a</span><span class="p">]</span><span class="o">.</span><span class="n">visit_count</span> <span class="k">if</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">temperature</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Deterministic: select max</span>
+            <span class="n">probs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">visits</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="n">probs</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Temperature-scaled probabilities</span>
+            <span class="n">visits</span> <span class="o">=</span> <span class="n">visits</span> <span class="o">**</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">temperature</span><span class="p">)</span>
+            <span class="n">total</span> <span class="o">=</span> <span class="n">visits</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">probs</span> <span class="o">=</span> <span class="n">visits</span> <span class="o">/</span> <span class="n">total</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">probs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">visits</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">probs</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># FORGE CLIENT INTERFACE</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="ForgeClientInterface">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.ForgeClientInterface">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ForgeClientInterface</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Interface for communicating with Forge game engine.</span>
+
+<span class="sd">    This is an abstract interface - implement for your Forge setup.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ForgeClientInterface.get_game_state">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.ForgeClientInterface.get_game_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_game_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current game state as JSON dict.&quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+
+<div class="viewcode-block" id="ForgeClientInterface.get_legal_actions">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.ForgeClientInterface.get_legal_actions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_legal_actions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get list of legal actions.&quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+
+<div class="viewcode-block" id="ForgeClientInterface.apply_action">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.ForgeClientInterface.apply_action">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply action and return new game state.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action: Action dict (type, index, parameters)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            New game state after action</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+
+<div class="viewcode-block" id="ForgeClientInterface.clone_state">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.ForgeClientInterface.clone_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clone_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;ForgeClientInterface&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a copy of current game state for simulation.&quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+
+<div class="viewcode-block" id="ForgeClientInterface.is_game_over">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.ForgeClientInterface.is_game_over">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_game_over</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if game has ended.&quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+
+<div class="viewcode-block" id="ForgeClientInterface.get_game_result">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.ForgeClientInterface.get_game_result">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_game_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">player_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get game result for a player.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            player_idx: Player index</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            1.0 for win, -1.0 for loss, 0.0 for draw</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="SimulatedForgeClient">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.SimulatedForgeClient">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SimulatedForgeClient</span><span class="p">(</span><span class="n">ForgeClientInterface</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulated Forge client for testing.</span>
+
+<span class="sd">    Uses a simple game model instead of actual Forge.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SimulatedForgeClient.__init__">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.SimulatedForgeClient.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initial_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">initial_state</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_initial_state</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">move_count</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_initial_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;turn&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="s2">&quot;main1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;activePlayer&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;priorityPlayer&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;players&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;life&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="s2">&quot;hand&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;battlefield&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+                <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;life&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="s2">&quot;hand&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;battlefield&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;stack&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;gameOver&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="s2">&quot;winner&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="SimulatedForgeClient.get_game_state">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.SimulatedForgeClient.get_game_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_game_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SimulatedForgeClient.get_legal_actions">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.SimulatedForgeClient.get_legal_actions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_legal_actions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+        <span class="c1"># Always have pass available</span>
+        <span class="n">actions</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;pass&quot;</span><span class="p">,</span> <span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}]</span>
+
+        <span class="c1"># Add some random legal actions</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">move_count</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;players&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;hand&quot;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;cast&quot;</span><span class="p">,</span> <span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">})</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;players&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;battlefield&quot;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;activate&quot;</span><span class="p">,</span> <span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">})</span>
+
+        <span class="k">return</span> <span class="n">actions</span></div>
+
+
+<div class="viewcode-block" id="SimulatedForgeClient.apply_action">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.SimulatedForgeClient.apply_action">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">move_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Simulate game progression</span>
+        <span class="k">if</span> <span class="n">action</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;pass&quot;</span><span class="p">:</span>
+            <span class="c1"># Progress phase/turn</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;main1&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;combat&quot;</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;combat&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;main2&quot;</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;main2&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;end&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;main1&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;turn&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="c1"># Swap active player</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;activePlayer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;activePlayer&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Random game end condition</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">move_count</span> <span class="o">&gt;</span> <span class="mi">100</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;turn&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">20</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;gameOver&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;winner&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mf">0.5</span> <span class="k">else</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_game_state</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SimulatedForgeClient.clone_state">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.SimulatedForgeClient.clone_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clone_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;SimulatedForgeClient&#39;</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+        <span class="n">clone</span> <span class="o">=</span> <span class="n">SimulatedForgeClient</span><span class="p">()</span>
+        <span class="n">clone</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">)</span>
+        <span class="n">clone</span><span class="o">.</span><span class="n">move_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">move_count</span>
+        <span class="k">return</span> <span class="n">clone</span></div>
+
+
+<div class="viewcode-block" id="SimulatedForgeClient.is_game_over">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.SimulatedForgeClient.is_game_over">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_game_over</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gameOver&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SimulatedForgeClient.get_game_result">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.SimulatedForgeClient.get_game_result">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_game_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">player_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="n">winner</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;winner&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">winner</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">winner</span> <span class="o">==</span> <span class="n">player_idx</span> <span class="k">else</span> <span class="o">-</span><span class="mf">1.0</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># MCTS</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="MCTS">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.MCTS">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MCTS</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Monte Carlo Tree Search for MTG.</span>
+
+<span class="sd">    Uses neural network for policy (exploration guidance) and value (evaluation).</span>
+<span class="sd">    Communicates with Forge for game simulation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MCTS.__init__">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.MCTS.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">policy_value_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+        <span class="n">encode_state_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MCTSConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize MCTS.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            policy_value_fn: Function that takes state tensor, returns (policy, value)</span>
+<span class="sd">                            Policy: [action_dim] probabilities</span>
+<span class="sd">                            Value: scalar in [-1, 1]</span>
+<span class="sd">            encode_state_fn: Function that takes game state dict, returns tensor</span>
+<span class="sd">            config: MCTS configuration</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">policy_value_fn</span> <span class="o">=</span> <span class="n">policy_value_fn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">encode_state_fn</span> <span class="o">=</span> <span class="n">encode_state_fn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">MCTSConfig</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MCTSNode</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_player</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="MCTS.search">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.MCTS.search">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">forge_client</span><span class="p">:</span> <span class="n">ForgeClientInterface</span><span class="p">,</span>
+        <span class="n">action_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">num_simulations</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run MCTS search from current game state.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            forge_client: Interface to Forge game engine</span>
+<span class="sd">            action_mask: [action_dim] binary mask of legal actions</span>
+<span class="sd">            num_simulations: Number of simulations (default from config)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            action_probs: [action_dim] probabilities based on visit counts</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">num_simulations</span> <span class="o">=</span> <span class="n">num_simulations</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">num_simulations</span>
+
+        <span class="c1"># Get initial state</span>
+        <span class="n">game_state</span> <span class="o">=</span> <span class="n">forge_client</span><span class="o">.</span><span class="n">get_game_state</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_player</span> <span class="o">=</span> <span class="n">game_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;priorityPlayer&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Create root if needed</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">=</span> <span class="n">MCTSNode</span><span class="p">()</span>
+
+        <span class="c1"># Expand root if needed</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">is_expanded</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_expand_node</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">game_state</span><span class="p">,</span> <span class="n">action_mask</span><span class="p">)</span>
+
+        <span class="c1"># Add Dirichlet noise at root for exploration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_dirichlet_noise</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">)</span>
+
+        <span class="c1"># Run simulations</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_simulations</span><span class="p">):</span>
+            <span class="c1"># Clone game state for simulation</span>
+            <span class="n">sim_client</span> <span class="o">=</span> <span class="n">forge_client</span><span class="o">.</span><span class="n">clone_state</span><span class="p">()</span>
+
+            <span class="c1"># Simulate from root</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_simulate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">sim_client</span><span class="p">)</span>
+
+        <span class="c1"># Get action probabilities from visit counts</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">get_action_probs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">temperature</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_simulate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">MCTSNode</span><span class="p">,</span> <span class="n">forge_client</span><span class="p">:</span> <span class="n">ForgeClientInterface</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run one MCTS simulation (select, expand, evaluate, backup).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># SELECT: Traverse tree to leaf</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="p">[</span><span class="n">node</span><span class="p">]</span>
+        <span class="n">current_node</span> <span class="o">=</span> <span class="n">node</span>
+
+        <span class="k">while</span> <span class="n">current_node</span><span class="o">.</span><span class="n">is_expanded</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">current_node</span><span class="o">.</span><span class="n">is_terminal</span><span class="p">:</span>
+            <span class="n">action</span><span class="p">,</span> <span class="n">current_node</span> <span class="o">=</span> <span class="n">current_node</span><span class="o">.</span><span class="n">select_child</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">c_puct</span><span class="p">)</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current_node</span><span class="p">)</span>
+
+            <span class="c1"># Apply action in simulation</span>
+            <span class="n">action_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decode_action</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+            <span class="n">forge_client</span><span class="o">.</span><span class="n">apply_action</span><span class="p">(</span><span class="n">action_dict</span><span class="p">)</span>
+
+        <span class="c1"># Check for terminal state</span>
+        <span class="k">if</span> <span class="n">forge_client</span><span class="o">.</span><span class="n">is_game_over</span><span class="p">():</span>
+            <span class="n">current_node</span><span class="o">.</span><span class="n">is_terminal</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">current_node</span><span class="o">.</span><span class="n">terminal_value</span> <span class="o">=</span> <span class="n">forge_client</span><span class="o">.</span><span class="n">get_game_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_player</span><span class="p">)</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">current_node</span><span class="o">.</span><span class="n">terminal_value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># EXPAND: Add children for this node</span>
+            <span class="n">game_state</span> <span class="o">=</span> <span class="n">forge_client</span><span class="o">.</span><span class="n">get_game_state</span><span class="p">()</span>
+            <span class="n">legal_actions</span> <span class="o">=</span> <span class="n">forge_client</span><span class="o">.</span><span class="n">get_legal_actions</span><span class="p">()</span>
+            <span class="n">action_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_action_mask</span><span class="p">(</span><span class="n">legal_actions</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">current_node</span><span class="o">.</span><span class="n">is_expanded</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_expand_node</span><span class="p">(</span><span class="n">current_node</span><span class="p">,</span> <span class="n">game_state</span><span class="p">,</span> <span class="n">action_mask</span><span class="p">)</span>
+
+            <span class="c1"># EVALUATE: Get value from neural network</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluate</span><span class="p">(</span><span class="n">game_state</span><span class="p">)</span>
+
+        <span class="c1"># BACKUP: Update values along path</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">path</span><span class="p">)):</span>
+            <span class="c1"># Alternate sign for opponent&#39;s perspective</span>
+            <span class="n">n</span><span class="o">.</span><span class="n">visit_count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">n</span><span class="o">.</span><span class="n">value_sum</span> <span class="o">+=</span> <span class="n">value</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">n</span><span class="o">.</span><span class="n">value_sum</span> <span class="o">-=</span> <span class="n">value</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_expand_node</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">node</span><span class="p">:</span> <span class="n">MCTSNode</span><span class="p">,</span>
+        <span class="n">game_state</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">action_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Expand a node with children for each legal action.&quot;&quot;&quot;</span>
+        <span class="c1"># Get policy prior from network</span>
+        <span class="n">state_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode_state_fn</span><span class="p">(</span><span class="n">game_state</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="n">policy</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy_value_fn</span><span class="p">(</span><span class="n">state_tensor</span><span class="p">)</span>
+
+        <span class="c1"># Apply mask and normalize</span>
+        <span class="n">policy</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="n">policy</span> <span class="o">=</span> <span class="n">policy</span> <span class="o">*</span> <span class="n">action_mask</span>
+        <span class="n">policy_sum</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">policy_sum</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">policy</span> <span class="o">=</span> <span class="n">policy</span> <span class="o">/</span> <span class="n">policy_sum</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Uniform over legal actions</span>
+            <span class="n">policy</span> <span class="o">=</span> <span class="n">action_mask</span> <span class="o">/</span> <span class="n">action_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="c1"># Find legal action indices</span>
+        <span class="n">legal_actions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">action_mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+        <span class="c1"># Expand node</span>
+        <span class="n">node</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">policy</span><span class="p">,</span> <span class="n">legal_actions</span><span class="p">,</span> <span class="n">game_state</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">game_state</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get value estimate from neural network.&quot;&quot;&quot;</span>
+        <span class="n">state_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode_state_fn</span><span class="p">(</span><span class="n">game_state</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy_value_fn</span><span class="p">(</span><span class="n">state_tensor</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add_dirichlet_noise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">MCTSNode</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add Dirichlet noise to root for exploration.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">node</span><span class="o">.</span><span class="n">is_expanded</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">num_actions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">children</span><span class="p">)</span>
+        <span class="n">noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">dirichlet</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">dirichlet_alpha</span><span class="p">]</span> <span class="o">*</span> <span class="n">num_actions</span><span class="p">)</span>
+
+        <span class="n">eps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">dirichlet_epsilon</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="n">child</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">eps</span><span class="p">)</span> <span class="o">*</span> <span class="n">child</span><span class="o">.</span><span class="n">prior</span> <span class="o">+</span> <span class="n">eps</span> <span class="o">*</span> <span class="n">noise</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_action_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">legal_actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert Forge legal actions to action mask.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">src.forge.policy_value_heads</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_action_mask</span><span class="p">,</span> <span class="n">ActionConfig</span>
+        <span class="k">return</span> <span class="n">create_action_mask</span><span class="p">(</span><span class="n">legal_actions</span><span class="p">,</span> <span class="n">ActionConfig</span><span class="p">())</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_decode_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert action index to Forge action dict.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">src.forge.policy_value_heads</span><span class="w"> </span><span class="kn">import</span> <span class="n">decode_action</span>
+        <span class="k">return</span> <span class="n">decode_action</span><span class="p">(</span><span class="n">action_idx</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MCTS.update_with_action">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.MCTS.update_with_action">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_with_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update tree after action is taken.</span>
+
+<span class="sd">        Reuses subtree rooted at chosen action.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action: Action index that was taken</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">action</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>
+            <span class="c1"># Reuse subtree</span>
+            <span class="n">new_root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">action</span><span class="p">]</span>
+            <span class="n">new_root</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">=</span> <span class="n">new_root</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Reset tree</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="MCTS.reset">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.MCTS.reset">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset the search tree.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">=</span> <span class="kc">None</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># PARALLEL MCTS (for batched evaluation)</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="BatchedMCTS">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.BatchedMCTS">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BatchedMCTS</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Batched MCTS for parallel game simulation.</span>
+
+<span class="sd">    Runs multiple games in parallel, batching neural network evaluations</span>
+<span class="sd">    for efficient GPU utilization.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="BatchedMCTS.__init__">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.BatchedMCTS.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">policy_value_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+        <span class="n">encode_state_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+        <span class="n">num_parallel</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MCTSConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize batched MCTS.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            policy_value_fn: Batched policy-value function</span>
+<span class="sd">            encode_state_fn: State encoding function</span>
+<span class="sd">            num_parallel: Number of parallel games</span>
+<span class="sd">            config: MCTS configuration</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">policy_value_fn</span> <span class="o">=</span> <span class="n">policy_value_fn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">encode_state_fn</span> <span class="o">=</span> <span class="n">encode_state_fn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_parallel</span> <span class="o">=</span> <span class="n">num_parallel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">MCTSConfig</span><span class="p">()</span>
+
+        <span class="c1"># One MCTS instance per parallel game</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mcts_instances</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">MCTS</span><span class="p">(</span><span class="n">policy_value_fn</span><span class="p">,</span> <span class="n">encode_state_fn</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_parallel</span><span class="p">)</span>
+        <span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="BatchedMCTS.search_batch">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.BatchedMCTS.search_batch">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">search_batch</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">forge_clients</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ForgeClientInterface</span><span class="p">],</span>
+        <span class="n">action_masks</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run MCTS search for multiple games in parallel.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            forge_clients: List of Forge client instances</span>
+<span class="sd">            action_masks: [batch, action_dim] binary masks</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            action_probs: [batch, action_dim] probabilities</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">forge_clients</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_parallel</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">action_masks</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_parallel</span>
+
+        <span class="c1"># Run search for each game</span>
+        <span class="c1"># TODO: Implement proper batching for neural network calls</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">mcts</span><span class="p">,</span> <span class="n">client</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+            <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mcts_instances</span><span class="p">,</span> <span class="n">forge_clients</span><span class="p">,</span> <span class="n">action_masks</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="n">probs</span> <span class="o">=</span> <span class="n">mcts</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">probs</span><span class="p">)</span>
+
+        <span class="c1"># Pad to same size</span>
+        <span class="n">max_len</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">results</span><span class="p">)</span>
+        <span class="n">padded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">),</span> <span class="n">max_len</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+            <span class="n">padded</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">)]</span> <span class="o">=</span> <span class="n">p</span>
+
+        <span class="k">return</span> <span class="n">padded</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># TESTING</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="test_mcts">
+<a class="viewcode-back" href="../../../api/forge.html#src.forge.mcts.test_mcts">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_mcts</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test MCTS implementation.&quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Testing MCTS&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="c1"># Create mock policy-value function</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mock_policy_value</span><span class="p">(</span><span class="n">state_tensor</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mock network that returns uniform policy and neutral value.&quot;&quot;&quot;</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="n">state_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">state_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span>
+        <span class="n">policy</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">203</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">policy</span><span class="p">,</span> <span class="n">value</span>
+
+    <span class="c1"># Create mock state encoder</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mock_encode_state</span><span class="p">(</span><span class="n">game_state</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mock encoder that returns random tensor.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">512</span><span class="p">)</span>
+
+    <span class="c1"># Create MCTS</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">MCTSConfig</span><span class="p">(</span><span class="n">num_simulations</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>  <span class="c1"># Fewer sims for testing</span>
+    <span class="n">mcts</span> <span class="o">=</span> <span class="n">MCTS</span><span class="p">(</span><span class="n">mock_policy_value</span><span class="p">,</span> <span class="n">mock_encode_state</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+    <span class="c1"># Create simulated Forge client</span>
+    <span class="n">forge_client</span> <span class="o">=</span> <span class="n">SimulatedForgeClient</span><span class="p">()</span>
+
+    <span class="c1"># Create action mask</span>
+    <span class="n">legal_actions</span> <span class="o">=</span> <span class="n">forge_client</span><span class="o">.</span><span class="n">get_legal_actions</span><span class="p">()</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">src.forge.policy_value_heads</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_action_mask</span>
+    <span class="n">action_mask</span> <span class="o">=</span> <span class="n">create_action_mask</span><span class="p">(</span><span class="n">legal_actions</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Initial state: </span><span class="si">{</span><span class="n">forge_client</span><span class="o">.</span><span class="n">get_game_state</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Legal actions: </span><span class="si">{</span><span class="n">legal_actions</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Action mask sum: </span><span class="si">{</span><span class="n">action_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Run search</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Running </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">num_simulations</span><span class="si">}</span><span class="s2"> MCTS simulations...&quot;</span><span class="p">)</span>
+    <span class="n">action_probs</span> <span class="o">=</span> <span class="n">mcts</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">forge_client</span><span class="p">,</span> <span class="n">action_mask</span><span class="p">,</span> <span class="n">num_simulations</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Action probabilities shape: </span><span class="si">{</span><span class="n">action_probs</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Non-zero probs: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">action_probs</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">action_probs</span><span class="p">)[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Action </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">: prob=</span><span class="si">{</span><span class="n">action_probs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Check root statistics</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Root node statistics:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Visit count: </span><span class="si">{</span><span class="n">mcts</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">visit_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Value: </span><span class="si">{</span><span class="n">mcts</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">value</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Children: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">mcts</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">children</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Select action and update tree</span>
+    <span class="n">selected_action</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">action_probs</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Selected action: </span><span class="si">{</span><span class="n">selected_action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">mcts</span><span class="o">.</span><span class="n">update_with_action</span><span class="p">(</span><span class="n">selected_action</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;After update - root visit count: </span><span class="si">{</span><span class="n">mcts</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">visit_count</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">mcts</span><span class="o">.</span><span class="n">root</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;None&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;MCTS test completed!&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">test_mcts</span><span class="p">()</span>
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, ForgeRL Contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>

@@ -1,0 +1,1192 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>src.models.card_embeddings - ForgeRL</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">ForgeRL</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  <span class="sidebar-brand-text">ForgeRL</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html">ForgeRL</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ARCHITECTURE.html">ForgeRL Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tools.html">Local Tools</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/mechanics.html">Mechanics System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/forge.html">Forge Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/training.html">Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/agents.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/utils.html">Utils</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for src.models.card_embeddings</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">MTG Card Embedding System</span>
+
+<span class="sd">This module handles the complex task of representing MTG cards as fixed-size vectors</span>
+<span class="sd">for RL training. The challenges are significant:</span>
+
+<span class="sd">CHALLENGE ANALYSIS</span>
+<span class="sd">==================</span>
+
+<span class="sd">1. SCALE: ~30,000 unique cards</span>
+<span class="sd">   - One-hot encoding = 30,000-dim vectors (impractical)</span>
+<span class="sd">   - Need learned embeddings that capture card similarity</span>
+
+<span class="sd">2. KEYWORD CATEGORIES (from Forge&#39;s Keyword.java):</span>
+
+<span class="sd">   A. Simple Keywords (binary flags) - 50+ types:</span>
+<span class="sd">      Flying, Trample, Haste, Vigilance, Lifelink, Deathtouch, Reach,</span>
+<span class="sd">      First Strike, Double Strike, Menace, Defender, Indestructible,</span>
+<span class="sd">      Hexproof, Shroud, Flash, Fear, Intimidate, Shadow, Infect, etc.</span>
+
+<span class="sd">   B. Keywords with Amount (keyword + numeric value) - 30+ types:</span>
+<span class="sd">      &quot;Absorb 2&quot;, &quot;Afflict 3&quot;, &quot;Annihilator 6&quot;, &quot;Bushido 1&quot;,</span>
+<span class="sd">      &quot;Crew 3&quot;, &quot;Dredge 4&quot;, &quot;Fabricate 2&quot;, &quot;Toxic 1&quot;, etc.</span>
+
+<span class="sd">   C. Keywords with Cost (keyword + mana/cost) - 40+ types:</span>
+<span class="sd">      &quot;Kicker {2}{R}&quot;, &quot;Flashback {3}{B}&quot;, &quot;Morph {2}{G}&quot;,</span>
+<span class="sd">      &quot;Cycling {2}&quot;, &quot;Equip {3}&quot;, &quot;Unearth {B}&quot;, etc.</span>
+
+<span class="sd">   D. Keywords with Type (keyword + card type) - 15+ types:</span>
+<span class="sd">      &quot;Affinity for artifacts&quot;, &quot;Protection from red&quot;,</span>
+<span class="sd">      &quot;Landwalk (Swamp)&quot;, &quot;Enchant creature&quot;, etc.</span>
+
+<span class="sd">   E. Complex/Compound Keywords - 20+ types:</span>
+<span class="sd">      &quot;Partner with [CardName]&quot;, &quot;Companion (deck restriction)&quot;,</span>
+<span class="sd">      &quot;Mutate {cost}&quot;, &quot;Emerge {cost}&quot;, etc.</span>
+
+<span class="sd">3. ABILITIES (beyond keywords):</span>
+
+<span class="sd">   A. Triggered Abilities: &quot;When/Whenever X, do Y&quot;</span>
+<span class="sd">      - ETB (enters the battlefield)</span>
+<span class="sd">      - Dies triggers</span>
+<span class="sd">      - Attack/block triggers</span>
+<span class="sd">      - Upkeep/end step triggers</span>
+
+<span class="sd">   B. Activated Abilities: &quot;{cost}: effect&quot;</span>
+<span class="sd">      - Tap abilities</span>
+<span class="sd">      - Mana abilities</span>
+<span class="sd">      - Sacrifice abilities</span>
+
+<span class="sd">   C. Static Abilities: Continuous effects</span>
+<span class="sd">      - &quot;Other creatures you control get +1/+1&quot;</span>
+<span class="sd">      - &quot;Spells cost {1} more to cast&quot;</span>
+
+<span class="sd">   D. Replacement Effects: &quot;If X would happen, Y instead&quot;</span>
+
+<span class="sd">4. CONTEXT-DEPENDENT VALUES:</span>
+<span class="sd">   - X spells: &quot;Deal X damage&quot; where X is chosen at cast time</span>
+<span class="sd">   - &quot;For each creature you control&quot;</span>
+<span class="sd">   - &quot;Equal to the number of cards in your graveyard&quot;</span>
+<span class="sd">   - &quot;*/*&quot; power/toughness (e.g., Tarmogoyf)</span>
+
+<span class="sd">5. MODAL SPELLS:</span>
+<span class="sd">   - &quot;Choose one/two/three&quot;</span>
+<span class="sd">   - Adventure cards (two modes)</span>
+<span class="sd">   - Split cards (Fire // Ice)</span>
+<span class="sd">   - Transform/DFC cards</span>
+
+<span class="sd">EMBEDDING STRATEGY</span>
+<span class="sd">==================</span>
+
+<span class="sd">We use a hybrid approach:</span>
+
+<span class="sd">1. PRE-TRAINED TEXT EMBEDDINGS</span>
+<span class="sd">   - Use a language model (SentenceTransformer) on card oracle text</span>
+<span class="sd">   - Captures semantic meaning of card effects</span>
+<span class="sd">   - Similar cards get similar embeddings</span>
+
+<span class="sd">2. STRUCTURED FEATURE EXTRACTION</span>
+<span class="sd">   - Parse keywords into categorical + numeric features</span>
+<span class="sd">   - Encode mana costs as color vectors</span>
+<span class="sd">   - Encode card types as multi-hot vectors</span>
+
+<span class="sd">3. GAME-CONTEXT FEATURES</span>
+<span class="sd">   - Current power/toughness (after modifications)</span>
+<span class="sd">   - Counters, damage, tapped state</span>
+<span class="sd">   - Zone location</span>
+
+<span class="sd">The final embedding concatenates:</span>
+<span class="sd">[text_embedding | keyword_features | mana_features | type_features | context_features]</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Set</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># KEYWORD PARSING</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="KeywordCategory">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.KeywordCategory">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">KeywordCategory</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">SIMPLE</span> <span class="o">=</span> <span class="s2">&quot;simple&quot;</span>           <span class="c1"># Binary: has or doesn&#39;t have</span>
+    <span class="n">WITH_AMOUNT</span> <span class="o">=</span> <span class="s2">&quot;amount&quot;</span>      <span class="c1"># Has numeric parameter</span>
+    <span class="n">WITH_COST</span> <span class="o">=</span> <span class="s2">&quot;cost&quot;</span>          <span class="c1"># Has mana/cost parameter</span>
+    <span class="n">WITH_TYPE</span> <span class="o">=</span> <span class="s2">&quot;type&quot;</span>          <span class="c1"># Has type parameter</span>
+    <span class="n">COMPLEX</span> <span class="o">=</span> <span class="s2">&quot;complex&quot;</span>         <span class="c1"># Special handling needed</span></div>
+
+
+
+<span class="c1"># Comprehensive keyword classification based on Forge&#39;s Keyword.java</span>
+<span class="n">KEYWORD_DEFINITIONS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1"># Simple Keywords (binary flags)</span>
+    <span class="s2">&quot;Flying&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;First strike&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;First Strike&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Double strike&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Double Strike&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Trample&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Haste&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Vigilance&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Lifelink&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Deathtouch&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Reach&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Menace&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Defender&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Indestructible&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Hexproof&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Shroud&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Flash&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Fear&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Intimidate&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Shadow&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Horsemanship&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Skulk&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Infect&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Wither&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Changeling&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Devoid&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Convoke&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Delve&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Improvise&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Cascade&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Storm&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Prowess&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Exalted&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Undying&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Persist&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Evolve&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Exploit&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Phasing&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Banding&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Flanking&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Provoke&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Battle cry&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Ascend&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Decayed&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Living Weapon&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Myriad&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Daybound&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Nightbound&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Training&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Soulbond&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Enlist&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Riot&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Mentor&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+    <span class="s2">&quot;Melee&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span>
+
+    <span class="c1"># Keywords with Amount</span>
+    <span class="s2">&quot;Absorb&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Afflict&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Afterlife&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Annihilator&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Bloodthirst&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Bushido&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Crew&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Dredge&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Fabricate&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Fading&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Frenzy&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Graft&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Hideaway&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Modular&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Poisonous&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Rampage&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Renown&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Ripple&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Soulshift&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Toxic&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Tribute&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Vanishing&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Backup&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Casualty&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+    <span class="s2">&quot;Saddle&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">,</span>
+
+    <span class="c1"># Keywords with Cost</span>
+    <span class="s2">&quot;Kicker&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Multikicker&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Flashback&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Madness&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Morph&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Megamorph&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Disguise&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Cycling&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Equip&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Bestow&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Dash&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Evoke&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Unearth&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Encore&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Escape&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Foretell&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Suspend&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Buyback&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Echo&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Cumulative upkeep&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Ninjutsu&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Outlast&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Scavenge&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Embalm&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Eternalize&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Blitz&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Ward&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Reconfigure&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Spectacle&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Surge&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Prowl&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Miracle&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Overload&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Awaken&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Disturb&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Plot&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Craft&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+    <span class="s2">&quot;Offspring&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">,</span>
+
+    <span class="c1"># Keywords with Type</span>
+    <span class="s2">&quot;Affinity&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_TYPE</span><span class="p">,</span>
+    <span class="s2">&quot;Protection&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_TYPE</span><span class="p">,</span>
+    <span class="s2">&quot;Landwalk&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_TYPE</span><span class="p">,</span>
+    <span class="s2">&quot;Enchant&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_TYPE</span><span class="p">,</span>
+    <span class="s2">&quot;Champion&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_TYPE</span><span class="p">,</span>
+    <span class="s2">&quot;Offering&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_TYPE</span><span class="p">,</span>
+    <span class="s2">&quot;Amplify&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_TYPE</span><span class="p">,</span>
+
+    <span class="c1"># Complex Keywords</span>
+    <span class="s2">&quot;Partner&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">COMPLEX</span><span class="p">,</span>
+    <span class="s2">&quot;Partner with&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">COMPLEX</span><span class="p">,</span>
+    <span class="s2">&quot;Companion&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">COMPLEX</span><span class="p">,</span>
+    <span class="s2">&quot;Mutate&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">COMPLEX</span><span class="p">,</span>
+    <span class="s2">&quot;Emerge&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">COMPLEX</span><span class="p">,</span>
+    <span class="s2">&quot;Splice&quot;</span><span class="p">:</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">COMPLEX</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1"># Simple keywords for one-hot encoding (most common combat-relevant ones)</span>
+<span class="n">SIMPLE_KEYWORD_LIST</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;Flying&quot;</span><span class="p">,</span> <span class="s2">&quot;First strike&quot;</span><span class="p">,</span> <span class="s2">&quot;Double strike&quot;</span><span class="p">,</span> <span class="s2">&quot;Trample&quot;</span><span class="p">,</span> <span class="s2">&quot;Haste&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Vigilance&quot;</span><span class="p">,</span> <span class="s2">&quot;Lifelink&quot;</span><span class="p">,</span> <span class="s2">&quot;Deathtouch&quot;</span><span class="p">,</span> <span class="s2">&quot;Reach&quot;</span><span class="p">,</span> <span class="s2">&quot;Menace&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Defender&quot;</span><span class="p">,</span> <span class="s2">&quot;Indestructible&quot;</span><span class="p">,</span> <span class="s2">&quot;Hexproof&quot;</span><span class="p">,</span> <span class="s2">&quot;Shroud&quot;</span><span class="p">,</span> <span class="s2">&quot;Flash&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Fear&quot;</span><span class="p">,</span> <span class="s2">&quot;Intimidate&quot;</span><span class="p">,</span> <span class="s2">&quot;Shadow&quot;</span><span class="p">,</span> <span class="s2">&quot;Infect&quot;</span><span class="p">,</span> <span class="s2">&quot;Wither&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Prowess&quot;</span><span class="p">,</span> <span class="s2">&quot;Exalted&quot;</span><span class="p">,</span> <span class="s2">&quot;Undying&quot;</span><span class="p">,</span> <span class="s2">&quot;Persist&quot;</span><span class="p">,</span> <span class="s2">&quot;Flanking&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Changeling&quot;</span><span class="p">,</span> <span class="s2">&quot;Devoid&quot;</span><span class="p">,</span> <span class="s2">&quot;Decayed&quot;</span><span class="p">,</span> <span class="s2">&quot;Riot&quot;</span><span class="p">,</span> <span class="s2">&quot;Training&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<div class="viewcode-block" id="ParsedKeyword">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.ParsedKeyword">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ParsedKeyword</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parsed keyword with its parameters.&quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">category</span><span class="p">:</span> <span class="n">KeywordCategory</span>
+    <span class="n">amount</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">cost</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">type_param</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">raw</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="parse_keyword">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.parse_keyword">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_keyword</span><span class="p">(</span><span class="n">keyword_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedKeyword</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse a keyword string into structured form.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &quot;Flying&quot; -&gt; ParsedKeyword(name=&quot;Flying&quot;, category=SIMPLE)</span>
+<span class="sd">        &quot;Toxic 2&quot; -&gt; ParsedKeyword(name=&quot;Toxic&quot;, category=WITH_AMOUNT, amount=2)</span>
+<span class="sd">        &quot;Kicker {2}{R}&quot; -&gt; ParsedKeyword(name=&quot;Kicker&quot;, category=WITH_COST, cost=&quot;{2}{R}&quot;)</span>
+<span class="sd">        &quot;Protection from red&quot; -&gt; ParsedKeyword(name=&quot;Protection&quot;, category=WITH_TYPE, type_param=&quot;red&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">keyword_str</span> <span class="o">=</span> <span class="n">keyword_str</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+    <span class="c1"># Try to match known keywords</span>
+    <span class="k">for</span> <span class="n">kw_name</span><span class="p">,</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">KEYWORD_DEFINITIONS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">keyword_str</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">kw_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()):</span>
+            <span class="n">remainder</span> <span class="o">=</span> <span class="n">keyword_str</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">kw_name</span><span class="p">):]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">category</span> <span class="o">==</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ParsedKeyword</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">kw_name</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="n">category</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">keyword_str</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">category</span> <span class="o">==</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span><span class="p">:</span>
+                <span class="c1"># Extract number</span>
+                <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;(\d+)&#39;</span><span class="p">,</span> <span class="n">remainder</span><span class="p">)</span>
+                <span class="n">amount</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="k">if</span> <span class="n">match</span> <span class="k">else</span> <span class="mi">1</span>
+                <span class="k">return</span> <span class="n">ParsedKeyword</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">kw_name</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="n">category</span><span class="p">,</span> <span class="n">amount</span><span class="o">=</span><span class="n">amount</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">keyword_str</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">category</span> <span class="o">==</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_COST</span><span class="p">:</span>
+                <span class="c1"># Extract mana cost (anything in braces or remaining text)</span>
+                <span class="n">cost</span> <span class="o">=</span> <span class="n">remainder</span> <span class="k">if</span> <span class="n">remainder</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="si">{0}</span><span class="s2">&quot;</span>
+                <span class="k">return</span> <span class="n">ParsedKeyword</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">kw_name</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="n">category</span><span class="p">,</span> <span class="n">cost</span><span class="o">=</span><span class="n">cost</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">keyword_str</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">category</span> <span class="o">==</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_TYPE</span><span class="p">:</span>
+                <span class="c1"># Extract type (e.g., &quot;from red&quot;, &quot;for artifacts&quot;, &quot;creature&quot;)</span>
+                <span class="n">type_param</span> <span class="o">=</span> <span class="n">remainder</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;from &quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;for &quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">ParsedKeyword</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">kw_name</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="n">category</span><span class="p">,</span> <span class="n">type_param</span><span class="o">=</span><span class="n">type_param</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">keyword_str</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">category</span> <span class="o">==</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">COMPLEX</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ParsedKeyword</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">kw_name</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="n">category</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">keyword_str</span><span class="p">)</span>
+
+    <span class="c1"># Unknown keyword</span>
+    <span class="k">return</span> <span class="n">ParsedKeyword</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">keyword_str</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">keyword_str</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># MANA COST PARSING</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="ManaCostVector">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.ManaCostVector">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ManaCostVector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parsed mana cost as a vector.&quot;&quot;&quot;</span>
+    <span class="n">total_cmc</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">white</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">blue</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">black</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">red</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">green</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">colorless</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">generic</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">hybrid</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Count of hybrid symbols</span>
+    <span class="n">phyrexian</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Count of phyrexian symbols</span>
+    <span class="n">x_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Number of X in cost</span>
+
+<div class="viewcode-block" id="ManaCostVector.to_vector">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.ManaCostVector.to_vector">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_vector</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert to normalized feature vector.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">/</span> <span class="mf">15.0</span><span class="p">,</span>  <span class="c1"># Normalize by max typical CMC</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">white</span> <span class="o">/</span> <span class="mf">5.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">/</span> <span class="mf">5.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">black</span> <span class="o">/</span> <span class="mf">5.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">/</span> <span class="mf">5.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">/</span> <span class="mf">5.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">colorless</span> <span class="o">/</span> <span class="mf">5.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">generic</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hybrid</span> <span class="o">/</span> <span class="mf">3.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">phyrexian</span> <span class="o">/</span> <span class="mf">3.0</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">x_count</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="parse_mana_cost">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.parse_mana_cost">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_mana_cost</span><span class="p">(</span><span class="n">cost_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ManaCostVector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse mana cost string like &#39;{2}{W}{W}&#39; into vector.</span>
+
+<span class="sd">    Handles:</span>
+<span class="sd">    - Basic colors: {W}, {U}, {B}, {R}, {G}</span>
+<span class="sd">    - Generic: {1}, {2}, etc.</span>
+<span class="sd">    - Colorless: {C}</span>
+<span class="sd">    - Hybrid: {W/U}, {2/W}</span>
+<span class="sd">    - Phyrexian: {W/P}, {U/P}</span>
+<span class="sd">    - X costs: {X}</span>
+<span class="sd">    - Snow: {S}</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">ManaCostVector</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cost_str</span> <span class="ow">or</span> <span class="n">cost_str</span> <span class="o">==</span> <span class="s2">&quot;no cost&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="c1"># Find all {X} patterns</span>
+    <span class="n">symbols</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\{([^}]+)\}&#39;</span><span class="p">,</span> <span class="n">cost_str</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">symbol</span> <span class="ow">in</span> <span class="n">symbols</span><span class="p">:</span>
+        <span class="n">symbol</span> <span class="o">=</span> <span class="n">symbol</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">symbol</span> <span class="o">==</span> <span class="s1">&#39;W&#39;</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">white</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">symbol</span> <span class="o">==</span> <span class="s1">&#39;U&#39;</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">blue</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">symbol</span> <span class="o">==</span> <span class="s1">&#39;B&#39;</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">black</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">symbol</span> <span class="o">==</span> <span class="s1">&#39;R&#39;</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">red</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">symbol</span> <span class="o">==</span> <span class="s1">&#39;G&#39;</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">green</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">symbol</span> <span class="o">==</span> <span class="s1">&#39;C&#39;</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">colorless</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">symbol</span> <span class="o">==</span> <span class="s1">&#39;X&#39;</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">x_count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1"># X doesn&#39;t add to CMC directly</span>
+        <span class="k">elif</span> <span class="n">symbol</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">generic</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s1">&#39;/&#39;</span> <span class="ow">in</span> <span class="n">symbol</span><span class="p">:</span>
+            <span class="c1"># Hybrid or Phyrexian</span>
+            <span class="k">if</span> <span class="s1">&#39;P&#39;</span> <span class="ow">in</span> <span class="n">symbol</span><span class="p">:</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">phyrexian</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">hybrid</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">symbol</span> <span class="o">==</span> <span class="s1">&#39;S&#39;</span><span class="p">:</span>
+            <span class="c1"># Snow mana</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">colorless</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># CARD TYPE PARSING</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="c1"># Major card types</span>
+<span class="n">CARD_TYPES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;Creature&quot;</span><span class="p">,</span> <span class="s2">&quot;Instant&quot;</span><span class="p">,</span> <span class="s2">&quot;Sorcery&quot;</span><span class="p">,</span> <span class="s2">&quot;Enchantment&quot;</span><span class="p">,</span> <span class="s2">&quot;Artifact&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Land&quot;</span><span class="p">,</span> <span class="s2">&quot;Planeswalker&quot;</span><span class="p">,</span> <span class="s2">&quot;Battle&quot;</span><span class="p">,</span> <span class="s2">&quot;Tribal&quot;</span><span class="p">,</span> <span class="s2">&quot;Kindred&quot;</span>
+<span class="p">]</span>
+
+<span class="c1"># Common creature types (most relevant for gameplay)</span>
+<span class="n">CREATURE_TYPES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;Human&quot;</span><span class="p">,</span> <span class="s2">&quot;Soldier&quot;</span><span class="p">,</span> <span class="s2">&quot;Wizard&quot;</span><span class="p">,</span> <span class="s2">&quot;Warrior&quot;</span><span class="p">,</span> <span class="s2">&quot;Knight&quot;</span><span class="p">,</span> <span class="s2">&quot;Cleric&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Zombie&quot;</span><span class="p">,</span> <span class="s2">&quot;Vampire&quot;</span><span class="p">,</span> <span class="s2">&quot;Elf&quot;</span><span class="p">,</span> <span class="s2">&quot;Goblin&quot;</span><span class="p">,</span> <span class="s2">&quot;Merfolk&quot;</span><span class="p">,</span> <span class="s2">&quot;Spirit&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Dragon&quot;</span><span class="p">,</span> <span class="s2">&quot;Angel&quot;</span><span class="p">,</span> <span class="s2">&quot;Demon&quot;</span><span class="p">,</span> <span class="s2">&quot;Beast&quot;</span><span class="p">,</span> <span class="s2">&quot;Elemental&quot;</span><span class="p">,</span> <span class="s2">&quot;Giant&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Bird&quot;</span><span class="p">,</span> <span class="s2">&quot;Cat&quot;</span><span class="p">,</span> <span class="s2">&quot;Dog&quot;</span><span class="p">,</span> <span class="s2">&quot;Snake&quot;</span><span class="p">,</span> <span class="s2">&quot;Spider&quot;</span><span class="p">,</span> <span class="s2">&quot;Rat&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Artificer&quot;</span><span class="p">,</span> <span class="s2">&quot;Rogue&quot;</span><span class="p">,</span> <span class="s2">&quot;Shaman&quot;</span><span class="p">,</span> <span class="s2">&quot;Druid&quot;</span><span class="p">,</span> <span class="s2">&quot;Monk&quot;</span><span class="p">,</span> <span class="s2">&quot;Assassin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Artifact&quot;</span><span class="p">,</span>  <span class="c1"># For artifact creatures</span>
+<span class="p">]</span>
+
+<span class="c1"># Common subtypes for non-creatures</span>
+<span class="n">OTHER_SUBTYPES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;Aura&quot;</span><span class="p">,</span> <span class="s2">&quot;Equipment&quot;</span><span class="p">,</span> <span class="s2">&quot;Vehicle&quot;</span><span class="p">,</span> <span class="s2">&quot;Saga&quot;</span><span class="p">,</span> <span class="s2">&quot;Food&quot;</span><span class="p">,</span> <span class="s2">&quot;Treasure&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Clue&quot;</span><span class="p">,</span> <span class="s2">&quot;Blood&quot;</span><span class="p">,</span> <span class="s2">&quot;Plains&quot;</span><span class="p">,</span> <span class="s2">&quot;Island&quot;</span><span class="p">,</span> <span class="s2">&quot;Swamp&quot;</span><span class="p">,</span> <span class="s2">&quot;Mountain&quot;</span><span class="p">,</span> <span class="s2">&quot;Forest&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<div class="viewcode-block" id="CardTypeVector">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.CardTypeVector">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CardTypeVector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parsed card types as a vector.&quot;&quot;&quot;</span>
+    <span class="n">is_creature</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_instant</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_sorcery</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_enchantment</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_artifact</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_land</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_planeswalker</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_legendary</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_token</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_basic</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">creature_types</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">set</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CardTypeVector.to_vector">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.CardTypeVector.to_vector">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_vector</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert to feature vector.&quot;&quot;&quot;</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_creature</span><span class="p">),</span>
+            <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_instant</span><span class="p">),</span>
+            <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_sorcery</span><span class="p">),</span>
+            <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_enchantment</span><span class="p">),</span>
+            <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_artifact</span><span class="p">),</span>
+            <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_land</span><span class="p">),</span>
+            <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_planeswalker</span><span class="p">),</span>
+            <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_legendary</span><span class="p">),</span>
+            <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_token</span><span class="p">),</span>
+            <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_basic</span><span class="p">),</span>
+        <span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="c1"># Add creature type indicators (top 20 types)</span>
+        <span class="n">creature_type_features</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">ct</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">creature_types</span><span class="p">)</span> <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="n">CREATURE_TYPES</span><span class="p">[:</span><span class="mi">20</span><span class="p">]</span>
+        <span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">base</span><span class="p">,</span> <span class="n">creature_type_features</span><span class="p">])</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="parse_card_types">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.parse_card_types">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_card_types</span><span class="p">(</span><span class="n">type_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CardTypeVector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse card type string like &#39;Legendary Creature - Human Soldier&#39;.&quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">CardTypeVector</span><span class="p">()</span>
+    <span class="n">type_str</span> <span class="o">=</span> <span class="n">type_str</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+    <span class="c1"># Check supertypes</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">is_legendary</span> <span class="o">=</span> <span class="s2">&quot;legendary&quot;</span> <span class="ow">in</span> <span class="n">type_str</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">is_basic</span> <span class="o">=</span> <span class="s2">&quot;basic&quot;</span> <span class="ow">in</span> <span class="n">type_str</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">is_token</span> <span class="o">=</span> <span class="s2">&quot;token&quot;</span> <span class="ow">in</span> <span class="n">type_str</span>
+
+    <span class="c1"># Check main types</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">is_creature</span> <span class="o">=</span> <span class="s2">&quot;creature&quot;</span> <span class="ow">in</span> <span class="n">type_str</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">is_instant</span> <span class="o">=</span> <span class="s2">&quot;instant&quot;</span> <span class="ow">in</span> <span class="n">type_str</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">is_sorcery</span> <span class="o">=</span> <span class="s2">&quot;sorcery&quot;</span> <span class="ow">in</span> <span class="n">type_str</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">is_enchantment</span> <span class="o">=</span> <span class="s2">&quot;enchantment&quot;</span> <span class="ow">in</span> <span class="n">type_str</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">is_artifact</span> <span class="o">=</span> <span class="s2">&quot;artifact&quot;</span> <span class="ow">in</span> <span class="n">type_str</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">is_land</span> <span class="o">=</span> <span class="s2">&quot;land&quot;</span> <span class="ow">in</span> <span class="n">type_str</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">is_planeswalker</span> <span class="o">=</span> <span class="s2">&quot;planeswalker&quot;</span> <span class="ow">in</span> <span class="n">type_str</span>
+
+    <span class="c1"># Extract subtypes (after the dash)</span>
+    <span class="k">if</span> <span class="s2">&quot; - &quot;</span> <span class="ow">in</span> <span class="n">type_str</span> <span class="ow">or</span> <span class="s2">&quot; — &quot;</span> <span class="ow">in</span> <span class="n">type_str</span><span class="p">:</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39; [-—] &#39;</span><span class="p">,</span> <span class="n">type_str</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">subtypes</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">subtype</span> <span class="ow">in</span> <span class="n">subtypes</span><span class="p">:</span>
+                <span class="n">subtype</span> <span class="o">=</span> <span class="n">subtype</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">title</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">subtype</span> <span class="ow">in</span> <span class="n">CREATURE_TYPES</span><span class="p">:</span>
+                    <span class="n">result</span><span class="o">.</span><span class="n">creature_types</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">subtype</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># CARD EMBEDDING</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="CardEmbedding">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.CardEmbedding">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CardEmbedding</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates fixed-size embeddings for MTG cards.</span>
+
+<span class="sd">    Embedding structure:</span>
+<span class="sd">    - Keyword features: 64 dims (30 simple keywords + parsed amounts/counts)</span>
+<span class="sd">    - Mana features: 11 dims (color breakdown, CMC, hybrid, etc.)</span>
+<span class="sd">    - Type features: 30 dims (card types + creature types)</span>
+<span class="sd">    - Stats features: 8 dims (P/T, loyalty, CMC context)</span>
+<span class="sd">    - Text embedding: 128 dims (from language model, when available)</span>
+
+<span class="sd">    Total: 241 dims (or 113 without text embedding)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="CardEmbedding.__init__">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.CardEmbedding.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">use_text_embeddings</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">text_embedding_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_text_embeddings</span> <span class="o">=</span> <span class="n">use_text_embeddings</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text_embedding_dim</span> <span class="o">=</span> <span class="n">text_embedding_dim</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">simple_keyword_to_idx</span> <span class="o">=</span> <span class="p">{</span><span class="n">kw</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">kw</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">SIMPLE_KEYWORD_LIST</span><span class="p">)}</span>
+
+        <span class="c1"># Cache for text embeddings</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_text_embedding_cache</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sentence_transformer</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Dimension breakdown</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keyword_dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">SIMPLE_KEYWORD_LIST</span><span class="p">)</span> <span class="o">+</span> <span class="mi">10</span>  <span class="c1"># Simple + amount keywords</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mana_dim</span> <span class="o">=</span> <span class="mi">11</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">type_dim</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">+</span> <span class="mi">20</span>  <span class="c1"># Base types + creature types</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stats_dim</span> <span class="o">=</span> <span class="mi">8</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text_dim</span> <span class="o">=</span> <span class="n">text_embedding_dim</span> <span class="k">if</span> <span class="n">use_text_embeddings</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">keyword_dim</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">mana_dim</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">type_dim</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats_dim</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">text_dim</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_text_embedding</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">card_text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get text embedding for card oracle text.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_text_embeddings</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="c1"># Cache lookup</span>
+        <span class="n">text_hash</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">md5</span><span class="p">(</span><span class="n">card_text</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">text_hash</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_text_embedding_cache</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_text_embedding_cache</span><span class="p">[</span><span class="n">text_hash</span><span class="p">]</span>
+
+        <span class="c1"># Lazy load sentence transformer</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sentence_transformer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">sentence_transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">SentenceTransformer</span>
+                <span class="c1"># Use a small, fast model</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_sentence_transformer</span> <span class="o">=</span> <span class="n">SentenceTransformer</span><span class="p">(</span><span class="s1">&#39;all-MiniLM-L6-v2&#39;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: sentence-transformers not installed. Using zero embeddings.&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_sentence_transformer</span> <span class="o">=</span> <span class="s2">&quot;unavailable&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sentence_transformer</span> <span class="o">==</span> <span class="s2">&quot;unavailable&quot;</span><span class="p">:</span>
+            <span class="n">embedding</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">text_embedding_dim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Get embedding and reduce dimensions if needed</span>
+            <span class="n">full_embedding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sentence_transformer</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">card_text</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">full_embedding</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">text_embedding_dim</span><span class="p">:</span>
+                <span class="c1"># Simple truncation (PCA would be better for production)</span>
+                <span class="n">embedding</span> <span class="o">=</span> <span class="n">full_embedding</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">text_embedding_dim</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">embedding</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">full_embedding</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">text_embedding_dim</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">full_embedding</span><span class="p">)))</span>
+            <span class="n">embedding</span> <span class="o">=</span> <span class="n">embedding</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_text_embedding_cache</span><span class="p">[</span><span class="n">text_hash</span><span class="p">]</span> <span class="o">=</span> <span class="n">embedding</span>
+        <span class="k">return</span> <span class="n">embedding</span>
+
+<div class="viewcode-block" id="CardEmbedding.embed_card">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.CardEmbedding.embed_card">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">embed_card</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">mana_cost</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">type_line</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">oracle_text</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">power</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">toughness</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">loyalty</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">keywords</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">cmc</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate embedding vector for a card.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Card name</span>
+<span class="sd">            mana_cost: Mana cost string like &quot;{2}{W}{W}&quot;</span>
+<span class="sd">            type_line: Type line like &quot;Creature - Human Soldier&quot;</span>
+<span class="sd">            oracle_text: Card rules text</span>
+<span class="sd">            power: Creature power (None if not creature)</span>
+<span class="sd">            toughness: Creature toughness</span>
+<span class="sd">            loyalty: Planeswalker loyalty</span>
+<span class="sd">            keywords: List of keyword strings</span>
+<span class="sd">            cmc: Converted mana cost (calculated from mana_cost if not provided)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            numpy array of shape (total_dim,)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 1. Keyword features</span>
+        <span class="n">keyword_features</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keyword_dim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">keywords</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">kw_str</span> <span class="ow">in</span> <span class="n">keywords</span><span class="p">:</span>
+                <span class="n">parsed</span> <span class="o">=</span> <span class="n">parse_keyword</span><span class="p">(</span><span class="n">kw_str</span><span class="p">)</span>
+
+                <span class="c1"># Simple keywords: one-hot</span>
+                <span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">category</span> <span class="o">==</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">SIMPLE</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">variant</span> <span class="ow">in</span> <span class="p">[</span><span class="n">parsed</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">parsed</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="n">parsed</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">title</span><span class="p">()]:</span>
+                        <span class="k">if</span> <span class="n">variant</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simple_keyword_to_idx</span><span class="p">:</span>
+                            <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simple_keyword_to_idx</span><span class="p">[</span><span class="n">variant</span><span class="p">]</span>
+                            <span class="n">keyword_features</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+                            <span class="k">break</span>
+
+                <span class="c1"># Keywords with amount: encode in extra slots</span>
+                <span class="k">elif</span> <span class="n">parsed</span><span class="o">.</span><span class="n">category</span> <span class="o">==</span> <span class="n">KeywordCategory</span><span class="o">.</span><span class="n">WITH_AMOUNT</span> <span class="ow">and</span> <span class="n">parsed</span><span class="o">.</span><span class="n">amount</span><span class="p">:</span>
+                    <span class="c1"># Use extra slots for amount keywords</span>
+                    <span class="n">base_idx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">SIMPLE_KEYWORD_LIST</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;Toxic&quot;</span><span class="p">:</span>
+                        <span class="n">keyword_features</span><span class="p">[</span><span class="n">base_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">amount</span> <span class="o">/</span> <span class="mf">5.0</span>
+                    <span class="k">elif</span> <span class="n">parsed</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;Annihilator&quot;</span><span class="p">:</span>
+                        <span class="n">keyword_features</span><span class="p">[</span><span class="n">base_idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">amount</span> <span class="o">/</span> <span class="mf">6.0</span>
+                    <span class="k">elif</span> <span class="n">parsed</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;Crew&quot;</span><span class="p">:</span>
+                        <span class="n">keyword_features</span><span class="p">[</span><span class="n">base_idx</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">amount</span> <span class="o">/</span> <span class="mf">10.0</span>
+                    <span class="k">elif</span> <span class="n">parsed</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;Fabricate&quot;</span><span class="p">:</span>
+                        <span class="n">keyword_features</span><span class="p">[</span><span class="n">base_idx</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">amount</span> <span class="o">/</span> <span class="mf">5.0</span>
+                    <span class="k">elif</span> <span class="n">parsed</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;Modular&quot;</span><span class="p">:</span>
+                        <span class="n">keyword_features</span><span class="p">[</span><span class="n">base_idx</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">amount</span> <span class="o">/</span> <span class="mf">5.0</span>
+                    <span class="k">elif</span> <span class="n">parsed</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;Afflict&quot;</span><span class="p">:</span>
+                        <span class="n">keyword_features</span><span class="p">[</span><span class="n">base_idx</span> <span class="o">+</span> <span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">amount</span> <span class="o">/</span> <span class="mf">5.0</span>
+                    <span class="k">elif</span> <span class="n">parsed</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;Bushido&quot;</span><span class="p">:</span>
+                        <span class="n">keyword_features</span><span class="p">[</span><span class="n">base_idx</span> <span class="o">+</span> <span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">amount</span> <span class="o">/</span> <span class="mf">5.0</span>
+                    <span class="k">elif</span> <span class="n">parsed</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;Renown&quot;</span><span class="p">:</span>
+                        <span class="n">keyword_features</span><span class="p">[</span><span class="n">base_idx</span> <span class="o">+</span> <span class="mi">7</span><span class="p">]</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">amount</span> <span class="o">/</span> <span class="mf">5.0</span>
+                    <span class="k">elif</span> <span class="n">parsed</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;Dredge&quot;</span><span class="p">:</span>
+                        <span class="n">keyword_features</span><span class="p">[</span><span class="n">base_idx</span> <span class="o">+</span> <span class="mi">8</span><span class="p">]</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">amount</span> <span class="o">/</span> <span class="mf">6.0</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">keyword_features</span><span class="p">[</span><span class="n">base_idx</span> <span class="o">+</span> <span class="mi">9</span><span class="p">]</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">amount</span> <span class="o">/</span> <span class="mf">5.0</span>  <span class="c1"># Generic amount slot</span>
+
+        <span class="n">features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">keyword_features</span><span class="p">)</span>
+
+        <span class="c1"># 2. Mana features</span>
+        <span class="n">mana_vec</span> <span class="o">=</span> <span class="n">parse_mana_cost</span><span class="p">(</span><span class="n">mana_cost</span><span class="p">)</span>
+        <span class="n">features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mana_vec</span><span class="o">.</span><span class="n">to_vector</span><span class="p">())</span>
+
+        <span class="c1"># 3. Type features</span>
+        <span class="n">type_vec</span> <span class="o">=</span> <span class="n">parse_card_types</span><span class="p">(</span><span class="n">type_line</span><span class="p">)</span>
+        <span class="n">features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">type_vec</span><span class="o">.</span><span class="n">to_vector</span><span class="p">())</span>
+
+        <span class="c1"># 4. Stats features</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats_dim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">power</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">power</span> <span class="o">/</span> <span class="mf">15.0</span>
+        <span class="k">if</span> <span class="n">toughness</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">toughness</span> <span class="o">/</span> <span class="mf">15.0</span>
+        <span class="k">if</span> <span class="n">loyalty</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">loyalty</span> <span class="o">/</span> <span class="mf">10.0</span>
+        <span class="k">if</span> <span class="n">cmc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">cmc</span> <span class="o">/</span> <span class="mf">15.0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">mana_vec</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">/</span> <span class="mf">15.0</span>
+
+        <span class="c1"># Power/toughness ratio (for creature evaluation)</span>
+        <span class="k">if</span> <span class="n">power</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">toughness</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">toughness</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">power</span> <span class="o">/</span> <span class="n">toughness</span>  <span class="c1"># Attack/defense ratio</span>
+
+        <span class="c1"># Efficiency metrics</span>
+        <span class="k">if</span> <span class="n">mana_vec</span><span class="o">.</span><span class="n">total_cmc</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">power</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">stats</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">power</span> <span class="o">/</span> <span class="n">mana_vec</span><span class="o">.</span><span class="n">total_cmc</span>  <span class="c1"># Power per mana</span>
+            <span class="k">if</span> <span class="n">power</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">toughness</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">stats</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">power</span> <span class="o">+</span> <span class="n">toughness</span><span class="p">)</span> <span class="o">/</span> <span class="n">mana_vec</span><span class="o">.</span><span class="n">total_cmc</span>  <span class="c1"># Stats per mana</span>
+
+        <span class="c1"># Is multicolor?</span>
+        <span class="n">color_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">mana_vec</span><span class="o">.</span><span class="n">white</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">mana_vec</span><span class="o">.</span><span class="n">blue</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">mana_vec</span><span class="o">.</span><span class="n">black</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
+                         <span class="n">mana_vec</span><span class="o">.</span><span class="n">red</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">mana_vec</span><span class="o">.</span><span class="n">green</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="n">stats</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span> <span class="o">=</span> <span class="n">color_count</span> <span class="o">/</span> <span class="mf">5.0</span>
+
+        <span class="n">features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stats</span><span class="p">)</span>
+
+        <span class="c1"># 5. Text embedding (if enabled)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_text_embeddings</span> <span class="ow">and</span> <span class="n">oracle_text</span><span class="p">:</span>
+            <span class="n">text_emb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_text_embedding</span><span class="p">(</span><span class="n">oracle_text</span><span class="p">)</span>
+            <span class="n">features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">text_emb</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">features</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CardEmbedding.embed_from_game_state">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.CardEmbedding.embed_from_game_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">embed_from_game_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">card_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Embed a card from game state JSON.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            card_data: Dict with keys like &#39;name&#39;, &#39;mana_cost&#39;, &#39;types&#39;, &#39;power&#39;, &#39;toughness&#39;, &#39;keywords&#39;</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            numpy array embedding</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">embed_card</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">mana_cost</span><span class="o">=</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mana_cost&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">type_line</span><span class="o">=</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;types&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">oracle_text</span><span class="o">=</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;oracle_text&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">power</span><span class="o">=</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;power&#39;</span><span class="p">),</span>
+            <span class="n">toughness</span><span class="o">=</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;toughness&#39;</span><span class="p">),</span>
+            <span class="n">loyalty</span><span class="o">=</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;loyalty&#39;</span><span class="p">),</span>
+            <span class="n">keywords</span><span class="o">=</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;keywords&#39;</span><span class="p">,</span> <span class="p">[]),</span>
+            <span class="n">cmc</span><span class="o">=</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cmc&#39;</span><span class="p">),</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># GAME CONTEXT FEATURES</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="embed_battlefield_card">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.embed_battlefield_card">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">embed_battlefield_card</span><span class="p">(</span><span class="n">card_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">embedder</span><span class="p">:</span> <span class="n">CardEmbedding</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Embed a card on the battlefield with game context.</span>
+
+<span class="sd">    Additional context features beyond base card embedding:</span>
+<span class="sd">    - Tapped state</span>
+<span class="sd">    - Summoning sickness</span>
+<span class="sd">    - Current damage</span>
+<span class="sd">    - Counters</span>
+<span class="sd">    - Is attacking/blocking (if in combat)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Base card embedding</span>
+    <span class="n">base_embedding</span> <span class="o">=</span> <span class="n">embedder</span><span class="o">.</span><span class="n">embed_from_game_state</span><span class="p">(</span><span class="n">card_data</span><span class="p">)</span>
+
+    <span class="c1"># Context features</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">context</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;tapped&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+    <span class="n">context</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;summoning_sick&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+    <span class="n">context</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;damage&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="mf">10.0</span>
+
+    <span class="c1"># Counter types (simplified)</span>
+    <span class="n">counters</span> <span class="o">=</span> <span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;counters&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;+1/+1&#39;</span> <span class="ow">in</span> <span class="n">counters</span><span class="p">:</span>
+        <span class="c1"># Extract count</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;(\d+) \+1/\+1&#39;</span><span class="p">,</span> <span class="n">counters</span><span class="p">)</span>
+        <span class="n">context</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="mf">10.0</span> <span class="k">if</span> <span class="n">match</span> <span class="k">else</span> <span class="mf">0.1</span>
+    <span class="k">if</span> <span class="s1">&#39;-1/-1&#39;</span> <span class="ow">in</span> <span class="n">counters</span><span class="p">:</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;(\d+) -1/-1&#39;</span><span class="p">,</span> <span class="n">counters</span><span class="p">)</span>
+        <span class="n">context</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="mf">10.0</span> <span class="k">if</span> <span class="n">match</span> <span class="k">else</span> <span class="mf">0.1</span>
+
+    <span class="c1"># Is creature/can attack/can block</span>
+    <span class="n">context</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_creature&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+    <span class="n">context</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_creature&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;tapped&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+                       <span class="ow">and</span> <span class="ow">not</span> <span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;summoning_sick&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+    <span class="n">context</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_creature&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">card_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;tapped&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">base_embedding</span><span class="p">,</span> <span class="n">context</span><span class="p">])</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># TESTING</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="test_embeddings">
+<a class="viewcode-back" href="../../../api/models.html#src.models.card_embeddings.test_embeddings">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_embeddings</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test the embedding system with sample cards.&quot;&quot;&quot;</span>
+    <span class="n">embedder</span> <span class="o">=</span> <span class="n">CardEmbedding</span><span class="p">(</span><span class="n">use_text_embeddings</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Embedding dimension: </span><span class="si">{</span><span class="n">embedder</span><span class="o">.</span><span class="n">total_dim</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">()</span>
+
+    <span class="c1"># Test cards</span>
+    <span class="n">test_cards</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Lightning Bolt&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mana_cost&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{R}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;types&quot;</span><span class="p">:</span> <span class="s2">&quot;Instant&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;oracle_text&quot;</span><span class="p">:</span> <span class="s2">&quot;Lightning Bolt deals 3 damage to any target.&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;keywords&quot;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Tarmogoyf&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mana_cost&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{1}{G}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;types&quot;</span><span class="p">:</span> <span class="s2">&quot;Creature - Lhurgoyf&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;power&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;toughness&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s2">&quot;oracle_text&quot;</span><span class="p">:</span> <span class="s2">&quot;Tarmogoyf&#39;s power is equal to the number of card types among cards in all graveyards and its toughness is equal to that number plus 1.&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;keywords&quot;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Ragavan, Nimble Pilferer&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mana_cost&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{R}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;types&quot;</span><span class="p">:</span> <span class="s2">&quot;Legendary Creature - Monkey Pirate&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;power&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;toughness&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s2">&quot;keywords&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Dash </span><span class="si">{1}{R}</span><span class="s2">&quot;</span><span class="p">],</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Sheoldred, the Apocalypse&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mana_cost&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{2}{B}{B}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;types&quot;</span><span class="p">:</span> <span class="s2">&quot;Legendary Creature - Phyrexian Praetor&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;power&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;toughness&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+            <span class="s2">&quot;keywords&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Deathtouch&quot;</span><span class="p">],</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Counterspell&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mana_cost&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{U}{U}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;types&quot;</span><span class="p">:</span> <span class="s2">&quot;Instant&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;keywords&quot;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Toxic Deluge&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mana_cost&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{2}{B}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;types&quot;</span><span class="p">:</span> <span class="s2">&quot;Sorcery&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;keywords&quot;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Atraxa, Grand Unifier&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mana_cost&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{3}{G}{W}{U}{B}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;types&quot;</span><span class="p">:</span> <span class="s2">&quot;Legendary Creature - Phyrexian Angel&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;power&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span> <span class="s2">&quot;toughness&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
+            <span class="s2">&quot;keywords&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Flying&quot;</span><span class="p">,</span> <span class="s2">&quot;Vigilance&quot;</span><span class="p">,</span> <span class="s2">&quot;Deathtouch&quot;</span><span class="p">,</span> <span class="s2">&quot;Lifelink&quot;</span><span class="p">],</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Blightsteel Colossus&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mana_cost&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{12}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;types&quot;</span><span class="p">:</span> <span class="s2">&quot;Artifact Creature - Phyrexian Golem&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;power&quot;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span> <span class="s2">&quot;toughness&quot;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
+            <span class="s2">&quot;keywords&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Trample&quot;</span><span class="p">,</span> <span class="s2">&quot;Infect&quot;</span><span class="p">,</span> <span class="s2">&quot;Indestructible&quot;</span><span class="p">],</span>
+        <span class="p">},</span>
+    <span class="p">]</span>
+
+    <span class="n">embeddings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">card</span> <span class="ow">in</span> <span class="n">test_cards</span><span class="p">:</span>
+        <span class="n">emb</span> <span class="o">=</span> <span class="n">embedder</span><span class="o">.</span><span class="n">embed_from_game_state</span><span class="p">(</span><span class="n">card</span><span class="p">)</span>
+        <span class="n">embeddings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">emb</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">card</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: shape=</span><span class="si">{</span><span class="n">emb</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">, norm=</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">emb</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Compute similarity matrix</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Similarity matrix (cosine):&quot;</span><span class="p">)</span>
+    <span class="n">embeddings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">embeddings</span><span class="p">)</span>
+    <span class="n">norms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">embeddings</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">normalized</span> <span class="o">=</span> <span class="n">embeddings</span> <span class="o">/</span> <span class="p">(</span><span class="n">norms</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">)</span>
+    <span class="n">similarity</span> <span class="o">=</span> <span class="n">normalized</span> <span class="o">@</span> <span class="n">normalized</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">][:</span><span class="mi">15</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">test_cards</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;&#39;</span><span class="si">:</span><span class="s2">&gt;16</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">&gt;16</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">names</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">&gt;16</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">similarity</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;16.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">()</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">test_embeddings</span><span class="p">()</span>
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, ForgeRL Contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>

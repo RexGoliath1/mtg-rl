@@ -1,0 +1,1028 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>src.training.profiler - ForgeRL</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">ForgeRL</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  <span class="sidebar-brand-text">ForgeRL</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../README.html">ForgeRL</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ARCHITECTURE.html">ForgeRL Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tools.html">Local Tools</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/mechanics.html">Mechanics System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/forge.html">Forge Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/training.html">Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/agents.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/utils.html">Utils</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for src.training.profiler</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Training Profiler for MTG RL</span>
+
+<span class="sd">Measures bottlenecks in self-play training:</span>
+<span class="sd">1. Network forward pass time</span>
+<span class="sd">2. MCTS simulation time</span>
+<span class="sd">3. Forge communication latency</span>
+<span class="sd">4. Data transfer overhead</span>
+<span class="sd">5. Memory usage</span>
+
+<span class="sd">Usage:</span>
+<span class="sd">    from src.training.profiler import TrainingProfiler, profile_training_step</span>
+
+<span class="sd">    profiler = TrainingProfiler()</span>
+<span class="sd">    with profiler.measure(&quot;forward_pass&quot;):</span>
+<span class="sd">        output = network(state)</span>
+<span class="sd">    profiler.report()</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">statistics</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># PROFILER CLASSES</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="TimingStats">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.TimingStats">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TimingStats</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Statistics for a single profiling category.&quot;&quot;&quot;</span>
+    <span class="n">times</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TimingStats.add">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.TimingStats.add">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">total</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mean</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">statistics</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">median</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">statistics</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">std</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">statistics</span><span class="o">.</span><span class="n">stdev</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">min</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">max</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">p95</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">sorted_times</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">)</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mf">0.95</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_times</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">sorted_times</span><span class="p">[</span><span class="nb">min</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_times</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span></div>
+
+
+
+<div class="viewcode-block" id="MemoryStats">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.MemoryStats">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MemoryStats</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Memory usage statistics.&quot;&quot;&quot;</span>
+    <span class="n">measurements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MemoryStats.add">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.MemoryStats.add">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stats</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measurements</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stats</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">peak_gpu_mb</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurements</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_allocated_mb&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurements</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">current_gpu_mb</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurements</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurements</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_allocated_mb&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="TrainingProfiler">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.TrainingProfiler">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrainingProfiler</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Comprehensive profiler for self-play training.</span>
+
+<span class="sd">    Categories:</span>
+<span class="sd">    - forward_pass: Neural network inference</span>
+<span class="sd">    - backward_pass: Gradient computation</span>
+<span class="sd">    - mcts_simulation: MCTS tree search</span>
+<span class="sd">    - mcts_expansion: Node expansion</span>
+<span class="sd">    - forge_comm: Forge daemon communication</span>
+<span class="sd">    - data_transfer: CPU&lt;-&gt;GPU transfers</span>
+<span class="sd">    - batch_assembly: Collecting and batching data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TrainingProfiler.__init__">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.TrainingProfiler.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">sync_cuda</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="n">enabled</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sync_cuda</span> <span class="o">=</span> <span class="n">sync_cuda</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timings</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TimingStats</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="n">TimingStats</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory</span> <span class="o">=</span> <span class="n">MemoryStats</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TrainingProfiler.measure">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.TrainingProfiler.measure">[docs]</a>
+    <span class="nd">@contextmanager</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">measure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">category</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Context manager to measure time for a category.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+            <span class="k">yield</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Sync CUDA if available and requested</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sync_cuda</span> <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
+
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sync_cuda</span> <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
+
+            <span class="n">duration</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">timings</span><span class="p">[</span><span class="n">category</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TrainingProfiler.record_memory">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.TrainingProfiler.record_memory">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record current memory usage.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">stats</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># GPU memory (CUDA)</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;gpu_allocated_mb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory_allocated</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e6</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;gpu_reserved_mb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory_reserved</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e6</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;gpu_max_allocated_mb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">max_memory_allocated</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e6</span>
+
+        <span class="c1"># GPU memory (MPS)</span>
+        <span class="k">elif</span> <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">mps</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="c1"># MPS doesn&#39;t have detailed memory APIs yet</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;mps_available&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">stats</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TrainingProfiler.increment">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.TrainingProfiler.increment">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">increment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">counter</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">amount</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Increment a counter.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="p">[</span><span class="n">counter</span><span class="p">]</span> <span class="o">+=</span> <span class="n">amount</span></div>
+
+
+<div class="viewcode-block" id="TrainingProfiler.get_stats">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.TrainingProfiler.get_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get all profiling statistics.&quot;&quot;&quot;</span>
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span>
+
+        <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;elapsed_seconds&quot;</span><span class="p">:</span> <span class="n">elapsed</span><span class="p">,</span>
+            <span class="s2">&quot;timings&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;counters&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="p">),</span>
+            <span class="s2">&quot;memory&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;peak_gpu_mb&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">peak_gpu_mb</span><span class="p">,</span>
+                <span class="s2">&quot;current_gpu_mb&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">current_gpu_mb</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">category</span><span class="p">,</span> <span class="n">timing</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">timings</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;timings&quot;</span><span class="p">][</span><span class="n">category</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="n">timing</span><span class="o">.</span><span class="n">count</span><span class="p">,</span>
+                <span class="s2">&quot;total_s&quot;</span><span class="p">:</span> <span class="n">timing</span><span class="o">.</span><span class="n">total</span><span class="p">,</span>
+                <span class="s2">&quot;mean_ms&quot;</span><span class="p">:</span> <span class="n">timing</span><span class="o">.</span><span class="n">mean</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">,</span>
+                <span class="s2">&quot;median_ms&quot;</span><span class="p">:</span> <span class="n">timing</span><span class="o">.</span><span class="n">median</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">,</span>
+                <span class="s2">&quot;std_ms&quot;</span><span class="p">:</span> <span class="n">timing</span><span class="o">.</span><span class="n">std</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">,</span>
+                <span class="s2">&quot;min_ms&quot;</span><span class="p">:</span> <span class="n">timing</span><span class="o">.</span><span class="n">min</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">,</span>
+                <span class="s2">&quot;max_ms&quot;</span><span class="p">:</span> <span class="n">timing</span><span class="o">.</span><span class="n">max</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">,</span>
+                <span class="s2">&quot;p95_ms&quot;</span><span class="p">:</span> <span class="n">timing</span><span class="o">.</span><span class="n">p95</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">,</span>
+                <span class="s2">&quot;pct_of_total&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">timing</span><span class="o">.</span><span class="n">total</span> <span class="o">/</span> <span class="n">elapsed</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="n">elapsed</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">stats</span></div>
+
+
+<div class="viewcode-block" id="TrainingProfiler.report">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.TrainingProfiler.report">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show_all</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate a human-readable profiling report.&quot;&quot;&quot;</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_stats</span><span class="p">()</span>
+
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">,</span>
+            <span class="s2">&quot;TRAINING PROFILER REPORT&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;Total elapsed: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;elapsed_seconds&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;TIMING BREAKDOWN:&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;Category&#39;</span><span class="si">:</span><span class="s2">&lt;25</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Count&#39;</span><span class="si">:</span><span class="s2">&gt;8</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Total&#39;</span><span class="si">:</span><span class="s2">&gt;10</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Mean&#39;</span><span class="si">:</span><span class="s2">&gt;10</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;P95&#39;</span><span class="si">:</span><span class="s2">&gt;10</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;%&#39;</span><span class="si">:</span><span class="s2">&gt;6</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Sort by total time descending</span>
+        <span class="n">sorted_timings</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;timings&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span>
+            <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;total_s&quot;</span><span class="p">],</span>
+            <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">category</span><span class="p">,</span> <span class="n">timing</span> <span class="ow">in</span> <span class="n">sorted_timings</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">show_all</span> <span class="ow">and</span> <span class="n">timing</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">category</span><span class="si">:</span><span class="s2">&lt;25</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">timing</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;8</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">timing</span><span class="p">[</span><span class="s1">&#39;total_s&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;9.2f</span><span class="si">}</span><span class="s2">s &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">timing</span><span class="p">[</span><span class="s1">&#39;mean_ms&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;9.2f</span><span class="si">}</span><span class="s2">ms &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">timing</span><span class="p">[</span><span class="s1">&#39;p95_ms&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;9.2f</span><span class="si">}</span><span class="s2">ms &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">timing</span><span class="p">[</span><span class="s1">&#39;pct_of_total&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;5.1f</span><span class="si">}</span><span class="s2">%&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+            <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">,</span>
+            <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;COUNTERS:&quot;</span><span class="p">,</span>
+        <span class="p">])</span>
+        <span class="k">for</span> <span class="n">counter</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;counters&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">counter</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+            <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;MEMORY:&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;  Peak GPU: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;memory&#39;</span><span class="p">][</span><span class="s1">&#39;peak_gpu_mb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;  Current GPU: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;memory&#39;</span><span class="p">][</span><span class="s1">&#39;current_gpu_mb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">,</span>
+        <span class="p">])</span>
+
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TrainingProfiler.reset">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.TrainingProfiler.reset">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset all profiling data.&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">timings</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory</span> <span class="o">=</span> <span class="n">MemoryStats</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># GPU UTILITIES</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="get_gpu_info">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.get_gpu_info">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_gpu_info</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get detailed GPU information.&quot;&quot;&quot;</span>
+    <span class="n">info</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;cuda_available&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">(),</span>
+        <span class="s2">&quot;mps_available&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">mps</span><span class="o">.</span><span class="n">is_available</span><span class="p">(),</span>
+        <span class="s2">&quot;device_count&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;devices&quot;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+        <span class="n">info</span><span class="p">[</span><span class="s2">&quot;device_count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">device_count</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">device_count</span><span class="p">()):</span>
+            <span class="n">props</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">get_device_properties</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="n">info</span><span class="p">[</span><span class="s2">&quot;devices&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">props</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s2">&quot;total_memory_gb&quot;</span><span class="p">:</span> <span class="n">props</span><span class="o">.</span><span class="n">total_memory</span> <span class="o">/</span> <span class="mf">1e9</span><span class="p">,</span>
+                <span class="s2">&quot;compute_capability&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">props</span><span class="o">.</span><span class="n">major</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">props</span><span class="o">.</span><span class="n">minor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;multi_processor_count&quot;</span><span class="p">:</span> <span class="n">props</span><span class="o">.</span><span class="n">multi_processor_count</span><span class="p">,</span>
+            <span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">info</span></div>
+
+
+
+<div class="viewcode-block" id="estimate_batch_memory">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.estimate_batch_memory">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">estimate_batch_memory</span><span class="p">(</span>
+    <span class="n">model_params</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">state_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span>
+    <span class="n">dtype_bytes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>  <span class="c1"># float32</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimate memory requirements for training.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model_params: Number of model parameters</span>
+<span class="sd">        batch_size: Training batch size</span>
+<span class="sd">        state_dim: State embedding dimension</span>
+<span class="sd">        dtype_bytes: Bytes per element (4 for float32, 2 for float16)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Memory estimates in MB</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Model weights</span>
+    <span class="n">model_mb</span> <span class="o">=</span> <span class="n">model_params</span> <span class="o">*</span> <span class="n">dtype_bytes</span> <span class="o">/</span> <span class="mf">1e6</span>
+
+    <span class="c1"># Gradients (same size as model)</span>
+    <span class="n">gradients_mb</span> <span class="o">=</span> <span class="n">model_mb</span>
+
+    <span class="c1"># Optimizer state (Adam: 2x model for momentum + variance)</span>
+    <span class="n">optimizer_mb</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">model_mb</span>
+
+    <span class="c1"># Activations (rough estimate: 2-4x batch * state_dim per layer)</span>
+    <span class="c1"># Assume ~20 layers with intermediate sizes</span>
+    <span class="n">activations_mb</span> <span class="o">=</span> <span class="n">batch_size</span> <span class="o">*</span> <span class="n">state_dim</span> <span class="o">*</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">dtype_bytes</span> <span class="o">/</span> <span class="mf">1e6</span>
+
+    <span class="c1"># Input/output tensors</span>
+    <span class="n">io_mb</span> <span class="o">=</span> <span class="n">batch_size</span> <span class="o">*</span> <span class="n">state_dim</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">dtype_bytes</span> <span class="o">/</span> <span class="mf">1e6</span>
+
+    <span class="n">total_mb</span> <span class="o">=</span> <span class="n">model_mb</span> <span class="o">+</span> <span class="n">gradients_mb</span> <span class="o">+</span> <span class="n">optimizer_mb</span> <span class="o">+</span> <span class="n">activations_mb</span> <span class="o">+</span> <span class="n">io_mb</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;model_mb&quot;</span><span class="p">:</span> <span class="n">model_mb</span><span class="p">,</span>
+        <span class="s2">&quot;gradients_mb&quot;</span><span class="p">:</span> <span class="n">gradients_mb</span><span class="p">,</span>
+        <span class="s2">&quot;optimizer_mb&quot;</span><span class="p">:</span> <span class="n">optimizer_mb</span><span class="p">,</span>
+        <span class="s2">&quot;activations_mb&quot;</span><span class="p">:</span> <span class="n">activations_mb</span><span class="p">,</span>
+        <span class="s2">&quot;io_mb&quot;</span><span class="p">:</span> <span class="n">io_mb</span><span class="p">,</span>
+        <span class="s2">&quot;total_mb&quot;</span><span class="p">:</span> <span class="n">total_mb</span><span class="p">,</span>
+        <span class="s2">&quot;total_gb&quot;</span><span class="p">:</span> <span class="n">total_mb</span> <span class="o">/</span> <span class="mi">1024</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># TRAINING TIME ESTIMATOR</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="TrainingEstimate">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.TrainingEstimate">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrainingEstimate</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Training time and resource estimates.&quot;&quot;&quot;</span>
+    <span class="n">games_per_hour</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">samples_per_hour</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">time_to_1m_samples_hours</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">time_to_1m_samples_days</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">gpu_memory_required_gb</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">estimated_cost_usd</span><span class="p">:</span> <span class="nb">float</span>  <span class="c1"># AWS spot pricing</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Games/hour: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">games_per_hour</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Samples/hour: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">samples_per_hour</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Time to 1M samples: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">time_to_1m_samples_hours</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">h (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">time_to_1m_samples_days</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> days)</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;GPU memory required: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">gpu_memory_required_gb</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> GB</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Estimated cost: $</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">estimated_cost_usd</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="estimate_training_time">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.estimate_training_time">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">estimate_training_time</span><span class="p">(</span>
+    <span class="n">num_actors</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">mcts_simulations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">avg_game_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">40</span><span class="p">,</span>  <span class="c1"># moves</span>
+    <span class="n">forward_pass_ms</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">,</span>  <span class="c1"># per inference</span>
+    <span class="n">forge_latency_ms</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">50.0</span><span class="p">,</span>  <span class="c1"># per game action</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+    <span class="n">model_params</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6_000_000</span><span class="p">,</span>
+    <span class="n">gpu_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;g4dn.xlarge&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrainingEstimate</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimate training time for different configurations.</span>
+
+<span class="sd">    Key assumptions:</span>
+<span class="sd">    - Each MCTS simulation requires 1 forward pass</span>
+<span class="sd">    - Each game move requires MCTS + Forge communication</span>
+<span class="sd">    - Parallel actors share GPU for batched inference</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Time per move (MCTS + Forge)</span>
+    <span class="n">mcts_time_ms</span> <span class="o">=</span> <span class="n">mcts_simulations</span> <span class="o">*</span> <span class="n">forward_pass_ms</span>
+    <span class="n">move_time_ms</span> <span class="o">=</span> <span class="n">mcts_time_ms</span> <span class="o">+</span> <span class="n">forge_latency_ms</span>
+
+    <span class="c1"># Time per game</span>
+    <span class="n">game_time_ms</span> <span class="o">=</span> <span class="n">avg_game_length</span> <span class="o">*</span> <span class="n">move_time_ms</span>
+    <span class="n">game_time_s</span> <span class="o">=</span> <span class="n">game_time_ms</span> <span class="o">/</span> <span class="mi">1000</span>
+
+    <span class="c1"># With batching, N actors can share forward passes</span>
+    <span class="c1"># Effective speedup is sqrt(N) due to synchronization overhead</span>
+    <span class="n">effective_parallelism</span> <span class="o">=</span> <span class="n">num_actors</span> <span class="o">**</span> <span class="mf">0.7</span>
+    <span class="n">effective_game_time_s</span> <span class="o">=</span> <span class="n">game_time_s</span> <span class="o">/</span> <span class="n">effective_parallelism</span>
+
+    <span class="c1"># Games per hour</span>
+    <span class="n">games_per_hour</span> <span class="o">=</span> <span class="mi">3600</span> <span class="o">/</span> <span class="n">effective_game_time_s</span>
+
+    <span class="c1"># Samples per game (both players&#39; perspectives for each move)</span>
+    <span class="n">samples_per_game</span> <span class="o">=</span> <span class="n">avg_game_length</span> <span class="o">*</span> <span class="mi">2</span>
+    <span class="n">samples_per_hour</span> <span class="o">=</span> <span class="n">games_per_hour</span> <span class="o">*</span> <span class="n">samples_per_game</span>
+
+    <span class="c1"># Time to 1M samples</span>
+    <span class="n">time_to_1m_hours</span> <span class="o">=</span> <span class="mi">1_000_000</span> <span class="o">/</span> <span class="n">samples_per_hour</span>
+    <span class="n">time_to_1m_days</span> <span class="o">=</span> <span class="n">time_to_1m_hours</span> <span class="o">/</span> <span class="mi">24</span>
+
+    <span class="c1"># Memory estimate</span>
+    <span class="n">mem</span> <span class="o">=</span> <span class="n">estimate_batch_memory</span><span class="p">(</span><span class="n">model_params</span><span class="p">,</span> <span class="n">batch_size</span> <span class="o">*</span> <span class="n">num_actors</span><span class="p">)</span>
+
+    <span class="c1"># Cost estimate (AWS spot pricing)</span>
+    <span class="n">spot_prices</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;g4dn.xlarge&quot;</span><span class="p">:</span> <span class="mf">0.16</span><span class="p">,</span>    <span class="c1"># 1x T4, 16GB</span>
+        <span class="s2">&quot;g4dn.2xlarge&quot;</span><span class="p">:</span> <span class="mf">0.23</span><span class="p">,</span>   <span class="c1"># 1x T4, 32GB</span>
+        <span class="s2">&quot;g4dn.12xlarge&quot;</span><span class="p">:</span> <span class="mf">1.20</span><span class="p">,</span>  <span class="c1"># 4x T4, 192GB</span>
+        <span class="s2">&quot;p3.2xlarge&quot;</span><span class="p">:</span> <span class="mf">0.92</span><span class="p">,</span>     <span class="c1"># 1x V100, 16GB</span>
+        <span class="s2">&quot;p3.8xlarge&quot;</span><span class="p">:</span> <span class="mf">3.67</span><span class="p">,</span>     <span class="c1"># 4x V100, 64GB</span>
+    <span class="p">}</span>
+    <span class="n">hourly_cost</span> <span class="o">=</span> <span class="n">spot_prices</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">gpu_type</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">)</span>
+    <span class="n">total_cost</span> <span class="o">=</span> <span class="n">time_to_1m_hours</span> <span class="o">*</span> <span class="n">hourly_cost</span>
+
+    <span class="k">return</span> <span class="n">TrainingEstimate</span><span class="p">(</span>
+        <span class="n">games_per_hour</span><span class="o">=</span><span class="n">games_per_hour</span><span class="p">,</span>
+        <span class="n">samples_per_hour</span><span class="o">=</span><span class="n">samples_per_hour</span><span class="p">,</span>
+        <span class="n">time_to_1m_samples_hours</span><span class="o">=</span><span class="n">time_to_1m_hours</span><span class="p">,</span>
+        <span class="n">time_to_1m_samples_days</span><span class="o">=</span><span class="n">time_to_1m_days</span><span class="p">,</span>
+        <span class="n">gpu_memory_required_gb</span><span class="o">=</span><span class="n">mem</span><span class="p">[</span><span class="s2">&quot;total_gb&quot;</span><span class="p">],</span>
+        <span class="n">estimated_cost_usd</span><span class="o">=</span><span class="n">total_cost</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compare_configurations">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.compare_configurations">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compare_configurations</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compare different training configurations.&quot;&quot;&quot;</span>
+    <span class="n">configs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;1 actor, 50 MCTS sims (baseline)&quot;</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">num_actors</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">mcts_simulations</span><span class="o">=</span><span class="mi">50</span><span class="p">)),</span>
+        <span class="p">(</span><span class="s2">&quot;1 actor, 100 MCTS sims&quot;</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">num_actors</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">mcts_simulations</span><span class="o">=</span><span class="mi">100</span><span class="p">)),</span>
+        <span class="p">(</span><span class="s2">&quot;4 actors, 50 MCTS sims&quot;</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">num_actors</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">mcts_simulations</span><span class="o">=</span><span class="mi">50</span><span class="p">)),</span>
+        <span class="p">(</span><span class="s2">&quot;8 actors, 50 MCTS sims&quot;</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">num_actors</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mcts_simulations</span><span class="o">=</span><span class="mi">50</span><span class="p">)),</span>
+        <span class="p">(</span><span class="s2">&quot;8 actors, 100 MCTS sims&quot;</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">num_actors</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mcts_simulations</span><span class="o">=</span><span class="mi">100</span><span class="p">)),</span>
+        <span class="p">(</span><span class="s2">&quot;16 actors, 50 MCTS sims (g4dn.12xlarge)&quot;</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">num_actors</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">mcts_simulations</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">gpu_type</span><span class="o">=</span><span class="s2">&quot;g4dn.12xlarge&quot;</span><span class="p">)),</span>
+    <span class="p">]</span>
+
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">90</span><span class="p">,</span>
+        <span class="s2">&quot;TRAINING CONFIGURATION COMPARISON&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">90</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;Configuration&#39;</span><span class="si">:</span><span class="s2">&lt;40</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Games/hr&#39;</span><span class="si">:</span><span class="s2">&gt;10</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Samples/hr&#39;</span><span class="si">:</span><span class="s2">&gt;12</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Days to 1M&#39;</span><span class="si">:</span><span class="s2">&gt;12</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Cost&#39;</span><span class="si">:</span><span class="s2">&gt;10</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">90</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">kwargs</span> <span class="ow">in</span> <span class="n">configs</span><span class="p">:</span>
+        <span class="n">est</span> <span class="o">=</span> <span class="n">estimate_training_time</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">&lt;40</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">est</span><span class="o">.</span><span class="n">games_per_hour</span><span class="si">:</span><span class="s2">&gt;10,.0f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">est</span><span class="o">.</span><span class="n">samples_per_hour</span><span class="si">:</span><span class="s2">&gt;12,.0f</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">est</span><span class="o">.</span><span class="n">time_to_1m_samples_days</span><span class="si">:</span><span class="s2">&gt;12.1f</span><span class="si">}</span><span class="s2"> $</span><span class="si">{</span><span class="n">est</span><span class="o">.</span><span class="n">estimated_cost_usd</span><span class="si">:</span><span class="s2">&gt;9.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+        <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">90</span><span class="p">,</span>
+        <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Notes:&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;- Assumes 5ms forward pass, 50ms Forge latency, 40 moves/game&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;- Parallelism efficiency: N^0.7 (accounts for synchronization)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;- Costs are AWS spot prices (70</span><span class="si">% c</span><span class="s2">heaper than on-demand)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">90</span><span class="p">,</span>
+    <span class="p">])</span>
+
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># PROFILED TRAINING STEP</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="profile_training_step">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.profile_training_step">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">profile_training_step</span><span class="p">(</span>
+    <span class="n">network</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+    <span class="n">state_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span>
+    <span class="n">num_actions</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">203</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cuda&quot;</span><span class="p">,</span>
+    <span class="n">num_iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Profile a training step to measure actual performance.</span>
+
+<span class="sd">    Returns detailed timing breakdown.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">profiler</span> <span class="o">=</span> <span class="n">TrainingProfiler</span><span class="p">()</span>
+
+    <span class="c1"># Setup</span>
+    <span class="k">if</span> <span class="n">device</span> <span class="o">==</span> <span class="s2">&quot;cuda&quot;</span> <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">device</span> <span class="o">==</span> <span class="s2">&quot;mps&quot;</span> <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">mps</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;mps&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+    <span class="n">network</span> <span class="o">=</span> <span class="n">network</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">network</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+
+    <span class="c1"># Create dummy data</span>
+    <span class="n">dummy_state</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">state_dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">dummy_action_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">num_actions</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">dummy_target_policy</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">num_actions</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">dummy_target_value</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">network</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
+
+    <span class="c1"># Warmup</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="n">network</span><span class="p">(</span><span class="n">dummy_state</span><span class="p">,</span> <span class="n">dummy_action_mask</span><span class="p">)</span>
+
+    <span class="c1"># Profile inference</span>
+    <span class="n">network</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_iterations</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">profiler</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="s2">&quot;inference&quot;</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                <span class="n">_</span> <span class="o">=</span> <span class="n">network</span><span class="p">(</span><span class="n">dummy_state</span><span class="p">,</span> <span class="n">dummy_action_mask</span><span class="p">)</span>
+
+    <span class="c1"># Profile training step</span>
+    <span class="n">network</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_iterations</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">profiler</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="s2">&quot;forward_train&quot;</span><span class="p">):</span>
+            <span class="n">policy</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">network</span><span class="p">(</span><span class="n">dummy_state</span><span class="p">,</span> <span class="n">dummy_action_mask</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">profiler</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="s2">&quot;loss_compute&quot;</span><span class="p">):</span>
+            <span class="n">policy_loss</span> <span class="o">=</span> <span class="o">-</span><span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dummy_target_policy</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">policy</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">value_loss</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">dummy_target_value</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">policy_loss</span> <span class="o">+</span> <span class="n">value_loss</span>
+
+        <span class="k">with</span> <span class="n">profiler</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="s2">&quot;backward&quot;</span><span class="p">):</span>
+            <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+            <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+
+        <span class="k">with</span> <span class="n">profiler</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="s2">&quot;optimizer_step&quot;</span><span class="p">):</span>
+            <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+
+    <span class="c1"># Profile data transfer</span>
+    <span class="n">cpu_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">state_dim</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_iterations</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">profiler</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="s2">&quot;cpu_to_gpu&quot;</span><span class="p">):</span>
+            <span class="n">gpu_tensor</span> <span class="o">=</span> <span class="n">cpu_tensor</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">profiler</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="s2">&quot;gpu_to_cpu&quot;</span><span class="p">):</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="n">gpu_tensor</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+
+    <span class="n">profiler</span><span class="o">.</span><span class="n">record_memory</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;report&quot;</span><span class="p">:</span> <span class="n">profiler</span><span class="o">.</span><span class="n">report</span><span class="p">(),</span>
+        <span class="s2">&quot;stats&quot;</span><span class="p">:</span> <span class="n">profiler</span><span class="o">.</span><span class="n">get_stats</span><span class="p">(),</span>
+        <span class="s2">&quot;device&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">device</span><span class="p">),</span>
+        <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="n">batch_size</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># MAIN</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">compare_configurations</span><span class="p">())</span>
+    <span class="nb">print</span><span class="p">()</span>
+
+    <span class="c1"># Get GPU info</span>
+    <span class="n">gpu_info</span> <span class="o">=</span> <span class="n">get_gpu_info</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;GPU Information:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  CUDA available: </span><span class="si">{</span><span class="n">gpu_info</span><span class="p">[</span><span class="s1">&#39;cuda_available&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  MPS available: </span><span class="si">{</span><span class="n">gpu_info</span><span class="p">[</span><span class="s1">&#39;mps_available&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">gpu_info</span><span class="p">[</span><span class="s2">&quot;devices&quot;</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">dev</span> <span class="ow">in</span> <span class="n">gpu_info</span><span class="p">[</span><span class="s2">&quot;devices&quot;</span><span class="p">]:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  GPU </span><span class="si">{</span><span class="n">dev</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">dev</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">dev</span><span class="p">[</span><span class="s1">&#39;total_memory_gb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> GB)&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">()</span>
+
+    <span class="c1"># Memory estimate for our model</span>
+    <span class="n">mem</span> <span class="o">=</span> <span class="n">estimate_batch_memory</span><span class="p">(</span>
+        <span class="n">model_params</span><span class="o">=</span><span class="mi">6_200_000</span><span class="p">,</span>  <span class="c1"># GameStateEncoder + PolicyValue</span>
+        <span class="n">batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Memory Estimate (batch=64, 6.2M params):&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mem</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_mb&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">k</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_gb&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># PIPELINE TIMER — lightweight stage-level timing for training pipelines</span>
+<span class="c1"># =============================================================================</span>
+
+<div class="viewcode-block" id="PipelineTimer">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.PipelineTimer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PipelineTimer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Accumulate wall-clock time per named pipeline stage.</span>
+
+<span class="sd">    Designed for coarse-grained pipeline profiling (data_collection,</span>
+<span class="sd">    encoding, training, evaluation) rather than per-call micro-benchmarks</span>
+<span class="sd">    (use ``TrainingProfiler`` for those).</span>
+
+<span class="sd">    Usage::</span>
+
+<span class="sd">        timer = PipelineTimer()</span>
+<span class="sd">        with timer.stage(&quot;data_collection&quot;):</span>
+<span class="sd">            collect_data()</span>
+<span class="sd">        with timer.stage(&quot;training&quot;):</span>
+<span class="sd">            train_model()</span>
+<span class="sd">        print(timer.summary())</span>
+
+<span class="sd">    Or with explicit start/stop::</span>
+
+<span class="sd">        timer = PipelineTimer()</span>
+<span class="sd">        timer.start(&quot;encoding&quot;)</span>
+<span class="sd">        encode_all_samples()</span>
+<span class="sd">        timer.stop(&quot;encoding&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="PipelineTimer.__init__">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.PipelineTimer.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_totals</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># insertion order</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_wall_start</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span></div>
+
+
+    <span class="c1"># -- context manager interface -------------------------------------------</span>
+
+<div class="viewcode-block" id="PipelineTimer.stage">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.PipelineTimer.stage">[docs]</a>
+    <span class="nd">@contextmanager</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Context manager that accumulates time for *name*.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
+
+
+    <span class="c1"># -- explicit start/stop interface ---------------------------------------</span>
+
+<div class="viewcode-block" id="PipelineTimer.start">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.PipelineTimer.start">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Begin timing *name*.  Can be called multiple times (additive).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_totals</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_totals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="PipelineTimer.stop">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.PipelineTimer.stop">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop timing *name* and accumulate elapsed seconds.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_totals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">+=</span> <span class="n">elapsed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span></div>
+
+
+    <span class="c1"># -- query interface -----------------------------------------------------</span>
+
+<div class="viewcode-block" id="PipelineTimer.summary">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.PipelineTimer.summary">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``{stage_name: total_seconds}`` in insertion order.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_totals</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="PipelineTimer.summary_detailed">
+<a class="viewcode-back" href="../../../api/training.html#src.training.profiler.PipelineTimer.summary_detailed">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">summary_detailed</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``{stage_name: {total_s, count, mean_s}}``.&quot;&quot;&quot;</span>
+        <span class="n">wall</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wall_start</span>
+        <span class="n">out</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_order</span><span class="p">:</span>
+            <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_totals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;total_s&quot;</span><span class="p">:</span> <span class="n">total</span><span class="p">,</span>
+                <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="n">count</span><span class="p">,</span>
+                <span class="s2">&quot;mean_s&quot;</span><span class="p">:</span> <span class="n">total</span> <span class="o">/</span> <span class="n">count</span> <span class="k">if</span> <span class="n">count</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s2">&quot;pct_of_wall&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">total</span> <span class="o">/</span> <span class="n">wall</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="n">wall</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="k">return</span> <span class="n">out</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">wall_seconds</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Total wall-clock time since this timer was created.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wall_start</span></div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, ForgeRL Contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>
