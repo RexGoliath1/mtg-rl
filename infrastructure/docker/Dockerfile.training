@@ -28,7 +28,15 @@ RUN mkdir -p /app/src && touch /app/src/__init__.py
 
 # Upgrade pip (PyTorch base has old pip that hits ResolutionTooDeep on complex deps)
 RUN pip install --no-cache-dir --upgrade pip
-# Skip torch if already in base image (pytorch/pytorch base), install everything else
+
+# If no GPU base (slim CI builds), pre-install CPU-only torch to avoid pulling
+# the 4.4GB CUDA version from PyPI which exceeds GitHub runner disk space.
+ARG INSTALL_CPU_TORCH=false
+RUN if [ "$INSTALL_CPU_TORCH" = "true" ]; then \
+      pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu; \
+    fi
+
+# Install project dependencies (torch already satisfied if base is pytorch/* or CPU-only above)
 RUN pip install --no-cache-dir ".[training,data]"
 
 # 2. Now copy the actual source code (changes frequently).
