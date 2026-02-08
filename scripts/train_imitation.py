@@ -300,7 +300,7 @@ def main():
     print(f"Model saved to: {output_path}")
 
     # Final evaluation
-    checkpoint = torch.load(output_path, map_location=device)
+    checkpoint = torch.load(output_path, map_location=device, weights_only=True)
     model.load_state_dict(checkpoint['model_state_dict'])
     _, final_acc, final_top3 = evaluate(model, val_loader, criterion, device)
 
