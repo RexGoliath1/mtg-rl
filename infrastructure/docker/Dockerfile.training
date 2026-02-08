@@ -15,21 +15,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy source code structure
+# Copy project config and install dependencies (torch already in base image)
+COPY pyproject.toml /app/
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
-COPY decks/ /app/decks/
+RUN mkdir -p /app/decks
+RUN pip install --no-cache-dir ".[training,data]"
 
 # Environment variables
 ENV DAEMON_HOST=localhost
 ENV DAEMON_PORT=17171
 ENV S3_BUCKET=""
 ENV CHECKPOINT_DIR=/app/checkpoints
-ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
 # Create directories

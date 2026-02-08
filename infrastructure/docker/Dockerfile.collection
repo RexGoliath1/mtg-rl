@@ -16,16 +16,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy source code
+# Copy project config and install dependencies
+COPY pyproject.toml /app/pyproject.toml
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
-COPY decks/ /app/decks/
+RUN mkdir -p /app/decks
+RUN pip install --no-cache-dir .
+
 # Set environment
-ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
 # Default command shows help
