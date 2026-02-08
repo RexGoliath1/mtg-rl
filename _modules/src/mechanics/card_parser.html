@@ -474,6 +474,15 @@
     <span class="s2">&quot;transmute&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">TRANSMUTE</span><span class="p">,</span>
     <span class="s2">&quot;forecast&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">FORECAST</span><span class="p">,</span>
     <span class="s2">&quot;bloodthirst&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">BLOODTHIRST</span><span class="p">,</span>
+
+    <span class="c1"># Feature gap keywords</span>
+    <span class="s2">&quot;unearth&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">UNEARTH</span><span class="p">,</span>
+    <span class="s2">&quot;amass&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">AMASS</span><span class="p">,</span>
+    <span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">CHANNEL</span><span class="p">,</span>
+    <span class="s2">&quot;ascend&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">ASCEND</span><span class="p">,</span>
+    <span class="s2">&quot;level up&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">LEVEL_UP</span><span class="p">,</span>
+    <span class="s2">&quot;replicate&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">REPLICATE</span><span class="p">,</span>
+    <span class="s2">&quot;scavenge&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">SCAVENGE</span><span class="p">,</span>
 <span class="p">}</span>
 
 
@@ -529,6 +538,9 @@
     <span class="s2">&quot;improvise&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">REDUCE_COST</span><span class="p">,</span>
     <span class="s2">&quot;undaunted&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">REDUCE_COST</span><span class="p">,</span>
     <span class="s2">&quot;assist&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">REDUCE_COST</span><span class="p">,</span>
+
+    <span class="c1"># Feature gap cost categories</span>
+    <span class="s2">&quot;replicate&quot;</span><span class="p">:</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">ADDITIONAL_COST</span><span class="p">,</span>
 <span class="p">}</span>
 
 <span class="c1"># =============================================================================</span>
@@ -620,6 +632,15 @@
     <span class="s2">&quot;populate&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">CREATE_TOKEN</span><span class="p">],</span>
     <span class="s2">&quot;detain&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">CANT_ATTACK</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">CANT_BLOCK</span><span class="p">],</span>
     <span class="s2">&quot;partner with&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">TUTOR_TO_HAND</span><span class="p">],</span>
+
+    <span class="c1"># Feature gap implications</span>
+    <span class="s2">&quot;unearth&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">REANIMATE</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">SACRIFICE</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">HASTE</span><span class="p">],</span>
+    <span class="s2">&quot;amass&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">CREATE_TOKEN</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">PLUS_ONE_COUNTER</span><span class="p">],</span>
+    <span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">ACTIVATED_ABILITY</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">DISCARD</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">FROM_HAND</span><span class="p">],</span>
+    <span class="s2">&quot;ascend&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">THRESHOLD_CONDITION</span><span class="p">],</span>
+    <span class="s2">&quot;level up&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">ACTIVATED_ABILITY</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">PLUS_ONE_COUNTER</span><span class="p">],</span>
+    <span class="s2">&quot;replicate&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">COPY_SPELL</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">ADDITIONAL_COST</span><span class="p">],</span>
+    <span class="s2">&quot;scavenge&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">FROM_GRAVEYARD</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">PLUS_ONE_COUNTER</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">EXILE</span><span class="p">],</span>
 <span class="p">}</span>
 
 
@@ -1310,6 +1331,27 @@
     <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;you\s+may\s+(cast|play)\s+it&quot;</span><span class="p">,</span> <span class="p">[]),</span>
     <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;if\s+you\s+do,?\s+&quot;</span><span class="p">,</span> <span class="p">[]),</span>
     <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;attach\s+it\s+to\s+&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+
+    <span class="c1"># Feature gap patterns (top 15 implementation)</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;counter target .{0,30}spell&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">COUNTER_SPELL</span><span class="p">]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;power and toughness are each equal to&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">POWER_EQUAL_TO_X</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">SET_POWER</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">SET_TOUGHNESS</span><span class="p">]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;devotion to\s+(white|blue|black|red|green)&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">DEVOTION</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">COLOR_CONDITION</span><span class="p">]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;additional combat phase&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">EXTRA_COMBAT</span><span class="p">]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;choose a creature type&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">CHOOSE_CREATURE_TYPE</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">CREATURE_TYPE_MATTERS</span><span class="p">]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;spells .{0,30}cost .{0,5}\{?\d+\}?.{0,5} more to cast&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">INCREASE_COST</span><span class="p">]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;spells .{0,30}cost .{0,5}\{?\d+\}?.{0,5} less to cast&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">REDUCE_COST</span><span class="p">]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;venture into the dungeon&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">VENTURE</span><span class="p">]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;can&#39;t be blocked (except )?by\b&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">CONDITIONAL_UNBLOCKABLE</span><span class="p">]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;each opponent sacrifices&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">EDICT_EFFECT</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">SACRIFICE</span><span class="p">]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;each opponent discards&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">MASS_DISCARD_OPPONENT</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">DISCARD</span><span class="p">]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;activated abilities .{0,30}can&#39;t be activated&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">Mechanic</span><span class="o">.</span><span class="n">ABILITY_SHUTDOWN</span><span class="p">,</span> <span class="n">Mechanic</span><span class="o">.</span><span class="n">STATIC_ABILITY</span><span class="p">]),</span>
+
+    <span class="c1"># Confidence-booster patterns (consume text, no new enums)</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;whenever one or more&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;protection from (white|blue|black|red|green|colorless|monocolored|multicolored|all|each|everything|instants?|sorceries|creatures?|enchantments?|artifacts?|planeswalkers?)&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;if .{0,20}(?:was|is) kicked&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;whenever? .{0,30}becomes? the target&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+    <span class="p">(</span><span class="sa">r</span><span class="s2">&quot;hexproof from\s+(?:white|blue|black|red|green|monocolored|multicolored)&quot;</span><span class="p">,</span> <span class="p">[]),</span>
 <span class="p">]</span>
 
 <span class="c1"># Pre-compile all patterns at module load for ~19x speedup</span>
