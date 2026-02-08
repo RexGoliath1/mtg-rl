@@ -83,7 +83,11 @@ Dynamic state captures what's happening to the card right now (tapped, has count
 
 ### Zone Encoding: Hierarchical Attention
 
-The game state is organized by zones. Each zone contains a variable number of cards.
+The game state is organized by zones. Each zone contains a variable number of cards. The full network architecture (33.1M parameters) is shown in the following diagram, generated from the actual PyTorch model via `scripts/generate_network_diagram.py`:
+
+![ForgeRL AlphaZero Network Architecture](docs/_static/network_architecture.png)
+
+The data flow through zone encoders, cross-zone attention, and output heads is detailed below:
 
 ```
 Per-Card Features (1,363 dims each)
