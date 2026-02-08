@@ -31,6 +31,7 @@ EPOCHS="${EPOCHS:-50}"
 BATCH_SIZE="${BATCH_SIZE:-256}"
 HIDDEN_DIM="${HIDDEN_DIM:-256}"
 LEARNING_RATE="${LEARNING_RATE:-0.001}"
+ENCODER_VERSION="${ENCODER_VERSION:-auto}"
 DATA_PATH=""  # S3 sub-path under imitation_data/ (empty = all)
 
 # Parse arguments
@@ -56,13 +57,17 @@ while [[ $# -gt 0 ]]; do
             DATA_PATH="$2"
             shift 2
             ;;
+        --encoder-version)
+            ENCODER_VERSION="$2"
+            shift 2
+            ;;
         --instance-type)
             INSTANCE_TYPE="$2"
             shift 2
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--epochs N] [--batch-size N] [--hidden-dim N] [--lr RATE] [--data-path S3_PREFIX] [--instance-type TYPE]"
+            echo "Usage: $0 [--epochs N] [--batch-size N] [--hidden-dim N] [--lr RATE] [--data-path S3_PREFIX] [--encoder-version v1|v2|auto] [--instance-type TYPE]"
             exit 1
             ;;
     esac
@@ -76,6 +81,7 @@ echo "Epochs:         $EPOCHS"
 echo "Batch Size:     $BATCH_SIZE"
 echo "Hidden Dim:     $HIDDEN_DIM"
 echo "Learning Rate:  $LEARNING_RATE"
+echo "Encoder:        $ENCODER_VERSION"
 echo "Data Path:      ${DATA_PATH:-all imitation_data/}"
 echo "Region:         $REGION"
 echo ""
@@ -365,6 +371,8 @@ docker run --rm \
         --batch-size BATCH_SIZE_PLACEHOLDER \
         --hidden-dim HIDDEN_DIM_PLACEHOLDER \
         --lr LR_PLACEHOLDER \
+        --encoder-version ENCODER_VERSION_PLACEHOLDER \
+        --mechanics-h5 /app/data/card_mechanics_commander.h5 \
         --output /checkpoints/imitation_policy.pt
 
 TRAINING_EXIT=$?
@@ -420,6 +428,7 @@ USER_DATA="${USER_DATA//EPOCHS_PLACEHOLDER/$EPOCHS}"
 USER_DATA="${USER_DATA//BATCH_SIZE_PLACEHOLDER/$BATCH_SIZE}"
 USER_DATA="${USER_DATA//HIDDEN_DIM_PLACEHOLDER/$HIDDEN_DIM}"
 USER_DATA="${USER_DATA//LR_PLACEHOLDER/$LEARNING_RATE}"
+USER_DATA="${USER_DATA//ENCODER_VERSION_PLACEHOLDER/$ENCODER_VERSION}"
 USER_DATA="${USER_DATA//DATA_PATH_PLACEHOLDER/$DATA_PATH}"
 USER_DATA="${USER_DATA//S3_SYNC_CMD_PLACEHOLDER/$S3_SYNC_CMD}"
 
@@ -526,6 +535,7 @@ echo "  Epochs:        $EPOCHS"
 echo "  Batch Size:    $BATCH_SIZE"
 echo "  Hidden Dim:    $HIDDEN_DIM"
 echo "  Learning Rate: $LEARNING_RATE"
+echo "  Encoder:       $ENCODER_VERSION"
 echo "  HDF5 files:    $H5_COUNT"
 echo ""
 echo "Monitor with:"
