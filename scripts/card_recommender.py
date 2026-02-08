@@ -94,6 +94,25 @@ if os.path.exists(METADATA_PATH):
 else:
     print(f"Warning: {METADATA_PATH} not found, run scripts/generate_recommender_sidecar.py")
 
+# Pre-compute legendary creature index for collection mode
+IS_LEGENDARY = np.zeros(len(CARD_INDEX), dtype=bool)
+META_COLOR_IDENTITY: dict[str, list[str]] = {}
+if METADATA:
+    for name, idx in CARD_INDEX.items():
+        meta = METADATA.get(name, {})
+        if meta.get("is_legendary", False):
+            IS_LEGENDARY[idx] = True
+        META_COLOR_IDENTITY[name] = meta.get("color_identity", [])
+    print(f"Legendary creatures: {IS_LEGENDARY.sum()}")
+
+# Load sample collection for "Use Sample" button
+SAMPLE_COLLECTION_PATH = os.path.join(PROJECT_ROOT, "data", "sample_collection.csv")
+SAMPLE_COLLECTION_TEXT = ""
+if os.path.exists(SAMPLE_COLLECTION_PATH):
+    with open(SAMPLE_COLLECTION_PATH) as f:
+        SAMPLE_COLLECTION_TEXT = f.read()
+    print(f"Sample collection loaded: {SAMPLE_COLLECTION_PATH}")
+
 # Pre-compute CREATURE_TYPE_MATTERS index for tribal filtering
 CTM_IDX = Mechanic.CREATURE_TYPE_MATTERS.value if Mechanic.CREATURE_TYPE_MATTERS.value < len(MECHANICS[0]) else None
 
@@ -939,6 +958,171 @@ def map_cuts_to_recs(cuts: list[dict], recs_flat: list[dict]) -> list[dict]:
     return recs_flat
 
 
+def load_collection(text: str) -> dict:
+    """Parse collection text and resolve card names against the database.
+
+    Returns dict with matched set, unmatched list, commanders list, total quantity.
+    """
+    entries = parse_manabox_collection(text)
+    matched = set()
+    unmatched = []
+    commanders = []
+    total_qty = 0
+
+    for qty, card_name in entries:
+        resolved = resolve_card_name(card_name)
+        if resolved:
+            matched.add(resolved)
+            total_qty += qty
+            if resolved in CARD_INDEX and IS_LEGENDARY[CARD_INDEX[resolved]]:
+                if resolved not in commanders:
+                    commanders.append(resolved)
+        else:
+            unmatched.append(card_name)
+
+    # Sort commanders alphabetically
+    commanders.sort()
+
+    return {
+        "matched": matched,
+        "unmatched": unmatched,
+        "commanders": commanders,
+        "total_qty": total_qty,
+        "total_entries": len(entries),
+    }
+
+
+def recommend_from_collection(
+    commander_name: str,
+    collection_names: set[str],
+    cards_per_theme: int = 3,
+) -> dict:
+    """Generate recommendations from a collection for a given commander.
+
+    Returns dict with themed recommendations, all filtered to collection-only cards.
+    """
+    # Build collection mask
+    collection_mask = np.zeros(len(CARD_INDEX), dtype=bool)
+    for name in collection_names:
+        if name in CARD_INDEX:
+            collection_mask[CARD_INDEX[name]] = True
+
+    # Remove commander from pool
+    if commander_name in CARD_INDEX:
+        collection_mask[CARD_INDEX[commander_name]] = False
+
+    # Get commander's color identity for filtering
+    commander_ci = set(META_COLOR_IDENTITY.get(commander_name, []))
+
+    # Color identity filter: only cards whose CI is subset of commander's
+    ci_mask = np.ones(len(CARD_INDEX), dtype=bool)
+    for name, idx in CARD_INDEX.items():
+        card_ci = set(META_COLOR_IDENTITY.get(name, []))
+        if card_ci and not card_ci.issubset(commander_ci):
+            ci_mask[idx] = False
+
+    # Combined mask: must be in collection AND match color identity
+    eligible_mask = collection_mask & ci_mask
+    eligible_count = int(eligible_mask.sum())
+
+    # Build a "deck" from just the commander to seed analysis
+    commander_key = resolve_card_name(commander_name)
+    if not commander_key:
+        return {"themes": [], "eligible_count": 0, "commander_ci": commander_ci}
+
+    # Get commander's mechanics as centroid seed
+    if commander_key in CARD_INDEX:
+        cmd_vec = MECHANICS[CARD_INDEX[commander_key]].astype(np.float64)
+    else:
+        return {"themes": [], "eligible_count": 0, "commander_ci": commander_ci}
+
+    # Find eligible collection cards and cluster them
+    eligible_names = [name for name in collection_names
+                      if name in CARD_INDEX and eligible_mask[CARD_INDEX[name]]]
+
+    if len(eligible_names) < 3:
+        return {"themes": [], "eligible_count": eligible_count, "commander_ci": commander_ci}
+
+    eligible_vecs = np.array([MECHANICS[CARD_INDEX[n]] for n in eligible_names])
+
+    # KMeans on eligible cards
+    k = 2 if len(eligible_names) < 15 else 3
+    themes = _kmeans_themes(eligible_vecs, eligible_names, k)
+
+    # For each theme, score and rank eligible cards
+    deck_stats = compute_deck_stats([commander_key])
+    curve_boost = compute_curve_boost(deck_stats)
+    fixing_boost = compute_mana_fixing_boost(commander_ci)
+
+    results = []
+    already_recommended = set()
+
+    for theme in themes:
+        centroid = theme["centroid"].astype(np.float64).copy()
+
+        # Blend with commander's mechanics (commander guides the theme)
+        centroid = 0.7 * centroid + 0.3 * cmd_vec
+
+        # Downweight generic utility
+        if len(GENERIC_UTILITY_INDICES) > 0:
+            centroid[GENERIC_UTILITY_INDICES] *= 0.15
+
+        centroid_norm = np.sqrt((centroid ** 2).sum())
+        if centroid_norm < 1e-8:
+            results.append({**theme, "recommendations": []})
+            continue
+
+        # Cosine similarity
+        mech_float = MECHANICS.astype(np.float64)
+        card_norms = np.sqrt((mech_float ** 2).sum(axis=1))
+        dots = mech_float @ centroid
+        scores = dots / (card_norms * centroid_norm + 1e-8)
+
+        # Standard penalties
+        scores[MECH_COUNTS < 3] *= 0.3
+        scores *= QUALITY_BOOST
+        scores *= curve_boost
+        scores *= fixing_boost
+
+        # CRITICAL: Only allow collection cards that match CI
+        scores[~eligible_mask] = 0
+
+        # Remove already recommended
+        for name in already_recommended:
+            if name in CARD_INDEX:
+                scores[CARD_INDEX[name]] = 0
+
+        # Remove commander
+        if commander_key in CARD_INDEX:
+            scores[CARD_INDEX[commander_key]] = 0
+
+        theme_limit = min(2, cards_per_theme) if theme.get("is_generic") else cards_per_theme
+        top_idx = np.argsort(-scores)[:theme_limit]
+        recs = []
+        for idx in top_idx:
+            if scores[idx] <= 0:
+                break
+            name = IDX_TO_NAME[idx]
+            already_recommended.add(name)
+            mechanics = get_mechanics_for_idx(idx)
+            theme_mech_names = {m[0] for m in theme["top_mechanics"]}
+            shared = [m for m in mechanics if m in theme_mech_names]
+            recs.append({
+                "name": name,
+                "score": float(scores[idx]),
+                "mechanics": mechanics,
+                "shared_with_theme": shared,
+            })
+
+        results.append({**theme, "recommendations": recs})
+
+    return {
+        "themes": results,
+        "eligible_count": eligible_count,
+        "commander_ci": commander_ci,
+    }
+
+
 # ---------------------------------------------------------------------------
 # HTML
 # ---------------------------------------------------------------------------
@@ -1215,6 +1399,50 @@ HTML_PAGE = r"""<!DOCTYPE html>
     font-size: 0.82rem; color: var(--text-muted); line-height: 1.6;
   }
   .info-panel strong { color: var(--text); }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex; justify-content: center; gap: 0;
+    margin-bottom: 0;
+  }
+  .tab-bar a {
+    padding: 10px 32px; font-weight: 700; font-size: 0.95rem;
+    text-decoration: none; color: var(--text-muted);
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab-bar a:hover { color: var(--text); }
+  .tab-bar a.active {
+    color: var(--accent); border-bottom-color: var(--accent);
+  }
+
+  /* Commander grid */
+  .commander-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px; margin-top: 16px;
+  }
+  .commander-card {
+    background: var(--card-bg); border: 2px solid var(--card-border);
+    border-radius: 10px; overflow: hidden; cursor: pointer;
+    transition: all 0.2s; text-align: center; padding: 8px;
+  }
+  .commander-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .commander-card img { width: 100%; border-radius: 6px; }
+  .commander-card .cmd-name {
+    font-size: 0.75rem; font-weight: 600; margin-top: 6px;
+    color: var(--text); line-height: 1.2;
+  }
+  .commander-card .cmd-colors {
+    font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;
+  }
+  .collection-stats {
+    background: var(--card-bg); border: 2px solid var(--card-border);
+    border-radius: 12px; padding: 16px 24px; margin-bottom: 20px;
+    display: flex; gap: 24px; justify-content: center; flex-wrap: wrap;
+  }
+  .collection-stats .stat { text-align: center; }
+  .collection-stats .stat-num { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+  .collection-stats .stat-label { font-size: 0.75rem; color: var(--text-muted); }
 </style>
 </head>
 <body>
@@ -1418,6 +1646,8 @@ class RecommenderHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/":
             self._serve_form()
+        elif self.path == "/collection":
+            self._serve_collection_form()
         elif self.path == "/api/health":
             self._json_response({"status": "ok", "cards": len(CARD_INDEX), "vocab_size": DB_VOCAB_SIZE})
         else:
@@ -1433,6 +1663,16 @@ class RecommenderHandler(BaseHTTPRequestHandler):
             mode = params.get("mode", ["themes"])[0]
             cards_per_theme = int(params.get("cards_per_theme", ["3"])[0])
             self._serve_results(decklist, mode, cards_per_theme=cards_per_theme)
+        elif self.path == "/collection":
+            params = parse_qs(body)
+            collection_text = params.get("collection", [""])[0]
+            self._serve_commander_select(collection_text)
+        elif self.path == "/collection/recommend":
+            params = parse_qs(body)
+            collection_text = params.get("collection", [""])[0]
+            commander = params.get("commander", [""])[0]
+            cards_per_theme = int(params.get("cards_per_theme", ["3"])[0])
+            self._serve_collection_results(commander, collection_text, cards_per_theme)
         elif self.path == "/api/recommend":
             try:
                 data = json.loads(body)
@@ -1460,7 +1700,11 @@ class RecommenderHandler(BaseHTTPRequestHandler):
         body = f"""
         <header>
           <h1>MTG Card Recommender</h1>
-          <p>Paste your decklist to get theme-aware, color-filtered card suggestions.</p>
+          <p>Theme-aware, color-filtered card suggestions from your mechanics database.</p>
+          <nav class="tab-bar">
+            <a href="/" class="active">Deck Analysis</a>
+            <a href="/collection">Collection Mode</a>
+          </nav>
         </header>
         <div class="container">
           <div class="form-panel">
@@ -1746,6 +1990,264 @@ Example:
 
         self._html_response(body)
         print(f"  Served recommendations in {elapsed:.1f}s")
+
+    def _serve_collection_form(self):
+        """Collection mode: paste collection text."""
+        sample_escaped = _html_escape(SAMPLE_COLLECTION_TEXT)
+        body = f"""
+        <header>
+          <h1>MTG Card Recommender</h1>
+          <p>Build a Commander deck from your collection.</p>
+          <nav class="tab-bar">
+            <a href="/">Deck Analysis</a>
+            <a href="/collection" class="active">Collection Mode</a>
+          </nav>
+        </header>
+        <div class="container">
+          <div class="form-panel">
+            <h2>Your Collection</h2>
+            <form method="POST" action="/collection" id="collection-form">
+              <textarea name="collection" id="collection" style="height:250px" placeholder="Paste your Manabox CSV export or simple card list here.
+
+Manabox format:
+Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID
+Sol Ring,C21,Commander 2021,242,,Uncommon,2,12345
+
+Simple format:
+1 Sol Ring
+1 Command Tower
+Rhystic Study"></textarea>
+              <div style="display:flex;gap:12px;margin-top:16px;align-items:center">
+                <button type="submit" class="submit-btn">Find Commanders</button>
+                <button type="button" class="submit-btn" style="background:#0f3460"
+                  onclick="document.getElementById('collection').value = document.getElementById('sample-data').value; document.getElementById('collection-form').submit();">
+                  Use Sample Collection (1,000 cards)
+                </button>
+              </div>
+            </form>
+          </div>
+          <textarea id="sample-data" style="display:none">{sample_escaped}</textarea>
+          <div class="info-panel">
+            <strong>How it works:</strong> Paste your collection &rarr; pick a legendary creature as commander &rarr;
+            get recommendations using <em>only cards you own</em>, filtered by color identity and theme synergy.
+          </div>
+        </div>"""
+        self._html_response(body)
+
+    def _serve_commander_select(self, collection_text: str):
+        """Show matched collection stats and commander selection grid."""
+        if not collection_text.strip():
+            self._serve_collection_form()
+            return
+
+        t0 = time.time()
+        coll = load_collection(collection_text)
+        matched = coll["matched"]
+        unmatched = coll["unmatched"]
+        commanders = coll["commanders"]
+
+        # Warning for unmatched
+        warning_html = ""
+        if unmatched:
+            names = ", ".join(unmatched[:10])
+            more = f" ... and {len(unmatched) - 10} more" if len(unmatched) > 10 else ""
+            warning_html = f'<div class="warning">Cards not found in database: {_html_escape(names)}{more}</div>'
+
+        # Stats bar
+        stats_html = f"""
+        <div class="collection-stats">
+          <div class="stat">
+            <div class="stat-num">{len(matched)}</div>
+            <div class="stat-label">Cards Matched</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">{coll["total_entries"]}</div>
+            <div class="stat-label">Collection Entries</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">{len(commanders)}</div>
+            <div class="stat-label">Legendary Creatures</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">{len(unmatched)}</div>
+            <div class="stat-label">Unmatched</div>
+          </div>
+        </div>"""
+
+        # Commander grid with Scryfall images
+        if not commanders:
+            cmd_html = '<div class="warning">No legendary creatures found in your collection. Add some to use as commanders.</div>'
+        else:
+            # Fetch commander images
+            print(f"  Fetching {len(commanders)} commander images from Scryfall...")
+            cmd_infos = batch_scryfall_lookup(commanders)
+
+            # Build commander cards as clickable forms
+            cards_html = ""
+            collection_escaped = _html_escape(collection_text)
+            for info in cmd_infos:
+                name = info.get("name", "")
+                image_uri = info.get("image_uri", "")
+                ci = META_COLOR_IDENTITY.get(name, [])
+                ci_str = "".join(sorted(ci)) if ci else "C"
+
+                img_tag = f'<img src="{image_uri}" alt="{_html_escape(name)}" loading="lazy">' if image_uri else f'<div class="card-img-placeholder" style="height:120px">{_html_escape(name)}</div>'
+
+                cards_html += f"""
+                <form method="POST" action="/collection/recommend" style="display:contents">
+                  <input type="hidden" name="collection" value="{collection_escaped}">
+                  <input type="hidden" name="commander" value="{_html_escape(name)}">
+                  <button type="submit" class="commander-card" style="all:unset;cursor:pointer">
+                    <div class="commander-card">
+                      {img_tag}
+                      <div class="cmd-name">{_html_escape(name)}</div>
+                      <div class="cmd-colors">{ci_str}</div>
+                    </div>
+                  </button>
+                </form>"""
+
+            cmd_html = f"""
+            <h2 style="margin-bottom:4px">Choose Your Commander</h2>
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:12px">Click a legendary creature to get deck recommendations from your collection.</p>
+            <div class="commander-grid">{cards_html}</div>"""
+
+        elapsed = time.time() - t0
+
+        body = f"""
+        <header>
+          <h1>MTG Card Recommender</h1>
+          <p>Select a commander from your collection.</p>
+          <nav class="tab-bar">
+            <a href="/">Deck Analysis</a>
+            <a href="/collection" class="active">Collection Mode</a>
+          </nav>
+        </header>
+        <div class="container">
+          {warning_html}
+          {stats_html}
+          {cmd_html}
+          <div style="text-align:center;margin-top:16px;color:var(--text-muted);font-size:0.8rem">
+            Loaded in {elapsed:.1f}s
+          </div>
+          <a class="back-link" href="/collection">&larr; Upload different collection</a>
+        </div>"""
+        self._html_response(body)
+        print(f"  Served commander selection ({len(commanders)} commanders) in {elapsed:.1f}s")
+
+    def _serve_collection_results(self, commander_name: str, collection_text: str, cards_per_theme: int = 3):
+        """Show collection-filtered recommendations for chosen commander."""
+        if not commander_name or not collection_text:
+            self._serve_collection_form()
+            return
+
+        t0 = time.time()
+
+        # Load collection
+        coll = load_collection(collection_text)
+        matched = coll["matched"]
+
+        # Generate recommendations
+        result = recommend_from_collection(commander_name, matched, cards_per_theme)
+        themed_recs = result["themes"]
+        eligible_count = result["eligible_count"]
+        commander_ci = result["commander_ci"]
+
+        # Gather all rec names for Scryfall lookup
+        all_rec_names = [r["name"] for tr in themed_recs for r in tr.get("recommendations", [])]
+
+        # Also fetch commander image
+        all_fetch_names = [commander_name] + all_rec_names
+        print(f"  Fetching {len(all_fetch_names)} card images from Scryfall...")
+        card_infos_list = batch_scryfall_lookup(all_fetch_names)
+        card_infos_map = {info["name"]: info for info in card_infos_list}
+
+        # Commander card display
+        cmd_info = card_infos_map.get(commander_name, {"name": commander_name})
+        cmd_image = cmd_info.get("image_uri", "")
+        ci_str = "".join(sorted(commander_ci)) if commander_ci else "C"
+        cmd_img_html = f'<img src="{cmd_image}" style="width:200px;border-radius:10px" alt="{_html_escape(commander_name)}">' if cmd_image else ""
+
+        commander_html = f"""
+        <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:24px">
+          <div>{cmd_img_html}</div>
+          <div>
+            <h2 style="margin-bottom:4px">{_html_escape(commander_name)}</h2>
+            <div style="color:var(--text-muted);font-size:0.85rem;margin-bottom:8px">
+              {_html_escape(cmd_info.get("type_line", ""))}
+            </div>
+            <div class="color-pips" style="margin-bottom:8px">{_color_pips_html(commander_ci)}</div>
+            <div style="font-size:0.8rem;color:var(--text-muted)">
+              {eligible_count} eligible cards in your collection (color-filtered)
+            </div>
+          </div>
+        </div>"""
+
+        # Build recommendation HTML (reuse existing card rendering)
+        recs_html = ""
+        rank = 1
+        for theme_result in themed_recs:
+            if not theme_result.get("recommendations"):
+                continue
+            theme_mechs_html = "".join(
+                f'<span class="mech-tag">{m[0]}</span>'
+                for m in theme_result["top_mechanics"][:5]
+            )
+            recs_html += f"""
+            <div class="theme-section">
+              <div class="theme-header">
+                <div class="theme-label">{_html_escape(theme_result["label"])}</div>
+                <div class="theme-cards-count">{len(theme_result["cards"])} collection cards</div>
+                <div class="theme-mechs">{theme_mechs_html}</div>
+              </div>
+              <div class="grid">"""
+            for rec in theme_result["recommendations"]:
+                info = card_infos_map.get(rec["name"], {"name": rec["name"]})
+                recs_html += _card_html(info, rank, rec["score"], rec["mechanics"],
+                                        shared=rec.get("shared_with_theme"))
+                rank += 1
+            recs_html += "</div></div>"
+
+        if not recs_html:
+            recs_html = '<div class="warning">Not enough eligible cards in your collection for this commander. Try a commander with more matching colors.</div>'
+
+        # View More button
+        next_cpt = cards_per_theme + 3
+        collection_escaped = _html_escape(collection_text)
+        view_more_html = f"""
+        <form method="POST" action="/collection/recommend" style="text-align:center;margin:20px 0">
+          <input type="hidden" name="collection" value="{collection_escaped}">
+          <input type="hidden" name="commander" value="{_html_escape(commander_name)}">
+          <input type="hidden" name="cards_per_theme" value="{next_cpt}">
+          <button type="submit" class="submit-btn" style="background:#0f3460">View More ({next_cpt} per theme)</button>
+        </form>"""
+
+        elapsed = time.time() - t0
+
+        body = f"""
+        <header>
+          <h1>Collection Recommendations</h1>
+          <p>Cards from your collection for {_html_escape(commander_name)} ({ci_str})</p>
+          <nav class="tab-bar">
+            <a href="/">Deck Analysis</a>
+            <a href="/collection" class="active">Collection Mode</a>
+          </nav>
+        </header>
+        <div class="stats-bar">
+          <div>Commander: <span>{_html_escape(commander_name)}</span></div>
+          <div>Colors: <span>{ci_str}</span></div>
+          <div>Eligible: <span>{eligible_count} cards</span></div>
+          <div>Time: <span>{elapsed:.1f}s</span></div>
+        </div>
+        <div class="container">
+          {commander_html}
+          {recs_html}
+          {view_more_html}
+          <a class="back-link" href="javascript:history.back()">&larr; Choose different commander</a>
+          <span style="margin:0 8px;color:var(--text-muted)">|</span>
+          <a class="back-link" href="/collection">&larr; Upload different collection</a>
+        </div>"""
+        self._html_response(body)
+        print(f"  Served collection recommendations for {commander_name} in {elapsed:.1f}s")
 
     def _api_recommend(self, data: dict):
         decklist = data.get("decklist", "")
