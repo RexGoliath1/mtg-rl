@@ -231,24 +231,37 @@ fi
 
 # --- [1/6] Install Docker ---
 echo ""
-echo "[1/6] Installing Docker..."
-apt-get update -qq
-apt-get install -y -qq docker.io unzip > /dev/null
-systemctl start docker
-systemctl enable docker
-
-# Install NVIDIA container toolkit if GPU present
-if command -v nvidia-smi &> /dev/null; then
-    echo "Installing NVIDIA container toolkit..."
-    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-    curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-        sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-        tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+echo "[1/6] Ensuring Docker is available..."
+if command -v docker &> /dev/null; then
+    echo "Docker already installed (Deep Learning AMI)"
+    systemctl start docker 2>/dev/null || true
+else
+    echo "Installing Docker..."
     apt-get update -qq
-    apt-get install -y -qq nvidia-container-toolkit > /dev/null
-    nvidia-ctk runtime configure --runtime=docker
-    systemctl restart docker
-    echo "NVIDIA container toolkit installed"
+    apt-get install -y -qq docker.io unzip > /dev/null
+    systemctl start docker
+    systemctl enable docker
+fi
+
+# Ensure unzip is available (for AWS CLI install)
+command -v unzip &> /dev/null || apt-get install -y -qq unzip > /dev/null
+
+# Install NVIDIA container toolkit if GPU present and not already configured
+if command -v nvidia-smi &> /dev/null; then
+    if ! docker info 2>/dev/null | grep -q nvidia; then
+        echo "Installing NVIDIA container toolkit..."
+        curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+        curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+            sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+            tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+        apt-get update -qq
+        apt-get install -y -qq nvidia-container-toolkit > /dev/null
+        nvidia-ctk runtime configure --runtime=docker
+        systemctl restart docker
+        echo "NVIDIA container toolkit installed"
+    else
+        echo "NVIDIA container toolkit already configured"
+    fi
 fi
 
 # --- [2/6] Install AWS CLI ---
