@@ -49,7 +49,7 @@ class GameStateConfig:
 
     # Card mechanics embedding
     mechanics_h5_path: str = "data/card_mechanics_commander.h5"
-    vocab_size: int = 1387  # From vocabulary.py
+    vocab_size: int = 1403  # From vocabulary.py VOCAB_SIZE
     max_params: int = 37    # From precompute_embeddings.py
 
     # Zone capacities (max cards per zone to encode)
@@ -300,6 +300,18 @@ class CardState:
     turns_on_battlefield: int = 0
     cast_this_turn: bool = False
 
+    # Card identity features (from Forge JSON)
+    is_creature: bool = False
+    is_land: bool = False
+    is_artifact: bool = False
+    is_enchantment: bool = False
+    is_planeswalker: bool = False
+    is_instant: bool = False
+    is_sorcery: bool = False
+    power: int = 0
+    toughness: int = 0
+    cmc: int = 0
+
     # Stack-specific (for spells on the stack)
     targets: List[int] = field(default_factory=list)
 
@@ -373,8 +385,34 @@ def encode_card_state(
     ], dtype=np.float32)
     state_features.append(temporal)
 
+    # Card type flags (7 dims)
+    type_flags = np.array([
+        float(card.is_creature),
+        float(card.is_land),
+        float(card.is_artifact),
+        float(card.is_enchantment),
+        float(card.is_planeswalker),
+        float(card.is_instant),
+        float(card.is_sorcery),
+    ], dtype=np.float32)
+    state_features.append(type_flags)
+
+    # Power/toughness (2 dims, normalized)
+    pt = np.array([
+        np.clip(card.power, -1, 20) / 20.0,
+        np.clip(card.toughness, -1, 20) / 20.0,
+    ], dtype=np.float32)
+    state_features.append(pt)
+
+    # CMC (1 dim, normalized)
+    cmc = np.array([
+        np.clip(card.cmc, 0, 16) / 16.0,
+    ], dtype=np.float32)
+    state_features.append(cmc)
+
     # Combine all state features
-    state = np.concatenate(state_features)  # 8 + 7 + 10 + 4 + 2 + 1 = 32 dims
+    # 8 + 7 + 10 + 4 + 2 + 1 + 7 + 2 + 1 = 42 dims
+    state = np.concatenate(state_features)
 
     # Combine mechanics + params + state
     return np.concatenate([mechanics, params, state])
@@ -429,6 +467,12 @@ def parse_forge_json(json_state: Dict[str, Any]) -> Dict[str, Any]:
             "name": player_data.get("name", "Unknown"),
             "life": player_data.get("life", 20),
             "mana": player_data.get("mana", {}),
+            "poison": player_data.get("poison", 0),
+            "library_size": player_data.get("library_size", 0),
+            "hand_size": player_data.get("hand_size", len(player_data.get("hand", []))),
+            "lands_played_this_turn": player_data.get("lands_played_this_turn", 0),
+            "max_land_plays": player_data.get("max_land_plays", 1),
+            "has_lost": player_data.get("has_lost", False),
             "cards": {
                 Zone.HAND: _parse_cards(player_data.get("hand", []), Zone.HAND),
                 Zone.BATTLEFIELD: _parse_cards(player_data.get("battlefield", []), Zone.BATTLEFIELD),
@@ -466,6 +510,18 @@ def _parse_card(card_data: Dict, zone: Zone) -> CardState:
         card_id=card_data.get("id", 0),
         zone=zone,
     )
+
+    # Card identity features (available in all zones)
+    card.is_creature = card_data.get("is_creature", False)
+    card.is_land = card_data.get("is_land", False)
+    card.is_artifact = card_data.get("is_artifact", False)
+    card.is_enchantment = card_data.get("is_enchantment", False)
+    card.is_planeswalker = card_data.get("is_planeswalker", False)
+    card.is_instant = card_data.get("is_instant", False)
+    card.is_sorcery = card_data.get("is_sorcery", False)
+    card.power = card_data.get("power", 0) or 0
+    card.toughness = card_data.get("toughness", 0) or 0
+    card.cmc = card_data.get("cmc", 0) or 0
 
     # Battlefield-specific fields
     if zone == Zone.BATTLEFIELD:
@@ -614,8 +670,11 @@ class ZoneEncoder(nn.Module):
 
 class GlobalEncoder(nn.Module):
     """
-    Encodes global game state (life totals, turn, phase, mana).
+    Encodes global game state (life totals, turn, phase, mana, board awareness).
     """
+
+    # Number of extra global features (per-player + relative + game flow)
+    EXTRA_FEATURES_DIM = 46
 
     def __init__(self, config: GameStateConfig):
         super().__init__()
@@ -646,9 +705,15 @@ class GlobalEncoder(nn.Module):
             nn.GELU(),
         )
 
+        # Board-awareness / extra features encoding
+        self.extra_embed = nn.Sequential(
+            nn.Linear(self.EXTRA_FEATURES_DIM, 96),
+            nn.GELU(),
+        )
+
         # Combine all global features
         self.combine = nn.Sequential(
-            nn.Linear(96 + 96 + 48 + 48, config.global_embedding_dim),
+            nn.Linear(96 + 96 + 48 + 48 + 96, config.global_embedding_dim),
             nn.LayerNorm(config.global_embedding_dim),
             nn.GELU(),
         )
@@ -661,6 +726,7 @@ class GlobalEncoder(nn.Module):
         phase: torch.Tensor,             # [batch, 14] one-hot
         active_player: torch.Tensor,     # [batch, max_players] one-hot
         priority_player: torch.Tensor,   # [batch, max_players] one-hot
+        extra_features: Optional[torch.Tensor] = None,  # [batch, 46]
     ) -> torch.Tensor:
         """
         Encode global game state.
@@ -685,8 +751,16 @@ class GlobalEncoder(nn.Module):
         priority = torch.cat([active_player, priority_player], dim=-1)
         priority_emb = self.priority_embed(priority)
 
+        # Encode extra features (board awareness)
+        if extra_features is None:
+            extra_features = torch.zeros(
+                batch_size, self.EXTRA_FEATURES_DIM,
+                device=life_totals.device
+            )
+        extra_emb = self.extra_embed(extra_features)
+
         # Combine
-        combined = torch.cat([life_emb, mana_emb, turn_emb, priority_emb], dim=-1)
+        combined = torch.cat([life_emb, mana_emb, turn_emb, priority_emb, extra_emb], dim=-1)
         return self.combine(combined)
 
     def _to_binary(self, x: torch.Tensor, num_bits: int) -> torch.Tensor:
@@ -898,7 +972,8 @@ class ForgeGameStateEncoder(nn.Module):
         self.mechanics_cache = MechanicsCache(self.config.mechanics_h5_path)
 
         # Shared card embedding MLP (used by all zone encoders and stack encoder)
-        input_dim = self.config.vocab_size + self.config.max_params + 32  # 32 = state features
+        # 42 = state features (zone 8 + bools 7 + counters 10 + combat 4 + mods 2 + temporal 1 + types 7 + P/T 2 + CMC 1)
+        input_dim = self.config.vocab_size + self.config.max_params + 42
         self.card_embedding = CardEmbeddingMLP(
             input_dim, 1024, self.config.d_model, self.config.dropout
         )
@@ -1005,7 +1080,7 @@ class ForgeGameStateEncoder(nn.Module):
 
             # Encode cards
             card_features = np.zeros(
-                (max_cards, self.config.vocab_size + self.config.max_params + 32),
+                (max_cards, self.config.vocab_size + self.config.max_params + 42),
                 dtype=np.float32
             )
             mask = np.zeros(max_cards, dtype=np.float32)
@@ -1021,7 +1096,7 @@ class ForgeGameStateEncoder(nn.Module):
 
         # Encode stack
         stack_features = np.zeros(
-            (self.config.max_stack, self.config.vocab_size + self.config.max_params + 32),
+            (self.config.max_stack, self.config.vocab_size + self.config.max_params + 42),
             dtype=np.float32
         )
         stack_mask = np.zeros(self.config.max_stack, dtype=np.float32)
@@ -1064,6 +1139,9 @@ class ForgeGameStateEncoder(nn.Module):
         priority_player = np.zeros((1, self.config.max_players), dtype=np.float32)
         priority_player[0, parsed_state["priority_player"] % self.config.max_players] = 1.0
 
+        # Extra global features (46 dims) for board-awareness
+        extra_features = self._compute_extra_features(parsed_state)
+
         return {
             "zone_cards": zone_cards,
             "zone_masks": zone_masks,
@@ -1075,7 +1153,114 @@ class ForgeGameStateEncoder(nn.Module):
             "phase": torch.tensor(phase),
             "active_player": torch.tensor(active_player),
             "priority_player": torch.tensor(priority_player),
+            "extra_features": torch.tensor(extra_features),
         }
+
+    def _compute_extra_features(
+        self,
+        parsed_state: Dict[str, Any],
+    ) -> np.ndarray:
+        """
+        Compute 46-dim extra global features for board awareness.
+
+        Layout (46 dims):
+        - Per-player (4 players × 9 features = 36): poison, library_size,
+          hand_size, lands_played, max_lands, has_lost, creature_count,
+          total_power, untapped_lands
+        - Relative (6): life_diff, card_advantage, board_advantage,
+          library_ratio, poison_threat, lethal_on_board
+        - Game flow (4): stack_depth, is_combat, is_main, self_graveyard_count
+        """
+        extra = np.zeros((1, GlobalEncoder.EXTRA_FEATURES_DIM), dtype=np.float32)
+        players = parsed_state["players"]
+
+        # Per-player features (9 per player, 4 players = 36 dims)
+        per_player_stats = []
+        for pidx in range(self.config.max_players):
+            if pidx < len(players):
+                p = players[pidx]
+                battlefield_cards = p["cards"].get(Zone.BATTLEFIELD, [])
+                creature_count = sum(1 for c in battlefield_cards if c.is_creature)
+                total_power = sum(c.power for c in battlefield_cards if c.is_creature)
+                untapped_lands = sum(
+                    1 for c in battlefield_cards
+                    if c.is_land and not c.is_tapped
+                )
+
+                stats = [
+                    min(p.get("poison", 0), 10) / 10.0,
+                    min(p.get("library_size", 0), 60) / 60.0,
+                    min(p.get("hand_size", 0), 15) / 15.0,
+                    min(p.get("lands_played_this_turn", 0), 3) / 3.0,
+                    min(p.get("max_land_plays", 1), 3) / 3.0,
+                    float(p.get("has_lost", False)),
+                    min(creature_count, 20) / 20.0,
+                    min(total_power, 40) / 40.0,
+                    min(untapped_lands, 10) / 10.0,
+                ]
+            else:
+                stats = [0.0] * 9
+            per_player_stats.append(stats)
+
+        # Flatten per-player → 36 dims
+        for pidx in range(self.config.max_players):
+            offset = pidx * 9
+            for j, val in enumerate(per_player_stats[pidx]):
+                extra[0, offset + j] = val
+
+        # Relative features (6 dims) — self (player 0) vs best opponent
+        self_stats = per_player_stats[0]
+        if len(players) >= 2:
+            p0 = players[0]
+            p1 = players[1]  # Primary opponent
+            bf0 = p0["cards"].get(Zone.BATTLEFIELD, [])
+            bf1 = p1["cards"].get(Zone.BATTLEFIELD, [])
+
+            life_diff = np.clip((p0["life"] - p1["life"]) / 40.0, -1.0, 1.0)
+            card_adv = np.clip(
+                (p0.get("hand_size", 0) - p1.get("hand_size", 0)) / 7.0,
+                -1.0, 1.0,
+            )
+            board_adv = np.clip(
+                (len(bf0) - len(bf1)) / 10.0,
+                -1.0, 1.0,
+            )
+            lib0 = max(p0.get("library_size", 1), 1)
+            lib1 = max(p1.get("library_size", 1), 1)
+            library_ratio = np.clip(lib0 / (lib0 + lib1), 0.0, 1.0)
+            poison_threat = min(p0.get("poison", 0), 10) / 10.0
+            opp_total_power = sum(c.power for c in bf1 if c.is_creature)
+            lethal_on_board = float(opp_total_power >= p0["life"])
+        else:
+            life_diff = 0.0
+            card_adv = 0.0
+            board_adv = 0.0
+            library_ratio = 0.5
+            poison_threat = 0.0
+            lethal_on_board = 0.0
+
+        extra[0, 36] = life_diff
+        extra[0, 37] = card_adv
+        extra[0, 38] = board_adv
+        extra[0, 39] = library_ratio
+        extra[0, 40] = poison_threat
+        extra[0, 41] = lethal_on_board
+
+        # Game flow features (4 dims)
+        phase_val = parsed_state["phase"]
+        stack_depth = min(len(parsed_state["stack"]), 10) / 10.0
+        is_combat = float(Phase.COMBAT_BEGIN <= phase_val <= Phase.COMBAT_END)
+        is_main = float(phase_val in (Phase.MAIN1, Phase.MAIN2))
+        gy_count = 0
+        if players:
+            gy_count = len(players[0]["cards"].get(Zone.GRAVEYARD, []))
+
+        extra[0, 42] = stack_depth
+        extra[0, 43] = is_combat
+        extra[0, 44] = is_main
+        extra[0, 45] = min(gy_count, 30) / 30.0
+
+        return extra
 
     def forward(
         self,
@@ -1089,6 +1274,7 @@ class ForgeGameStateEncoder(nn.Module):
         phase: torch.Tensor,
         active_player: torch.Tensor,
         priority_player: torch.Tensor,
+        extra_features: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Forward pass through the encoder.
@@ -1122,7 +1308,7 @@ class ForgeGameStateEncoder(nn.Module):
         # Encode global state
         global_emb = self.global_encoder(
             life_totals, mana_pools, turn_number, phase,
-            active_player, priority_player
+            active_player, priority_player, extra_features
         )
 
         # Combine all
@@ -1164,7 +1350,7 @@ def test_game_state_encoder():
     total_params = sum(p.numel() for p in encoder.parameters())
     print(f"\nEncoder parameters: {total_params:,}")
 
-    # Test with mock game state
+    # Test with mock game state (includes new per-card and per-player fields)
     mock_state = {
         "turn": 5,
         "phase": "main1",
@@ -1175,19 +1361,25 @@ def test_game_state_encoder():
                 "id": 0,
                 "name": "Player1",
                 "life": 20,
+                "poison": 0,
+                "library_size": 50,
+                "hand_size": 3,
+                "lands_played_this_turn": 1,
+                "max_land_plays": 1,
+                "has_lost": False,
                 "mana": {"W": 2, "U": 0, "B": 0, "R": 1, "G": 1, "C": 3},
                 "hand": [
-                    {"name": "Lightning Bolt", "id": 1},
-                    {"name": "Counterspell", "id": 2},
-                    {"name": "Sol Ring", "id": 3},
+                    {"name": "Lightning Bolt", "id": 1, "is_instant": True, "cmc": 1},
+                    {"name": "Counterspell", "id": 2, "is_instant": True, "cmc": 2},
+                    {"name": "Sol Ring", "id": 3, "is_artifact": True, "cmc": 1},
                 ],
                 "battlefield": [
-                    {"name": "Grizzly Bears", "id": 10, "tapped": False},
-                    {"name": "Forest", "id": 11, "tapped": True},
-                    {"name": "Mountain", "id": 12, "tapped": False},
+                    {"name": "Grizzly Bears", "id": 10, "tapped": False, "is_creature": True, "power": 2, "toughness": 2, "cmc": 2},
+                    {"name": "Forest", "id": 11, "tapped": True, "is_land": True},
+                    {"name": "Mountain", "id": 12, "tapped": False, "is_land": True},
                 ],
                 "graveyard": [
-                    {"name": "Giant Growth", "id": 20},
+                    {"name": "Giant Growth", "id": 20, "is_instant": True, "cmc": 1},
                 ],
                 "exile": [],
                 "command": [],
@@ -1196,15 +1388,21 @@ def test_game_state_encoder():
                 "id": 1,
                 "name": "Opponent",
                 "life": 18,
+                "poison": 2,
+                "library_size": 45,
+                "hand_size": 2,
+                "lands_played_this_turn": 0,
+                "max_land_plays": 1,
+                "has_lost": False,
                 "mana": {"W": 0, "U": 2, "B": 0, "R": 0, "G": 0, "C": 2},
                 "hand": [
                     {"name": "Unknown Card", "id": 100},
                     {"name": "Unknown Card", "id": 101},
                 ],
                 "battlefield": [
-                    {"name": "Snapcaster Mage", "id": 110, "tapped": False},
-                    {"name": "Island", "id": 111, "tapped": True},
-                    {"name": "Island", "id": 112, "tapped": True},
+                    {"name": "Snapcaster Mage", "id": 110, "tapped": False, "is_creature": True, "power": 2, "toughness": 1, "cmc": 2},
+                    {"name": "Island", "id": 111, "tapped": True, "is_land": True},
+                    {"name": "Island", "id": 112, "tapped": True, "is_land": True},
                 ],
                 "graveyard": [],
                 "exile": [],
