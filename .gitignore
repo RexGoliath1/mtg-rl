@@ -171,6 +171,11 @@ training_data/
 training_output/
 reports/
 user_decks/
+decks/
+
+# Legacy requirements files (superseded by pyproject.toml + UV)
+requirements.txt
+requirements.training.txt
 
 # User conversation buffer (notes, screenshots, inspiration docs)
 ClaudeConversation.txt
@@ -194,3 +199,5 @@ infrastructure/TERRAFORM_VS_AWSCLI.md
 
 # Full rules text (large reference file, not code)
 MagicCompRules*.txt
+best practices.pdf
+claude_code_export.tar.gz
