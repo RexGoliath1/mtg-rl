@@ -1209,7 +1209,6 @@ class ForgeGameStateEncoder(nn.Module):
                 extra[0, offset + j] = val
 
         # Relative features (6 dims) — self (player 0) vs best opponent
-        self_stats = per_player_stats[0]
         if len(players) >= 2:
             p0 = players[0]
             p1 = players[1]  # Primary opponent
