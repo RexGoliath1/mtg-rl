@@ -65,4 +65,12 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed technical design and [DEPLOY
 
 ## License
 
-Private repository.
+MIT License. See [NOTICE](NOTICE) for third-party attributions.
+
+This project uses [Forge](https://github.com/Card-Forge/forge) (GPL-3.0)
+as a separate daemon process, card data from [Scryfall](https://scryfall.com),
+and game data from [17lands](https://www.17lands.com) (CC BY 4.0).
+
+ForgeRL is unofficial Fan Content permitted under the [Fan Content Policy](https://company.wizards.com/en/legal/fancontentpolicy).
+Not approved/endorsed by Wizards. Portions of the materials used are
+property of Wizards of the Coast. &copy; Wizards of the Coast LLC.
