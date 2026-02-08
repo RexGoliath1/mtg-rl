@@ -426,7 +426,7 @@ LAUNCH_SPEC=$(cat << EOF
     "UserData": "$USER_DATA_B64",
     "BlockDeviceMappings": [{
         "DeviceName": "/dev/sda1",
-        "Ebs": {"VolumeSize": 50, "VolumeType": "gp3"}
+        "Ebs": {"VolumeSize": 80, "VolumeType": "gp3"}
     }]
 }
 EOF
@@ -481,7 +481,7 @@ if [ -z "$INSTANCE_ID" ]; then
         --subnet-id "$SUBNET_ID" \
         --iam-instance-profile "Name=$INSTANCE_PROFILE" \
         --user-data "$USER_DATA" \
-        --block-device-mappings "[{\"DeviceName\":\"/dev/sda1\",\"Ebs\":{\"VolumeSize\":50,\"VolumeType\":\"gp3\"}}]" \
+        --block-device-mappings "[{\"DeviceName\":\"/dev/sda1\",\"Ebs\":{\"VolumeSize\":80,\"VolumeType\":\"gp3\"}}]" \
         --query 'Instances[0].InstanceId' \
         --output text)
 fi
