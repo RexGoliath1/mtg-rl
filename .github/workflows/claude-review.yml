@@ -3,7 +3,7 @@ name: Claude PR Review
 on:
   # Automatic review on every PR
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened, ready_for_review]
   # On-demand via @claude mentions in comments
   issue_comment:
     types: [created]
@@ -22,7 +22,7 @@ jobs:
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
       issues: write
       id-token: write
@@ -61,4 +61,4 @@ jobs:
 
           claude_args: |
             --model claude-sonnet-4-5-20250929
-            --max-turns 5
+            --max-turns 10
