@@ -1050,12 +1050,14 @@ def recommend_from_collection(
         collection_mask[CARD_INDEX[commander_name]] = False
 
     # Get commander's color identity for filtering
-    commander_ci = set(META_COLOR_IDENTITY.get(commander_name, []))
+    # Fall back to COLOR_IDENTITY if META_COLOR_IDENTITY is empty (missing sidecar)
+    ci_source = META_COLOR_IDENTITY if META_COLOR_IDENTITY else COLOR_IDENTITY
+    commander_ci = set(ci_source.get(commander_name, []))
 
     # Color identity filter: only cards whose CI is subset of commander's
     ci_mask = np.ones(len(CARD_INDEX), dtype=bool)
     for name, idx in CARD_INDEX.items():
-        card_ci = set(META_COLOR_IDENTITY.get(name, []))
+        card_ci = set(ci_source.get(name, []))
         if card_ci and not card_ci.issubset(commander_ci):
             ci_mask[idx] = False
 
