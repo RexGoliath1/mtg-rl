@@ -34,6 +34,7 @@ from src.deploy.package import (
 )
 from src.deploy.userdata import (
     generate_collection_userdata,
+    generate_docker_collection_userdata,
     generate_training_userdata,
     generate_notification_section,
 )
@@ -70,6 +71,7 @@ __all__ = [
     "s3_key_exists",
     # Userdata
     "generate_collection_userdata",
+    "generate_docker_collection_userdata",
     "generate_training_userdata",
     "generate_notification_section",
     # Monitor

@@ -6,6 +6,12 @@ collection and GPU training phases.
 
 Uses string.Template for variable substitution (no Jinja2 dependency).
 
+Two collection modes:
+  1. Legacy (tarball): Downloads code + Forge JAR from S3, installs Java/Python,
+     runs collection natively.  Still works but fragile on macOS->Linux boundary.
+  2. Docker (recommended): Pulls pre-built daemon + collection images from ECR,
+     runs via docker compose.  No JDK/Maven/Xvfb/tar issues.
+
 Key GOTCHAs from project memory:
   - Forge daemon needs Xvfb (X11) even in daemon mode (Java Swing)
   - CWD must be forge-gui-desktop/ so ../forge-gui/res/ resolves
@@ -191,6 +197,167 @@ echo '{"status":"complete","timestamp":"${timestamp}","games":${num_games}}' | \
 
 # Stop Forge daemon
 kill $$FORGE_PID 2>/dev/null || true
+
+echo "Shutting down..."
+shutdown -h now
+""")
+
+
+# --------------------------------------------------------------------------
+# Docker-based collection userdata template (recommended)
+# --------------------------------------------------------------------------
+
+_DOCKER_COLLECTION_TEMPLATE = Template(r"""#!/bin/bash
+set -ex
+
+exec > >(tee /var/log/data-collection.log) 2>&1
+echo "=========================================="
+echo "DATA COLLECTION SETUP (Docker)"
+echo "=========================================="
+date
+
+# --- Instance metadata ---
+INSTANCE_TYPE=$$(curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/instance-type 2>/dev/null || echo "unknown")
+INSTANCE_ID=$$(curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "unknown")
+AZ=$$(curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/placement/availability-zone 2>/dev/null || echo "unknown")
+echo "Instance type: $$INSTANCE_TYPE"
+echo "Instance ID: $$INSTANCE_ID"
+echo "Availability zone: $$AZ"
+echo "CPU cores: $$(nproc)"
+echo "Memory: $$(free -h | awk '/Mem:/ {print $$2}')"
+echo "Disk: $$(df -h / | awk 'NR==2 {print $$2}')"
+
+# --- Install Docker and AWS CLI ---
+echo ""
+echo "[1/4] Installing Docker..."
+apt-get update -qq
+apt-get install -y -qq docker.io docker-compose-v2 unzip > /dev/null
+systemctl start docker
+systemctl enable docker
+
+echo ""
+echo "[2/4] Installing AWS CLI..."
+if ! command -v aws &> /dev/null; then
+    curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    unzip -q awscliv2.zip
+    ./aws/install --update
+    rm -rf aws awscliv2.zip
+fi
+
+# --- Login to ECR and pull images ---
+echo ""
+echo "[3/4] Pulling Docker images from ECR..."
+aws ecr get-login-password --region ${ecr_region} | \
+    docker login --username AWS --password-stdin ${ecr_registry}
+
+docker pull ${ecr_registry}/mtg-rl-daemon:latest
+docker pull ${ecr_registry}/mtg-rl-collection:latest
+
+echo "Images pulled successfully"
+docker images
+
+# --- Start background log uploader ---
+(
+    while true; do
+        sleep 300
+        aws s3 cp /var/log/data-collection.log \
+            s3://${s3_bucket}/imitation_data/${run_id}/live_log.txt 2>/dev/null || true
+    done
+) &
+LOG_UPLOADER_PID=$$!
+echo "Background log uploader started (PID: $$LOG_UPLOADER_PID, interval: 5min)"
+
+# --- Run data collection via Docker Compose ---
+echo ""
+echo "[4/4] Starting data collection..."
+echo "=========================================="
+echo "STARTING DATA COLLECTION"
+echo "=========================================="
+echo "Games: ${num_games}"
+echo "Workers: ${num_workers}"
+echo "Timeout: ${game_timeout}"
+date
+
+mkdir -p /home/ubuntu/collection /home/ubuntu/training_data
+cat > /home/ubuntu/collection/docker-compose.yml << 'COMPOSE_EOF'
+services:
+  daemon:
+    image: ${ecr_registry}/mtg-rl-daemon:latest
+    container_name: mtg-daemon
+    ports:
+      - "17171:17171"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'STATUS' | nc -w 5 localhost 17171 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  collection:
+    image: ${ecr_registry}/mtg-rl-collection:latest
+    container_name: mtg-collection
+    depends_on:
+      daemon:
+        condition: service_healthy
+    volumes:
+      - /home/ubuntu/training_data:/app/training_data
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      python -u scripts/collect_ai_training_data.py
+      --games ${num_games}
+      --workers ${num_workers}
+      --host daemon
+      --port 17171
+      --output /app/training_data
+      --save-interval ${save_interval}
+      --timeout ${game_timeout}
+COMPOSE_EOF
+
+cd /home/ubuntu/collection
+docker compose up --abort-on-container-exit --exit-code-from collection 2>&1 | tee /var/log/docker-compose.log
+COMPOSE_EXIT=$$?
+
+echo "=========================================="
+echo "COLLECTION COMPLETE (exit code: $$COMPOSE_EXIT)"
+echo "=========================================="
+date
+
+# Save daemon logs
+docker compose logs daemon > /var/log/forge-daemon.log 2>&1 || true
+
+# Stop background log uploader
+kill $$LOG_UPLOADER_PID 2>/dev/null || true
+
+# --- Upload results to S3 ---
+echo "Uploading results to S3..."
+aws s3 sync /home/ubuntu/training_data/ \
+    s3://${s3_bucket}/imitation_data/${run_id}/ \
+    --exclude "*.tex"
+
+# Upload logs
+aws s3 cp /var/log/data-collection.log \
+    s3://${s3_bucket}/imitation_data/${run_id}/collection_log.txt
+aws s3 cp /var/log/forge-daemon.log \
+    s3://${s3_bucket}/imitation_data/${run_id}/forge_daemon.log 2>/dev/null || true
+aws s3 cp /var/log/docker-compose.log \
+    s3://${s3_bucket}/imitation_data/${run_id}/docker_compose.log 2>/dev/null || true
+
+echo "Results uploaded to s3://${s3_bucket}/imitation_data/${run_id}/"
+
+# Signal completion
+echo '{"status":"complete","timestamp":"${timestamp}","games":${num_games},"method":"docker"}' | \
+    aws s3 cp - s3://${s3_bucket}/imitation_data/${run_id}/collection_complete.json
+
+# Stop containers
+docker compose down 2>/dev/null || true
 
 echo "Shutting down..."
 shutdown -h now
@@ -413,6 +580,43 @@ def generate_collection_userdata(
         forge_branch=collection_config.forge_branch,
         forge_port=collection_config.forge_port,
         forge_java_heap=collection_config.forge_java_heap,
+        num_games=collection_config.num_games,
+        num_workers=collection_config.num_workers,
+        game_timeout=collection_config.game_timeout,
+        save_interval=collection_config.save_interval,
+        run_id=run_id,
+        timestamp=timestamp,
+    )
+
+
+def generate_docker_collection_userdata(
+    deploy_config: DeployConfig,
+    collection_config: CollectionConfig,
+    run_id: str,
+    timestamp: str,
+    ecr_registry: str,
+) -> str:
+    """
+    Generate bash userdata script for Docker-based data collection.
+
+    Uses pre-built Docker images from ECR instead of S3 tarballs.
+    No JDK, Maven, Xvfb, or Python deps needed on the instance --
+    only Docker and AWS CLI.
+
+    Args:
+        deploy_config: Top-level deploy settings.
+        collection_config: Collection-specific settings.
+        run_id: Unique run identifier (e.g. "collection_20260208_143000").
+        timestamp: Timestamp string for S3 paths.
+        ecr_registry: ECR registry URL (e.g. "123456789.dkr.ecr.us-east-1.amazonaws.com").
+
+    Returns:
+        Complete bash script as a string.
+    """
+    return _DOCKER_COLLECTION_TEMPLATE.substitute(
+        s3_bucket=deploy_config.s3_bucket,
+        ecr_registry=ecr_registry,
+        ecr_region=deploy_config.region,
         num_games=collection_config.num_games,
         num_workers=collection_config.num_workers,
         game_timeout=collection_config.game_timeout,
