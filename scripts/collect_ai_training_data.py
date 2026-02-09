@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Collect AI Training Data
+Collect AI Training Data (v2 format)
 
 Run games in observation mode (-o) where the Forge AI makes all
 decisions autonomously. The collector observes and records each
 decision point (game state, available actions, AI's choice) for
 imitation learning.
 
-Storage: HDF5 for efficient numerical data, with JSON metadata.
+Storage: HDF5 with raw game_state_json for re-encoding via
+ForgeGameStateEncoder at training time (768-dim mechanics embeddings).
 
 For imitation learning bootstrapping:
 - Focus on card selection and turn flow
@@ -206,131 +207,46 @@ def collect_training_game(
     }
 
 
-def encode_game_state(state: dict) -> np.ndarray:
-    """Encode game state as fixed-size numpy array."""
-    # Fixed-size encoding: [p1_life, p1_hand, p1_lib, p1_creatures, p1_lands, p1_other, p1_mana,
-    #                       p2_life, p2_hand, p2_lib, p2_creatures, p2_lands, p2_other, p2_mana,
-    #                       turn, phase_idx, is_game_over]
-    players = state.get("players", [{}, {}])
-    p1 = players[0] if len(players) > 0 else {}
-    p2 = players[1] if len(players) > 1 else {}
+def _extract_decision_fields(decision: dict) -> tuple:
+    """Extract HDF5 fields from a raw decision dict.
 
-    phase_map = {
-        "UNTAP": 0, "UPKEEP": 1, "DRAW": 2, "MAIN1": 3,
-        "COMBAT_BEGIN": 4, "COMBAT_DECLARE_ATTACKERS": 5,
-        "COMBAT_DECLARE_BLOCKERS": 6, "COMBAT_FIRST_STRIKE_DAMAGE": 7,
-        "COMBAT_DAMAGE": 8, "COMBAT_END": 9, "MAIN2": 10,
-        "END_OF_TURN": 11, "CLEANUP": 12
-    }
-
-    return np.array([
-        p1.get("life", 20),
-        p1.get("hand_size", 0),
-        p1.get("library_size", 0),
-        p1.get("battlefield_creatures", 0),
-        p1.get("battlefield_lands", 0),
-        p1.get("battlefield_other", 0),
-        p1.get("mana_pool", {}).get("total", 0),
-        p2.get("life", 20),
-        p2.get("hand_size", 0),
-        p2.get("library_size", 0),
-        p2.get("battlefield_creatures", 0),
-        p2.get("battlefield_lands", 0),
-        p2.get("battlefield_other", 0),
-        p2.get("mana_pool", {}).get("total", 0),
-        state.get("turn", 1) if "turn" not in state else 1,
-        phase_map.get(state.get("phase", "MAIN1"), 3),
-        1 if state.get("is_game_over", False) else 0
-    ], dtype=np.float32)
-
-
-def find_action_index(ai_choice: dict, actions: list) -> int:
-    """Find the index of ai_choice in the actions list.
-
-    Matches by comparing action type and card name (if present).
-    Returns -1 if not found.
+    Returns (turn, choice_idx, num_actions, decision_type_str, game_state_json).
+    The choice_idx is the index of ai_choice in the actions list as reported
+    by Forge (ai_choice_index field), or -1 for pass / unresolved.
     """
-    if not isinstance(ai_choice, dict) or not actions:
-        return -1
-
-    choice_action = ai_choice.get("action", "")
-    choice_card = ai_choice.get("card", "")
-
-    for idx, action in enumerate(actions):
-        if not isinstance(action, dict):
-            continue
-        # Match by action type and card name
-        if action.get("action") == choice_action:
-            # If both have cards, they must match
-            if choice_card and action.get("card"):
-                if action.get("card") == choice_card:
-                    return idx
-            # If choice has no card, just match action type
-            elif not choice_card and not action.get("card"):
-                return idx
-            # If only action matches and there's no card to compare
-            elif not choice_card:
-                return idx
-
-    # Fallback: try exact match on action type only (first match)
-    for idx, action in enumerate(actions):
-        if isinstance(action, dict) and action.get("action") == choice_action:
-            return idx
-
-    return -1
-
-
-def encode_decision(decision: dict) -> tuple:
-    """Encode a decision into arrays for HDF5 storage."""
     dtype = decision.get("decision_type", "unknown")
-
-    # Encode game state
-    game_state = decision.get("game_state", {})
-    state_vec = encode_game_state(game_state)
-
-    # Encode decision metadata
     turn = decision.get("turn", 0)
-
-    # Get actions list first (needed for index lookup)
     actions = decision.get("actions", [])
     num_actions = len(actions)
 
-    # Encode AI choice as index into actions list
+    # Use Forge-reported choice index when available (v2 path).
+    # Falls back to -1 (pass / unknown).
     ai_choice = decision.get("ai_choice", {})
-    if dtype == "choose_action":
-        if isinstance(ai_choice, dict) and ai_choice.get("action") == "pass":
-            choice_idx = -1  # Pass is not in actions list
-        elif isinstance(ai_choice, dict):
-            # Find actual index in actions list
-            choice_idx = find_action_index(ai_choice, actions)
-            if choice_idx == -1:
-                # Couldn't find match - log for debugging but treat as pass
-                choice_idx = -1
-        else:
-            choice_idx = -1
+    choice_idx = decision.get("ai_choice_index", -1)
+    if choice_idx == -1 and isinstance(ai_choice, dict) and ai_choice.get("action") == "pass":
+        choice_idx = -1
     elif dtype in ("declare_attackers", "declare_blockers"):
         if isinstance(ai_choice, list):
             choice_idx = len(ai_choice)  # Number of attackers/blockers
         else:
             choice_idx = 0
-    else:
-        choice_idx = -1
 
-    return state_vec, turn, choice_idx, num_actions, dtype
+    game_state = decision.get("game_state", {})
+    game_state_json = json.dumps(game_state, separators=(",", ":"))
+
+    return turn, choice_idx, num_actions, dtype, game_state_json
 
 
 def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
-    """Save decisions to HDF5 file.
+    """Save decisions to HDF5 file (v2 format).
 
-    Stores both the legacy 17-dim state encoding AND the raw game state JSON.
-    The raw JSON enables re-encoding with ForgeGameStateEncoder at training
-    time, producing full 512-dim card-level mechanics embeddings.
+    Stores raw game_state_json for re-encoding with ForgeGameStateEncoder
+    at training time, plus decision metadata (turns, choices, num_actions,
+    decision_types).
     """
     if not decisions:
         return
 
-    # Encode all decisions
-    state_vecs = []
     turns = []
     choices = []
     num_actions_list = []
@@ -340,40 +256,30 @@ def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
     type_map = {"choose_action": 0, "declare_attackers": 1, "declare_blockers": 2, "unknown": 3}
 
     for d in decisions:
-        state_vec, turn, choice_idx, num_actions, dtype = encode_decision(d)
-        state_vecs.append(state_vec)
+        turn, choice_idx, num_actions, dtype, gs_json = _extract_decision_fields(d)
         turns.append(turn)
         choices.append(choice_idx)
         num_actions_list.append(num_actions)
         decision_types.append(type_map.get(dtype, 3))
+        game_state_jsons.append(gs_json)
 
-        # Serialize full game state for rich encoding at training time
-        game_state = d.get("game_state", {})
-        game_state_jsons.append(json.dumps(game_state, separators=(",", ":")))
-
-    # Stack into arrays
-    states = np.stack(state_vecs)
     turns = np.array(turns, dtype=np.int32)
     choices = np.array(choices, dtype=np.int32)
     num_actions = np.array(num_actions_list, dtype=np.int32)
     dtypes = np.array(decision_types, dtype=np.int8)
 
-    # Save to HDF5
     logger.info("HDF5 write start: %s (%d rows)", output_path.name, len(decisions))
     with h5py.File(output_path, "w") as f:
-        f.create_dataset("states", data=states, compression="gzip", compression_opts=4)
         f.create_dataset("turns", data=turns, compression="gzip")
         f.create_dataset("choices", data=choices, compression="gzip")
         f.create_dataset("num_actions", data=num_actions, compression="gzip")
         f.create_dataset("decision_types", data=dtypes, compression="gzip")
 
-        # Store raw game state JSON for ForgeGameStateEncoder at training time
         dt = h5py.special_dtype(vlen=str)
         f.create_dataset("game_state_json", data=game_state_jsons, dtype=dt,
                          compression="gzip", compression_opts=4)
 
-        # Store metadata as attributes
-        f.attrs["encoding_version"] = 2  # v1=17-dim only, v2=17-dim + raw JSON
+        f.attrs["encoding_version"] = 2
         for k, v in metadata.items():
             if isinstance(v, (str, int, float)):
                 f.attrs[k] = v
@@ -401,9 +307,11 @@ class IncrementalHDF5Writer:
     Opens the HDF5 file once with extensible (resizable) datasets and
     flushes buffered decisions periodically so that only a small window
     of data is ever held in RAM.
+
+    V2 format: stores game_state_json (raw JSON for ForgeGameStateEncoder)
+    plus decision metadata (turns, choices, num_actions, decision_types).
     """
 
-    STATE_DIM = 17
     TYPE_MAP = {"choose_action": 0, "declare_attackers": 1, "declare_blockers": 2, "unknown": 3}
 
     def __init__(self, output_path: Path):
@@ -416,11 +324,6 @@ class IncrementalHDF5Writer:
 
         # Create extensible datasets with chunked storage for efficient
         # appends and gzip compression.
-        self._ds_states = self._file.create_dataset(
-            "states", shape=(0, self.STATE_DIM), maxshape=(None, self.STATE_DIM),
-            dtype="f4", chunks=(1000, self.STATE_DIM),
-            compression="gzip", compression_opts=4,
-        )
         self._ds_turns = self._file.create_dataset(
             "turns", shape=(0,), maxshape=(None,),
             dtype="i4", chunks=(1000,), compression="gzip",
@@ -451,7 +354,6 @@ class IncrementalHDF5Writer:
         if not decisions:
             return 0
 
-        state_vecs = []
         turns = []
         choices = []
         num_actions_list = []
@@ -459,21 +361,16 @@ class IncrementalHDF5Writer:
         game_state_jsons = []
 
         for d in decisions:
-            state_vec, turn, choice_idx, num_actions, dtype = encode_decision(d)
-            state_vecs.append(state_vec)
+            turn, choice_idx, num_actions, dtype, gs_json = _extract_decision_fields(d)
             turns.append(turn)
             choices.append(choice_idx)
             num_actions_list.append(num_actions)
             decision_types.append(self.TYPE_MAP.get(dtype, 3))
-            game_state = d.get("game_state", {})
-            game_state_jsons.append(json.dumps(game_state, separators=(",", ":")))
+            game_state_jsons.append(gs_json)
 
         n = len(decisions)
         old = self.total_rows
         new = old + n
-
-        self._ds_states.resize((new, self.STATE_DIM))
-        self._ds_states[old:new] = np.stack(state_vecs)
 
         self._ds_turns.resize((new,))
         self._ds_turns[old:new] = np.array(turns, dtype=np.int32)
@@ -632,7 +529,7 @@ Avg Duration (ms) & {avg_duration:.0f} \\\\
 \\item Focus: card selection, turn flow, combat decisions
 \\item NOT optimizing for win rate (self-play handles that)
 \\item Storage: HDF5 with gzip compression (\\textasciitilde 20x smaller than JSON)
-\\item State encoding: 17-dim legacy + raw JSON for 512-dim mechanics encoding
+\\item State encoding: raw game\\_state\\_json for 768-dim ForgeGameStateEncoder at training time
 \\end{{itemize}}
 
 \\section{{Coverage Analysis}}
@@ -854,7 +751,7 @@ def collect_training_batch(
     logger.info("COLLECTION COMPLETE")
     logger.info("=" * 60)
     logger.info("HDF5 data saved to %s", hdf5_file)
-    logger.info("  States shape: (%d, 17)", writer.total_rows)
+    logger.info("  Decisions: %d rows", writer.total_rows)
     if hdf5_file.exists():
         size_mb = hdf5_file.stat().st_size / (1024 * 1024)
         logger.info("  Compressed size: %.2f MB", size_mb)
