@@ -1,122 +1,27 @@
 # syntax=docker/dockerfile:1
 # Forge Daemon Container
-# Runs the MTG game engine in daemon mode for RL training
-# Multi-stage build: Stage 1 builds Forge, Stage 2 runs daemon
+# Runs the MTG game engine in daemon mode for RL training.
 #
-# JAR Caching: CI injects a pre-built JAR via .forge-jar-cache/forge.jar
-# in the build context. When present, the ~8 min Maven build is skipped.
-# The git clone always runs (needed for res/ files).
-
-# ==============================================================================
-# Stage 1: Build Forge (or use pre-built JAR from build context)
-# ==============================================================================
-FROM maven:3.9-eclipse-temurin-17 AS builder
-
-WORKDIR /build
-
-# Copy pre-built JAR from CI cache if available.
-# The .forge-jar-cache/ dir always has a .keep sentinel so COPY never fails.
-COPY .forge-jar-cache/ /tmp/jar-cache/
-
-# Clone Forge source (always needed for res/ files in Stage 2)
-ARG FORGE_REPO=https://github.com/RexGoliath1/forge.git
-ARG FORGE_BRANCH=feature/rl-daemon-mode
-RUN git clone --depth 1 -b ${FORGE_BRANCH} ${FORGE_REPO} .
-
-# Remove problematic plugins + install build profiling (only if building)
-RUN if [ ! -f /tmp/jar-cache/forge.jar ]; then \
-      perl -i -0777 -pe 's/<plugin>\s*<groupId>com\.akathist\.maven\.plugins\.launch4j<\/groupId>.*?<\/plugin>//gs' \
-        forge-gui-desktop/pom.xml && \
-      perl -i -0777 -pe 's/<plugin>\s*<groupId>se\.bjurr\.gitchangelog<\/groupId>.*?<\/plugin>//gs' \
-        forge-gui-desktop/pom.xml && \
-      mkdir -p .mvn && \
-      echo '<?xml version="1.0" encoding="UTF-8"?>' > .mvn/extensions.xml && \
-      echo '<extensions>' >> .mvn/extensions.xml && \
-      echo '  <extension>' >> .mvn/extensions.xml && \
-      echo '    <groupId>co.leantechniques</groupId>' >> .mvn/extensions.xml && \
-      echo '    <artifactId>maven-buildtime-extension</artifactId>' >> .mvn/extensions.xml && \
-      echo '    <version>3.0.5</version>' >> .mvn/extensions.xml && \
-      echo '  </extension>' >> .mvn/extensions.xml && \
-      echo '</extensions>' >> .mvn/extensions.xml ; \
-    else \
-      echo "=== PRE-BUILT JAR FOUND — skipping plugin removal ===" ; \
-    fi
-
-# Maven build (skipped when pre-built JAR is available)
+# Uses pre-built forge-daemon-base image from GHCR (built by Forge CI).
+# This thin layer adds mtg-rl-specific configuration: decks, JVM tuning,
+# monitoring, healthcheck.
 #
-# Optimizations applied:
-#   - BuildKit cache mount: reuses ~/.m2/repository across builds
-#   - Parallel build (-T 1C): one thread per CPU core
-#   - Positive module selection (-pl forge-gui-desktop -am): builds only what we need
-#   - No 'clean' phase: Docker builds start from a fresh clone anyway
-#   - buildtime.output.log=true: prints per-goal timing to stdout (visible in build logs)
-RUN --mount=type=cache,target=/root/.m2/repository \
-    if [ ! -f /tmp/jar-cache/forge.jar ]; then \
-      mvn package -DskipTests \
-        -T 1C \
-        -pl forge-gui-desktop \
-        -am \
-        -Dmaven.javadoc.skip=true \
-        -Dcheckstyle.skip=true \
-        -Dbuildtime.output.log=true ; \
-    else \
-      echo "=== PRE-BUILT JAR FOUND — skipping Maven build ===" ; \
-    fi
+# Build:
+#   FORGE_SHA=$(git ls-tree HEAD forge-repo | awk '{print $3}')
+#   docker build --build-arg FORGE_SHA=$FORGE_SHA -f infrastructure/docker/Dockerfile.daemon .
 
-# Use pre-built JAR if available, otherwise find the Maven output
-RUN if [ -f /tmp/jar-cache/forge.jar ]; then \
-      echo "=== Using cached Forge JAR (Maven build was skipped) ===" && \
-      cp /tmp/jar-cache/forge.jar /build/forge.jar ; \
-    else \
-      find /build -name "forge-gui-desktop-*-jar-with-dependencies.jar" -exec cp {} /build/forge.jar \; ; \
-    fi
-
-# ==============================================================================
-# Stage 2: Runtime
-# ==============================================================================
-FROM eclipse-temurin:17-jre
+ARG FORGE_SHA=latest
+FROM ghcr.io/rexgoliath1/forge-daemon-base:${FORGE_SHA}
 
 LABEL maintainer="MTG RL Training"
 LABEL description="Forge MTG daemon for reinforcement learning"
 LABEL org.opencontainers.image.source=https://github.com/RexGoliath1/mtg-rl
 
 # Install netcat for healthcheck, procps for jstat/jcmd JVM monitoring
-RUN apt-get update && apt-get install -y --no-install-recommends netcat-openbsd xvfb procps \
+# (base image only has Xvfb)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    netcat-openbsd procps \
     && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /forge
-
-# Create required directories (match sim container structure)
-RUN mkdir -p /forge/res \
-    /forge/userdata/decks/constructed \
-    /forge/userdata/decks/commander \
-    /forge/cache \
-    /forge/logs
-
-# Copy the built jar
-COPY --from=builder /build/forge.jar /forge/forge.jar
-
-# Only copy daemon-essential res/ subdirectories (~155 MB, not full 393 MB)
-# Excludes: adventure(134MB), skins(18MB), music(16MB), quest(16MB),
-#           most of languages(45MB), conquest(5MB), effects(1.6MB), fonts, sound, tutorial, puzzle
-# NOTE: en-US language bundle is REQUIRED for Forge Localizer initialization
-COPY --from=builder /build/forge-gui/res/languages/en-US.properties /forge/res/languages/en-US.properties
-COPY --from=builder /build/forge-gui/res/cardsfolder/ /forge/res/cardsfolder/
-COPY --from=builder /build/forge-gui/res/editions/ /forge/res/editions/
-COPY --from=builder /build/forge-gui/res/tokenscripts/ /forge/res/tokenscripts/
-COPY --from=builder /build/forge-gui/res/ai/ /forge/res/ai/
-COPY --from=builder /build/forge-gui/res/blockdata/ /forge/res/blockdata/
-COPY --from=builder /build/forge-gui/res/draft/ /forge/res/draft/
-COPY --from=builder /build/forge-gui/res/formats/ /forge/res/formats/
-COPY --from=builder /build/forge-gui/res/lists/ /forge/res/lists/
-COPY --from=builder /build/forge-gui/res/defaults/ /forge/res/defaults/
-COPY --from=builder /build/forge-gui/res/setlookup/ /forge/res/setlookup/
-COPY --from=builder /build/forge-gui/res/sealed/ /forge/res/sealed/
-COPY --from=builder /build/forge-gui/res/cube/ /forge/res/cube/
-COPY --from=builder /build/forge-gui/res/deckgendecks/ /forge/res/deckgendecks/
-COPY --from=builder /build/forge-gui/res/geneticaidecks/ /forge/res/geneticaidecks/
-COPY --from=builder /build/forge-gui/res/licenses/ /forge/res/licenses/
-RUN mkdir -p /forge/res/decks/
 
 # Copy deck files (flatten all .dck files into constructed/ so daemon can find them)
 # Copy order: root first, then subdirs, so subdirectory versions win on name conflicts
@@ -125,16 +30,6 @@ RUN cp /tmp/decks/*.dck /forge/userdata/decks/constructed/ 2>/dev/null || true \
     && find /tmp/decks -mindepth 2 -name "*.dck" -exec cp {} /forge/userdata/decks/constructed/ \; \
     && rm -rf /tmp/decks \
     && echo "Decks in constructed/:" && ls /forge/userdata/decks/constructed/ | wc -l
-
-# Create forge profile properties (in working directory)
-RUN echo "userDir=/forge/userdata/" > /forge/forge.profile.properties \
-    && echo "cacheDir=/forge/cache/" >> /forge/forge.profile.properties \
-    && echo "decksDir=/forge/userdata/decks/" >> /forge/forge.profile.properties \
-    && echo "decksConstructedDir=/forge/userdata/decks/constructed/" >> /forge/forge.profile.properties
-
-# WORKAROUND: Forge SNAPSHOT builds look for assets at ../forge-gui/
-# Create symlink so /forge/../forge-gui points to /forge
-RUN ln -s /forge /forge-gui
 
 # Copy JVM monitoring script
 COPY infrastructure/docker/jvm_monitor.sh /forge/jvm_monitor.sh
