@@ -3,8 +3,6 @@ on: [push, pull_request]
 
 env:
   AWS_REGION: us-east-1
-  FORGE_REPO: https://github.com/RexGoliath1/forge.git
-  FORGE_BRANCH: feature/rl-daemon-mode
 
 jobs:
   lint-and-test:
@@ -189,32 +187,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # ── Forge JAR cache ─────────────────────────────────────
-      # Saves ~8 min Maven build on 95%+ of runs where Forge hasn't changed
-      - name: Get Forge commit SHA
+      - name: Get Forge submodule SHA
         id: forge-sha
         run: |
-          SHA=$(git ls-remote ${{ env.FORGE_REPO }} refs/heads/${{ env.FORGE_BRANCH }} | cut -f1)
+          SHA=$(git ls-tree HEAD forge-repo | awk '{print $3}')
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
-          echo "Forge commit: ${SHA}"
-
-      - name: Restore Forge JAR cache
-        id: jar-cache
-        uses: actions/cache@v4
-        with:
-          path: .forge-jar-cache/
-          key: forge-jar-${{ steps.forge-sha.outputs.sha }}
-
-      - name: Prepare JAR cache directory
-        run: |
-          mkdir -p .forge-jar-cache
-          touch .forge-jar-cache/.keep
-          if [ -f .forge-jar-cache/forge.jar ]; then
-            echo "Cache HIT — forge.jar found ($(stat --format=%s .forge-jar-cache/forge.jar) bytes)"
-          else
-            echo "Cache MISS — Maven build will run inside Docker"
-          fi
-          ls -la .forge-jar-cache/
+          echo "Forge submodule commit: ${SHA}"
 
       - name: Build daemon image
         uses: docker/build-push-action@v6
@@ -224,16 +202,10 @@ jobs:
           push: false
           load: true
           tags: mtg-daemon:ci
+          build-args: |
+            FORGE_SHA=${{ steps.forge-sha.outputs.sha }}
           cache-from: type=gha,scope=daemon
           cache-to: type=gha,mode=max,scope=daemon
-
-      - name: Extract Forge JAR for future cache
-        if: steps.jar-cache.outputs.cache-hit != 'true'
-        run: |
-          CONTAINER_ID=$(docker create mtg-daemon:ci)
-          docker cp "${CONTAINER_ID}:/forge/forge.jar" .forge-jar-cache/forge.jar
-          docker rm "${CONTAINER_ID}"
-          echo "Cached forge.jar for future runs ($(stat --format=%s .forge-jar-cache/forge.jar) bytes)"
 
       - name: Build collection image
         uses: docker/build-push-action@v6
@@ -414,31 +386,12 @@ jobs:
         id: owner
         run: echo "name=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
-      # ── Forge JAR cache ─────────────────────────────────────
-      # Cache speeds up daemon builds (~8 min Maven build saved on cache hit).
-      # On cache miss, Dockerfile.daemon does a full Maven build internally.
-      - name: Get Forge commit SHA
+      - name: Get Forge submodule SHA
         id: forge-sha
         run: |
-          SHA=$(git ls-remote ${{ env.FORGE_REPO }} refs/heads/${{ env.FORGE_BRANCH }} | cut -f1)
-          if [ -z "$SHA" ]; then
-            echo "WARNING: Could not resolve Forge SHA, using 'unknown'"
-            SHA="unknown"
-          fi
+          SHA=$(git ls-tree HEAD forge-repo | awk '{print $3}')
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
-          echo "Forge commit: ${SHA}"
-
-      - name: Restore Forge JAR cache
-        id: jar-cache
-        uses: actions/cache@v4
-        with:
-          path: .forge-jar-cache/
-          key: forge-jar-${{ steps.forge-sha.outputs.sha }}
-
-      - name: Prepare JAR cache directory
-        run: |
-          mkdir -p .forge-jar-cache
-          touch .forge-jar-cache/.keep
+          echo "Forge submodule commit: ${SHA}"
 
       - name: Build and push daemon to GHCR
         uses: docker/build-push-action@v6
@@ -449,18 +402,10 @@ jobs:
           tags: |
             ghcr.io/${{ steps.owner.outputs.name }}/mtg-rl-daemon:latest
             ghcr.io/${{ steps.owner.outputs.name }}/mtg-rl-daemon:${{ github.sha }}
+          build-args: |
+            FORGE_SHA=${{ steps.forge-sha.outputs.sha }}
           cache-from: type=gha,scope=daemon
           cache-to: type=gha,mode=max,scope=daemon
-
-      - name: Extract Forge JAR for future cache
-        if: steps.jar-cache.outputs.cache-hit != 'true'
-        run: |
-          # Pull the just-pushed image to extract the JAR for caching
-          docker pull ghcr.io/${{ steps.owner.outputs.name }}/mtg-rl-daemon:${{ github.sha }}
-          CONTAINER_ID=$(docker create ghcr.io/${{ steps.owner.outputs.name }}/mtg-rl-daemon:${{ github.sha }})
-          docker cp "${CONTAINER_ID}:/forge/forge.jar" .forge-jar-cache/forge.jar
-          docker rm "${CONTAINER_ID}"
-          echo "Cached forge.jar for future GHCR runs"
 
       - name: Build and push collection to GHCR
         uses: docker/build-push-action@v6
@@ -499,32 +444,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # ── Forge JAR cache ─────────────────────────────────────
-      # Same cache as docker-integration-test — shared via actions/cache key
-      - name: Get Forge commit SHA
+      - name: Get Forge submodule SHA
         id: forge-sha
         run: |
-          SHA=$(git ls-remote ${{ env.FORGE_REPO }} refs/heads/${{ env.FORGE_BRANCH }} | cut -f1)
+          SHA=$(git ls-tree HEAD forge-repo | awk '{print $3}')
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
-          echo "Forge commit: ${SHA}"
-
-      - name: Restore Forge JAR cache
-        id: jar-cache
-        uses: actions/cache@v4
-        with:
-          path: .forge-jar-cache/
-          key: forge-jar-${{ steps.forge-sha.outputs.sha }}
-
-      - name: Prepare JAR cache directory
-        run: |
-          mkdir -p .forge-jar-cache
-          touch .forge-jar-cache/.keep
-          if [ -f .forge-jar-cache/forge.jar ]; then
-            echo "Cache HIT — forge.jar found ($(stat --format=%s .forge-jar-cache/forge.jar) bytes)"
-          else
-            echo "Cache MISS — Maven build will run inside Docker"
-          fi
-          ls -la .forge-jar-cache/
+          echo "Forge submodule commit: ${SHA}"
 
       - name: Build and push collection image
         uses: docker/build-push-action@v6
@@ -547,19 +472,10 @@ jobs:
           tags: |
             ${{ steps.ecr-login.outputs.registry }}/mtg-rl-daemon:latest
             ${{ steps.ecr-login.outputs.registry }}/mtg-rl-daemon:${{ github.sha }}
+          build-args: |
+            FORGE_SHA=${{ steps.forge-sha.outputs.sha }}
           cache-from: type=gha,scope=daemon
           cache-to: type=gha,mode=max,scope=daemon
-
-      - name: Extract Forge JAR for future cache
-        if: steps.jar-cache.outputs.cache-hit != 'true'
-        run: |
-          # Build a local copy to extract the JAR (the push action doesn't load)
-          docker build -t mtg-daemon:extract \
-            -f infrastructure/docker/Dockerfile.daemon .
-          CONTAINER_ID=$(docker create mtg-daemon:extract)
-          docker cp "${CONTAINER_ID}:/forge/forge.jar" .forge-jar-cache/forge.jar
-          docker rm "${CONTAINER_ID}"
-          echo "Cached forge.jar for future runs ($(stat --format=%s .forge-jar-cache/forge.jar) bytes)"
 
       - name: Create stub mechanics HDF5 for CI
         run: mkdir -p data && touch data/card_mechanics_commander.h5

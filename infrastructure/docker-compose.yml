@@ -21,10 +21,15 @@ services:
       - sim
 
   # Forge daemon - persistent game engine for training/collection
+  # Usage:
+  #   FORGE_SHA=$(git ls-tree HEAD forge-repo | awk '{print $3}')
+  #   FORGE_SHA=$FORGE_SHA docker-compose -f infrastructure/docker-compose.yml up daemon
   daemon:
     build:
       context: ..
       dockerfile: infrastructure/docker/Dockerfile.daemon
+      args:
+        FORGE_SHA: ${FORGE_SHA:-latest}
     container_name: mtg-daemon
     image: mtg-daemon:latest
     ports:

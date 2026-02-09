@@ -1,0 +1,4 @@
+[submodule "forge-repo"]
+	path = forge-repo
+	url = https://github.com/RexGoliath1/forge.git
+	branch = feature/rl-daemon-mode

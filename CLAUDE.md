@@ -93,22 +93,24 @@ Phase 3: Evaluation
 
 ### Forge Integration
 
-The Forge MTG engine is in `forge-repo/` (gitignored, separate repo).
+The Forge MTG engine is in `forge-repo/` as a **git submodule** tracking `feature/rl-daemon-mode`.
 
-**Repository**: `git@github.com:RexGoliath1/forge.git` (fork of Card-Forge/forge)
+**Repository**: `https://github.com/RexGoliath1/forge.git` (fork of Card-Forge/forge)
 
-**Current Branch**: `feature/rl-daemon-mode`
+**Base image**: `ghcr.io/rexgoliath1/forge-daemon-base:<sha>` — built by Forge CI, consumed by `Dockerfile.daemon`.
 
 ```bash
-# Clone our Forge fork (if not present)
-git clone git@github.com:RexGoliath1/forge.git forge-repo
-cd forge-repo && git checkout feature/rl-daemon-mode
+# Initialize submodule (first clone only)
+git submodule update --init
 
-# Build Forge
-mvn package -DskipTests
+# Update to latest Forge
+cd forge-repo && git pull origin feature/rl-daemon-mode && cd ..
+git add forge-repo
+git commit -m "chore: bump forge submodule to <new-sha>"
 
-# Run draft daemon
-java -jar forge-gui-desktop/target/forge.jar daemon -p 17220
+# Build daemon image using submodule SHA
+FORGE_SHA=$(git ls-tree HEAD forge-repo | awk '{print $3}')
+docker build --build-arg FORGE_SHA=$FORGE_SHA -f infrastructure/docker/Dockerfile.daemon .
 ```
 
 **Key Forge Files**:
@@ -223,6 +225,7 @@ GitHub Actions runs on every push/PR via `.github/workflows/test.yml`:
 mtg/
 ├── pyproject.toml            # UV/hatchling project config
 ├── uv.lock                   # Lockfile for reproducible installs
+├── .gitmodules               # Submodule config (forge-repo)
 ├── CLAUDE.md                 # This file
 ├── ARCHITECTURE.md           # Detailed architecture docs
 ├── DEPLOYMENT.md             # Consolidated deployment guide
@@ -259,7 +262,7 @@ mtg/
 ├── data/                     # Training data, HDF5 embeddings, sidecar metadata (gitignored)
 ├── checkpoints/              # Model checkpoints (gitignored)
 ├── logs/                     # TensorBoard logs (gitignored)
-└── forge-repo/               # Forge MTG engine (gitignored, separate repo)
+└── forge-repo/               # Forge MTG engine (git submodule)
 ```
 
 ---
