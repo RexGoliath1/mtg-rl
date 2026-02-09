@@ -2,9 +2,10 @@ name: Claude PR Review
 
 # Advisory review bot — posts comments but does not block merge
 on:
-  # Automatic review on every PR
+  # Automatic review on PR open only (not on every push)
+  # Use @claude in a comment to request a re-review after changes
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, ready_for_review]
   # On-demand via @claude mentions in comments
   issue_comment:
     types: [created]
