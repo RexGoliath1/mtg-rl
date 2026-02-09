@@ -2,8 +2,10 @@
 """
 Collect AI Training Data
 
-Run games in interactive mode (-i) where Forge AI makes decisions
-and all decisions are logged for training data collection.
+Run games in observation mode (-o) where the Forge AI makes all
+decisions autonomously. The collector observes and records each
+decision point (game state, available actions, AI's choice) for
+imitation learning.
 
 Storage: HDF5 for efficient numerical data, with JSON metadata.
 
@@ -108,7 +110,11 @@ def collect_training_game(
     host: str = "localhost",
     port: int = 17171
 ) -> dict:
-    """Run a single game in observation mode and collect decisions."""
+    """Run a single game in observation mode (-o) and collect decisions.
+
+    The Forge AI makes all decisions autonomously. We observe the
+    DECISION: stream (game state + ai_choice) without sending responses.
+    """
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(timeout + 30)
     sock.connect((host, port))
@@ -122,16 +128,18 @@ def collect_training_game(
     cards_seen = set()
 
     try:
-        # Start game in interactive mode (-i) so daemon sends DECISION:
-        # data for each decision point and waits for our response.
-        cmd = f"NEWGAME {deck1} {deck2} -i -c {timeout}"
+        # Start game in observation mode (-o) where Forge AI makes all
+        # decisions autonomously.  The daemon streams DECISION: lines
+        # with game_state, actions, and ai_choice (the AI's pick).
+        # No responses needed -- purely one-way observation.
+        cmd = f"NEWGAME {deck1} {deck2} -o -c {timeout}"
         if seed is not None:
             cmd += f" -s {seed}"
 
         wfile.write(cmd + "\n")
         wfile.flush()
 
-        # Read all decisions until game ends
+        # Read all decisions until game ends (no responses needed)
         while True:
             line = rfile.readline()
             if not line:
@@ -161,24 +169,6 @@ def collect_training_game(
                         ai_choice = data.get("ai_choice", {})
                         if isinstance(ai_choice, dict) and ai_choice.get("card"):
                             cards_seen.add(ai_choice["card"])
-
-                    # Auto-respond so the daemon can proceed to the
-                    # next decision.  We pick the simplest legal action
-                    # for each decision type -- the goal is data
-                    # collection, not optimal play.
-                    if decision_type in ("declare_attackers",
-                                         "declare_blockers",
-                                         "choose_cards"):
-                        response = ""
-                    elif decision_type == "confirm_action":
-                        response = "y"
-                    elif decision_type == "announce_value":
-                        response = "0"
-                    else:
-                        # choose_action and any unknown types
-                        response = "0"
-                    wfile.write(response + "\n")
-                    wfile.flush()
 
                 except json.JSONDecodeError:
                     logger.warning("Failed to parse DECISION JSON line")
