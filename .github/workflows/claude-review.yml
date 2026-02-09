@@ -1,12 +1,9 @@
 name: Claude PR Review
 
-# Advisory review bot — posts comments but does not block merge
+# On-demand review bot — only runs when @claude is mentioned in a PR comment.
+# Automatic reviews on PR open are disabled to save API costs (~$0.30-0.50/review).
+# Claude Code performs a self-review of the diff during PR creation instead.
 on:
-  # Automatic review on PR open only (not on every push)
-  # Use @claude in a comment to request a re-review after changes
-  pull_request:
-    types: [opened, ready_for_review]
-  # On-demand via @claude mentions in comments
   issue_comment:
     types: [created]
   pull_request_review_comment:
@@ -16,9 +13,8 @@ on:
 
 jobs:
   claude-review:
-    # Run on PRs automatically, or when @claude is mentioned
+    # Only run when @claude is mentioned in a comment
     if: |
-      github.event_name == 'pull_request' ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
