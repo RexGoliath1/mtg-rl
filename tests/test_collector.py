@@ -1,9 +1,12 @@
-"""Tests for the data collection pipeline.
+"""Tests for the data collection pipeline (v2 format).
 
 Focuses on:
 1. IncrementalHDF5Writer: resizable datasets, flush, close
 2. Decision filtering: only training-relevant types are kept
 3. Round-trip: data written == data read back
+
+V2 format stores game_state_json + decision metadata (turns, choices,
+num_actions, decision_types). No v1 'states' dataset.
 """
 
 import json
@@ -53,7 +56,7 @@ class TestIncrementalHDF5Writer:
         assert writer.total_rows == 5
 
         with h5py.File(path, "r") as f:
-            assert f["states"].shape == (5, 17)
+            assert "states" not in f  # v1 dataset removed
             assert f["turns"].shape == (5,)
             assert f["choices"].shape == (5,)
             assert f["num_actions"].shape == (5,)
@@ -77,7 +80,8 @@ class TestIncrementalHDF5Writer:
         writer.close()
 
         with h5py.File(path, "r") as f:
-            assert f["states"].shape == (10, 17)
+            assert "states" not in f  # v1 dataset removed
+            assert f["turns"].shape == (10,)
             assert f["turns"][0] == 1
             assert f["turns"][3] == 2
 
@@ -130,16 +134,21 @@ class TestDecisionFiltering:
             assert t not in TRAINING_DECISION_TYPES, f"{t} should be filtered"
 
 
-class TestLegacySaveToHDF5:
-    """save_to_hdf5 (batch mode) still works for backward compat."""
+class TestBatchSaveToHDF5:
+    """save_to_hdf5 (batch mode) produces v2 format."""
 
     def test_roundtrip(self, tmp_path):
-        path = tmp_path / "legacy.h5"
+        path = tmp_path / "batch.h5"
         decisions = [_make_decision(turn=i) for i in range(1, 4)]
         save_to_hdf5(decisions, path, {"timestamp": "test"})
 
         with h5py.File(path, "r") as f:
-            assert f["states"].shape == (3, 17)
+            assert "states" not in f  # v1 dataset removed
+            assert f["turns"].shape == (3,)
+            assert f["choices"].shape == (3,)
+            assert f["num_actions"].shape == (3,)
+            assert f["decision_types"].shape == (3,)
+            assert f["game_state_json"].shape == (3,)
             assert f.attrs["encoding_version"] == 2
             assert f.attrs["timestamp"] == "test"
 
@@ -149,15 +158,15 @@ class TestLegacySaveToHDF5:
         assert not path.exists()
 
 
-class TestIncrementalMatchesLegacy:
-    """Incremental writer produces identical data to legacy save_to_hdf5."""
+class TestIncrementalMatchesBatch:
+    """Incremental writer produces identical data to batch save_to_hdf5."""
 
     def test_data_matches(self, tmp_path):
         decisions = [_make_decision(turn=t, num_actions=t + 1) for t in range(1, 11)]
 
-        # Legacy
-        legacy_path = tmp_path / "legacy.h5"
-        save_to_hdf5(decisions, legacy_path, {"timestamp": "x"})
+        # Batch mode
+        batch_path = tmp_path / "batch.h5"
+        save_to_hdf5(decisions, batch_path, {"timestamp": "x"})
 
         # Incremental (two flushes)
         inc_path = tmp_path / "incremental.h5"
@@ -167,11 +176,10 @@ class TestIncrementalMatchesLegacy:
         writer.set_metadata({"timestamp": "x"})
         writer.close()
 
-        with h5py.File(legacy_path, "r") as fl, h5py.File(inc_path, "r") as fi:
-            np.testing.assert_array_equal(fl["states"][:], fi["states"][:])
-            np.testing.assert_array_equal(fl["turns"][:], fi["turns"][:])
-            np.testing.assert_array_equal(fl["choices"][:], fi["choices"][:])
-            np.testing.assert_array_equal(fl["num_actions"][:], fi["num_actions"][:])
-            np.testing.assert_array_equal(fl["decision_types"][:], fi["decision_types"][:])
+        with h5py.File(batch_path, "r") as fb, h5py.File(inc_path, "r") as fi:
+            np.testing.assert_array_equal(fb["turns"][:], fi["turns"][:])
+            np.testing.assert_array_equal(fb["choices"][:], fi["choices"][:])
+            np.testing.assert_array_equal(fb["num_actions"][:], fi["num_actions"][:])
+            np.testing.assert_array_equal(fb["decision_types"][:], fi["decision_types"][:])
             for i in range(10):
-                assert fl["game_state_json"][i] == fi["game_state_json"][i]
+                assert fb["game_state_json"][i] == fi["game_state_json"][i]
