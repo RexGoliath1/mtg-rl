@@ -7,7 +7,7 @@ set -e
 # This script uses S3 tarballs which have caused repeated failures
 # (AppleDouble files, glob expansion, missing AWS CLI, X11 issues).
 #
-# The Docker-based replacement pulls pre-built images from ECR:
+# The Docker-based replacement pulls pre-built images from GHCR:
 #   ./scripts/deploy_data_collection_docker.sh --games 1000
 #
 # Or use the unified CLI:

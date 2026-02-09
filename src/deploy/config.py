@@ -33,7 +33,7 @@ class DeployConfig:
     s3_bucket: str = "mtg-rl-checkpoints-20260124190118616600000001"
     security_group_name: str = "mtg-rl-training-sg"
     iam_instance_profile: str = "mtg-rl-training"
-    ecr_registry: str = ""  # e.g. "123456789.dkr.ecr.us-east-1.amazonaws.com"
+    image_registry: str = "ghcr.io/rexgoliath1"
     key_name: Optional[str] = None
     monthly_budget: float = 100.0
     notify_email: str = field(default_factory=lambda: os.environ.get("FORGERL_NOTIFY_EMAIL", ""))

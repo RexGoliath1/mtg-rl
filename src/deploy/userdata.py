@@ -9,7 +9,7 @@ Uses string.Template for variable substitution (no Jinja2 dependency).
 Two collection modes:
   1. Legacy (tarball): Downloads code + Forge JAR from S3, installs Java/Python,
      runs collection natively.  Still works but fragile on macOS->Linux boundary.
-  2. Docker (recommended): Pulls pre-built daemon + collection images from ECR,
+  2. Docker (recommended): Pulls pre-built daemon + collection images from GHCR,
      runs via docker compose.  No JDK/Maven/Xvfb/tar issues.
 
 Key GOTCHAs from project memory:
@@ -244,14 +244,12 @@ if ! command -v aws &> /dev/null; then
     rm -rf aws awscliv2.zip
 fi
 
-# --- Login to ECR and pull images ---
+# --- Pull images from GHCR ---
 echo ""
-echo "[3/4] Pulling Docker images from ECR..."
-aws ecr get-login-password --region ${ecr_region} | \
-    docker login --username AWS --password-stdin ${ecr_registry}
-
-docker pull ${ecr_registry}/mtg-rl-daemon:latest
-docker pull ${ecr_registry}/mtg-rl-collection:latest
+echo "[3/4] Pulling Docker images from GHCR..."
+# GHCR images are public — no login needed
+docker pull ${image_registry}/mtg-rl-daemon:latest
+docker pull ${image_registry}/mtg-rl-collection:latest
 
 echo "Images pulled successfully"
 docker images
@@ -282,7 +280,7 @@ mkdir -p /home/ubuntu/collection /home/ubuntu/training_data
 cat > /home/ubuntu/collection/docker-compose.yml << 'COMPOSE_EOF'
 services:
   daemon:
-    image: ${ecr_registry}/mtg-rl-daemon:latest
+    image: ${image_registry}/mtg-rl-daemon:latest
     container_name: mtg-daemon
     ports:
       - "17171:17171"
@@ -301,7 +299,7 @@ services:
           memory: 2G
 
   collection:
-    image: ${ecr_registry}/mtg-rl-collection:latest
+    image: ${image_registry}/mtg-rl-collection:latest
     container_name: mtg-collection
     depends_on:
       daemon:
@@ -594,12 +592,12 @@ def generate_docker_collection_userdata(
     collection_config: CollectionConfig,
     run_id: str,
     timestamp: str,
-    ecr_registry: str,
+    image_registry: str = "",
 ) -> str:
     """
     Generate bash userdata script for Docker-based data collection.
 
-    Uses pre-built Docker images from ECR instead of S3 tarballs.
+    Uses pre-built Docker images from GHCR instead of S3 tarballs.
     No JDK, Maven, Xvfb, or Python deps needed on the instance --
     only Docker and AWS CLI.
 
@@ -608,15 +606,15 @@ def generate_docker_collection_userdata(
         collection_config: Collection-specific settings.
         run_id: Unique run identifier (e.g. "collection_20260208_143000").
         timestamp: Timestamp string for S3 paths.
-        ecr_registry: ECR registry URL (e.g. "123456789.dkr.ecr.us-east-1.amazonaws.com").
+        image_registry: Container registry (default: deploy_config.image_registry).
 
     Returns:
         Complete bash script as a string.
     """
+    registry = image_registry or deploy_config.image_registry
     return _DOCKER_COLLECTION_TEMPLATE.substitute(
         s3_bucket=deploy_config.s3_bucket,
-        ecr_registry=ecr_registry,
-        ecr_region=deploy_config.region,
+        image_registry=registry,
         num_games=collection_config.num_games,
         num_workers=collection_config.num_workers,
         game_timeout=collection_config.game_timeout,

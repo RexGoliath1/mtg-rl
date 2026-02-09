@@ -2,7 +2,7 @@
 # =============================================================================
 # MTG RL Imitation Learning Model Training (Docker-based)
 # =============================================================================
-# Pulls mtg-rl-training image from ECR, downloads HDF5 data from S3,
+# Pulls mtg-rl-training image from GHCR, downloads HDF5 data from S3,
 # runs train_imitation.py, uploads checkpoints + logs to S3.
 # =============================================================================
 set -ex
@@ -16,7 +16,7 @@ echo "============================================================"
 
 # --- Configuration from Terraform ---
 S3_BUCKET="${s3_bucket}"
-ECR_REPO="${ecr_repo}"
+IMAGE_REGISTRY="${image_registry}"
 EPOCHS="${epochs}"
 BATCH_SIZE="${batch_size}"
 HIDDEN_DIM="${hidden_dim}"
@@ -25,7 +25,7 @@ AUTO_SHUTDOWN="${auto_shutdown}"
 
 echo "Configuration:"
 echo "  S3 Bucket:     $S3_BUCKET"
-echo "  ECR Repo:      $ECR_REPO"
+echo "  Image Registry: $IMAGE_REGISTRY"
 echo "  Epochs:        $EPOCHS"
 echo "  Batch Size:    $BATCH_SIZE"
 echo "  Hidden Dim:    $HIDDEN_DIM"
@@ -81,15 +81,11 @@ if ! command -v aws &> /dev/null; then
     rm -rf aws awscliv2.zip
 fi
 
-# --- [3/6] Login to ECR and pull training image ---
+# --- [3/6] Pull training image from GHCR ---
 echo ""
-echo "[3/6] Pulling training image from ECR..."
-ECR_REGISTRY=$(echo "$ECR_REPO" | cut -d'/' -f1)
-ECR_REGION=$(echo "$ECR_REGISTRY" | cut -d'.' -f4)
-aws ecr get-login-password --region "$ECR_REGION" | \
-    docker login --username AWS --password-stdin "$ECR_REGISTRY"
-
-docker pull "$ECR_REPO:latest"
+echo "[3/6] Pulling training image from GHCR..."
+# GHCR images are public — no login needed
+docker pull "$IMAGE_REGISTRY/mtg-rl-training:latest"
 echo "Image pulled successfully"
 docker images
 
@@ -154,7 +150,7 @@ fi
 WANDB_KEY=""
 WANDB_KEY=$(aws secretsmanager get-secret-value \
     --secret-id mtg-rl/wandb-api-key \
-    --region "$ECR_REGION" \
+    --region "$REGION" \
     --query SecretString \
     --output text 2>/dev/null || echo "")
 
@@ -172,7 +168,7 @@ docker run --rm \
     $DOCKER_FLAGS \
     $WANDB_FLAGS \
     -e PYTHONUNBUFFERED=1 \
-    "$ECR_REPO:latest" \
+    "$IMAGE_REGISTRY/mtg-rl-training:latest" \
     python /app/scripts/train_imitation.py \
         --data-dir /data \
         --epochs "$EPOCHS" \
