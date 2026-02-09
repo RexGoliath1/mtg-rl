@@ -8,6 +8,10 @@
 
 FROM python:3.11-slim
 
+LABEL maintainer="MTG RL Training"
+LABEL description="MTG RL data collection container"
+LABEL org.opencontainers.image.source=https://github.com/RexGoliath1/mtg-rl
+
 WORKDIR /app
 
 # Install system dependencies (git removed — not needed at runtime)
