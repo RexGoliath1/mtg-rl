@@ -2,8 +2,10 @@
 """
 Collect AI Training Data
 
-Run games in interactive mode (-i) where Forge AI makes decisions
-and all decisions are logged for training data collection.
+Run games in observation mode (-o) where the Forge AI makes all
+decisions autonomously. The collector observes and records each
+decision point (game state, available actions, AI's choice) for
+imitation learning.
 
 Storage: HDF5 for efficient numerical data, with JSON metadata.
 
@@ -108,7 +110,11 @@ def collect_training_game(
     host: str = "localhost",
     port: int = 17171
 ) -> dict:
-    """Run a single game in observation mode and collect decisions."""
+    """Run a single game in observation mode (-o) and collect decisions.
+
+    The Forge AI makes all decisions autonomously. We observe the
+    DECISION: stream (game state + ai_choice) without sending responses.
+    """
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(timeout + 30)
     sock.connect((host, port))
@@ -122,16 +128,18 @@ def collect_training_game(
     cards_seen = set()
 
     try:
-        # Start game in interactive mode (-i) so daemon sends DECISION:
-        # data for each decision point and waits for our response.
-        cmd = f"NEWGAME {deck1} {deck2} -i -c {timeout}"
+        # Start game in observation mode (-o) where Forge AI makes all
+        # decisions autonomously.  The daemon streams DECISION: lines
+        # with game_state, actions, and ai_choice (the AI's pick).
+        # No responses needed -- purely one-way observation.
+        cmd = f"NEWGAME {deck1} {deck2} -o -c {timeout}"
         if seed is not None:
             cmd += f" -s {seed}"
 
         wfile.write(cmd + "\n")
         wfile.flush()
 
-        # Read all decisions until game ends
+        # Read all decisions until game ends (no responses needed)
         while True:
             line = rfile.readline()
             if not line:
@@ -142,36 +150,25 @@ def collect_training_game(
             if line.startswith("DECISION:"):
                 try:
                     data = json.loads(line[9:])
-                    decisions.append(data)
                     max_turn = max(max_turn, data.get("turn", 0))
 
-                    # Track cards seen for coverage metrics
-                    for action in data.get("actions", []):
-                        card = action.get("card", "")
-                        if card:
-                            cards_seen.add(card)
-                    ai_choice = data.get("ai_choice", {})
-                    if isinstance(ai_choice, dict) and ai_choice.get("card"):
-                        cards_seen.add(ai_choice["card"])
-
-                    # Auto-respond so the daemon can proceed to the
-                    # next decision.  We pick the simplest legal action
-                    # for each decision type -- the goal is data
-                    # collection, not optimal play.
                     decision_type = data.get("decision_type", "")
-                    if decision_type in ("declare_attackers",
-                                         "declare_blockers",
-                                         "choose_cards"):
-                        response = ""
-                    elif decision_type == "confirm_action":
-                        response = "y"
-                    elif decision_type == "announce_value":
-                        response = "0"
-                    else:
-                        # choose_action and any unknown types
-                        response = "0"
-                    wfile.write(response + "\n")
-                    wfile.flush()
+
+                    # Only keep decisions with real training signal.
+                    # Other types (reveal, choose_entity, confirm_action,
+                    # play_trigger, etc.) are noise that inflates the
+                    # dataset ~15x and causes OOM.
+                    if decision_type in TRAINING_DECISION_TYPES:
+                        decisions.append(data)
+
+                        # Track cards seen for coverage metrics
+                        for action in data.get("actions", []):
+                            card = action.get("card", "")
+                            if card:
+                                cards_seen.add(card)
+                        ai_choice = data.get("ai_choice", {})
+                        if isinstance(ai_choice, dict) and ai_choice.get("card"):
+                            cards_seen.add(ai_choice["card"])
 
                 except json.JSONDecodeError:
                     logger.warning("Failed to parse DECISION JSON line")
@@ -387,6 +384,130 @@ def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
     logger.info("HDF5 write done: %s (%.2f MB, %d rows)", output_path.name, file_size_mb, len(decisions))
 
 
+# Decision types that contain useful training signal. Other types
+# (reveal, choose_entity, choose_ability, confirm_action, play_trigger,
+# play_from_effect, announce_value) are noise -- either auto-confirmed or
+# contain no meaningful choice the model needs to learn.
+TRAINING_DECISION_TYPES = frozenset({
+    "choose_action",
+    "declare_attackers",
+    "declare_blockers",
+})
+
+
+class IncrementalHDF5Writer:
+    """Write decisions to HDF5 incrementally, avoiding OOM.
+
+    Opens the HDF5 file once with extensible (resizable) datasets and
+    flushes buffered decisions periodically so that only a small window
+    of data is ever held in RAM.
+    """
+
+    STATE_DIM = 17
+    TYPE_MAP = {"choose_action": 0, "declare_attackers": 1, "declare_blockers": 2, "unknown": 3}
+
+    def __init__(self, output_path: Path):
+        self.output_path = output_path
+        self.total_rows = 0
+        dt_vlen = h5py.special_dtype(vlen=str)
+
+        self._file = h5py.File(output_path, "w")
+        self._file.attrs["encoding_version"] = 2
+
+        # Create extensible datasets with chunked storage for efficient
+        # appends and gzip compression.
+        self._ds_states = self._file.create_dataset(
+            "states", shape=(0, self.STATE_DIM), maxshape=(None, self.STATE_DIM),
+            dtype="f4", chunks=(1000, self.STATE_DIM),
+            compression="gzip", compression_opts=4,
+        )
+        self._ds_turns = self._file.create_dataset(
+            "turns", shape=(0,), maxshape=(None,),
+            dtype="i4", chunks=(1000,), compression="gzip",
+        )
+        self._ds_choices = self._file.create_dataset(
+            "choices", shape=(0,), maxshape=(None,),
+            dtype="i4", chunks=(1000,), compression="gzip",
+        )
+        self._ds_num_actions = self._file.create_dataset(
+            "num_actions", shape=(0,), maxshape=(None,),
+            dtype="i4", chunks=(1000,), compression="gzip",
+        )
+        self._ds_decision_types = self._file.create_dataset(
+            "decision_types", shape=(0,), maxshape=(None,),
+            dtype="i1", chunks=(1000,), compression="gzip",
+        )
+        self._ds_game_state_json = self._file.create_dataset(
+            "game_state_json", shape=(0,), maxshape=(None,),
+            dtype=dt_vlen, chunks=(1000,),
+            compression="gzip", compression_opts=4,
+        )
+
+    def flush(self, decisions: list) -> int:
+        """Encode *decisions* and append to the open HDF5 datasets.
+
+        Returns the number of rows written (for logging).
+        """
+        if not decisions:
+            return 0
+
+        state_vecs = []
+        turns = []
+        choices = []
+        num_actions_list = []
+        decision_types = []
+        game_state_jsons = []
+
+        for d in decisions:
+            state_vec, turn, choice_idx, num_actions, dtype = encode_decision(d)
+            state_vecs.append(state_vec)
+            turns.append(turn)
+            choices.append(choice_idx)
+            num_actions_list.append(num_actions)
+            decision_types.append(self.TYPE_MAP.get(dtype, 3))
+            game_state = d.get("game_state", {})
+            game_state_jsons.append(json.dumps(game_state, separators=(",", ":")))
+
+        n = len(decisions)
+        old = self.total_rows
+        new = old + n
+
+        self._ds_states.resize((new, self.STATE_DIM))
+        self._ds_states[old:new] = np.stack(state_vecs)
+
+        self._ds_turns.resize((new,))
+        self._ds_turns[old:new] = np.array(turns, dtype=np.int32)
+
+        self._ds_choices.resize((new,))
+        self._ds_choices[old:new] = np.array(choices, dtype=np.int32)
+
+        self._ds_num_actions.resize((new,))
+        self._ds_num_actions[old:new] = np.array(num_actions_list, dtype=np.int32)
+
+        self._ds_decision_types.resize((new,))
+        self._ds_decision_types[old:new] = np.array(decision_types, dtype=np.int8)
+
+        self._ds_game_state_json.resize((new,))
+        self._ds_game_state_json[old:new] = game_state_jsons
+
+        self._file.flush()
+        self.total_rows = new
+        return n
+
+    def set_metadata(self, metadata: dict):
+        """Store metadata as HDF5 file-level attributes."""
+        for k, v in metadata.items():
+            if isinstance(v, (str, int, float)):
+                self._file.attrs[k] = v
+            elif isinstance(v, dict):
+                self._file.attrs[k] = json.dumps(v)
+
+    def close(self):
+        if self._file:
+            self._file.close()
+            self._file = None
+
+
 def generate_deck_pairs(decks: List[str], num_pairs: int) -> List[Tuple[str, str]]:
     """Generate deck pairs for diverse matchup coverage."""
     # Generate all possible pairs (including mirrors)
@@ -548,11 +669,13 @@ def collect_training_batch(
     port: int = 17171,
     save_interval: int = 1000,
     timeout: int = 60,
-    workers: int = 8  # Parallel workers (Forge daemon supports up to 10)
+    workers: int = 8,  # Parallel workers (Forge daemon supports up to 10)
+    flush_interval: int = 50,  # Flush buffered decisions to HDF5 every N games
 ):
     """Collect training data from multiple games with deck rotation.
 
     Uses parallel execution for ~5-8x speedup with 8 workers.
+    Writes decisions incrementally to HDF5 to avoid OOM on large runs.
     """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -563,7 +686,8 @@ def collect_training_batch(
     # Generate deck pairs for full coverage
     deck_pairs = generate_deck_pairs(decks, num_games)
 
-    all_decisions = []
+    # Buffer holds decisions between flushes. Cleared after each flush.
+    decision_buffer = []
     stats = CollectionStats()
     import threading
     stats_lock = threading.Lock()
@@ -580,14 +704,20 @@ def collect_training_batch(
     logger.info("Unique matchups: %d", len(set(deck_pairs)))
     logger.info("Output: %s", output_path)
     logger.info("Save interval: every %d games", save_interval)
+    logger.info("Flush interval: every %d games", flush_interval)
     logger.info("Parallel workers: %d", workers)
     logger.info("Game timeout: %ds", timeout)
+    logger.info("Decision filter: %s", sorted(TRAINING_DECISION_TYPES))
     logger.info("Initial RSS: %.1f MB", _get_memory_mb())
     logger.info("=" * 60)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     start_time = datetime.now()
     games_completed_count = [0]  # Mutable for closure
+
+    # Open incremental HDF5 writer for the final output file
+    hdf5_file = output_path / f"training_data_{timestamp}_final.h5"
+    writer = IncrementalHDF5Writer(hdf5_file)
 
     def run_single_game(game_id):
         """Run a single game and return results."""
@@ -633,11 +763,11 @@ def collect_training_batch(
             else:
                 stats.games_error += 1
 
-            # Count decision types
+            # Count decision types and buffer for HDF5
             for d in result["decisions"]:
                 dtype = d.get("decision_type", "unknown")
                 stats.decision_counts[dtype] += 1
-                all_decisions.append(d)
+                decision_buffer.append(d)
 
             stats.total_decisions += num_decisions
             stats.total_turns += max_turn
@@ -655,59 +785,76 @@ def collect_training_batch(
                 logger.info(
                     "PROGRESS game=%d/%d (%.1f%%) | success=%.1f%% | "
                     "throughput=%.1f games/s | elapsed=%.0fs | ETA=%.1f min | "
-                    "decisions=%d | errors=%d | timeouts=%d",
+                    "decisions=%d (disk=%d buf=%d) | errors=%d | timeouts=%d",
                     completed, num_games, completed * 100 / num_games,
                     success_rate, rate, elapsed, eta / 60,
-                    stats.total_decisions, stats.games_error, stats.games_timeout,
+                    stats.total_decisions, writer.total_rows, len(decision_buffer),
+                    stats.games_error, stats.games_timeout,
                 )
 
             # Memory logging every 100 games
             if completed % 100 == 0 and completed > 0:
-                logger.info("MEMORY RSS=%.1f MB | buffer_decisions=%d", _get_memory_mb(), len(all_decisions))
+                logger.info("MEMORY RSS=%.1f MB | buffer=%d | disk=%d",
+                            _get_memory_mb(), len(decision_buffer), writer.total_rows)
 
-            # Periodic checkpoint
+            # Flush buffer to HDF5 every flush_interval games
+            if completed % flush_interval == 0 and decision_buffer:
+                n = writer.flush(decision_buffer)
+                logger.info("HDF5 flush: wrote %d decisions to disk (total=%d)",
+                            n, writer.total_rows)
+                decision_buffer.clear()
+
+            # Legacy checkpoint (separate file) at save_interval
             if completed % save_interval == 0:
-                checkpoint_file = output_path / f"training_data_{timestamp}_checkpoint_{completed}.h5"
-                metadata = {
-                    "timestamp": timestamp,
-                    "num_games": completed,
-                    "total_decisions": stats.total_decisions,
-                    "games_completed": stats.games_completed,
-                    "checkpoint": True
-                }
-                save_to_hdf5(all_decisions.copy(), checkpoint_file, metadata)
-                logger.info("Checkpoint saved: %s (%d decisions)", checkpoint_file.name, stats.total_decisions)
+                # Flush remaining buffer first so checkpoint is consistent
+                if decision_buffer:
+                    n = writer.flush(decision_buffer)
+                    logger.info("HDF5 flush (checkpoint): wrote %d decisions (total=%d)",
+                                n, writer.total_rows)
+                    decision_buffer.clear()
+                logger.info("Checkpoint at game %d: %d total decisions on disk",
+                            completed, writer.total_rows)
 
     # Run games in parallel
-    with ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = {executor.submit(run_single_game, i): i for i in range(1, num_games + 1)}
-        for future in as_completed(futures):
-            try:
-                game_id, result = future.result()
-                process_result(game_id, result)
-            except Exception as e:
-                logger.error("Worker exception for game %d: %s\n%s",
-                             futures[future], e, traceback.format_exc())
+    try:
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(run_single_game, i): i for i in range(1, num_games + 1)}
+            for future in as_completed(futures):
+                try:
+                    game_id, result = future.result()
+                    process_result(game_id, result)
+                except Exception as e:
+                    logger.error("Worker exception for game %d: %s\n%s",
+                                 futures[future], e, traceback.format_exc())
 
-    # Final save
-    hdf5_file = output_path / f"training_data_{timestamp}_final.h5"
-    metadata = {
-        "timestamp": timestamp,
-        "num_games": num_games,
-        "total_decisions": stats.total_decisions,
-        "games_completed": stats.games_completed,
-        "games_timeout": stats.games_timeout,
-        "games_error": stats.games_error,
-        "unique_cards": len(stats.cards_seen),
-        "unique_matchups": len(stats.deck_pairs_played)
-    }
-    save_to_hdf5(all_decisions, hdf5_file, metadata)
+        # Flush any remaining buffered decisions
+        if decision_buffer:
+            n = writer.flush(decision_buffer)
+            logger.info("Final HDF5 flush: wrote %d decisions (total=%d)",
+                        n, writer.total_rows)
+            decision_buffer.clear()
+
+        # Write metadata and close
+        metadata = {
+            "timestamp": timestamp,
+            "num_games": num_games,
+            "total_decisions": writer.total_rows,
+            "games_completed": stats.games_completed,
+            "games_timeout": stats.games_timeout,
+            "games_error": stats.games_error,
+            "unique_cards": len(stats.cards_seen),
+            "unique_matchups": len(stats.deck_pairs_played),
+            "flush_interval": flush_interval,
+        }
+        writer.set_metadata(metadata)
+    finally:
+        writer.close()
 
     logger.info("=" * 60)
     logger.info("COLLECTION COMPLETE")
     logger.info("=" * 60)
     logger.info("HDF5 data saved to %s", hdf5_file)
-    logger.info("  States shape: (%d, 17)", stats.total_decisions)
+    logger.info("  States shape: (%d, 17)", writer.total_rows)
     if hdf5_file.exists():
         size_mb = hdf5_file.stat().st_size / (1024 * 1024)
         logger.info("  Compressed size: %.2f MB", size_mb)
@@ -800,6 +947,8 @@ def main():
     parser.add_argument("--host", default="localhost", help="Daemon host")
     parser.add_argument("--port", type=int, default=17171, help="Daemon port")
     parser.add_argument("--save-interval", type=int, default=1000, help="Save checkpoint every N games")
+    parser.add_argument("--flush-interval", type=int, default=50,
+                        help="Flush buffered decisions to HDF5 every N games (default 50)")
     parser.add_argument("--timeout", type=int, default=60, help="Game timeout in seconds")
     parser.add_argument("--workers", type=int, default=8, help="Parallel workers (max 10)")
     parser.add_argument("--log-level", default="INFO",
@@ -819,7 +968,8 @@ def main():
         port=args.port,
         save_interval=args.save_interval,
         timeout=args.timeout,
-        workers=min(args.workers, 10)  # Forge daemon max is 10
+        workers=min(args.workers, 10),  # Forge daemon max is 10
+        flush_interval=args.flush_interval,
     )
 
 
