@@ -624,7 +624,7 @@ def main():
         tb_writer.add_scalars("accuracy", {"train": train_acc, "val": val_acc, "val_top3": val_top3}, epoch + 1)
         tb_writer.add_scalar("lr", scheduler.get_last_lr()[0], epoch + 1)
 
-        if val_acc > best_val_acc:
+        if val_acc >= best_val_acc:
             best_val_acc = val_acc
             best_epoch = epoch + 1
             torch.save({
