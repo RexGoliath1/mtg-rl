@@ -111,7 +111,8 @@ fi
 # S3 prefix defaults to RUN_ID (fleet script overrides for per-instance subdirs)
 S3_PREFIX="${CUSTOM_S3_PREFIX:-$RUN_ID}"
 
-# Find AMI: prefer Deep Learning Base AMI (has Docker + NVIDIA drivers pre-installed)
+# Find AMI: prefer Deep Learning Base AMI with Single CUDA (35GB, has Docker pre-installed)
+# This is lighter than the full GPU DLAMI (75GB) and works on CPU instances (c5)
 # Falls back to plain Ubuntu 22.04 if DLAMI not available
 echo ""
 echo "Finding AMI..."
@@ -119,7 +120,7 @@ AMI_ID=$(aws ec2 describe-images \
     --region "$REGION" \
     --owners amazon \
     --filters \
-        "Name=name,Values=Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*" \
+        "Name=name,Values=Deep Learning Base AMI with Single CUDA (Ubuntu 22.04)*" \
         "Name=state,Values=available" \
     --query 'sort_by(Images, &CreationDate)[-1].ImageId' \
     --output text 2>/dev/null)
@@ -127,7 +128,7 @@ AMI_ID=$(aws ec2 describe-images \
 if [ "$AMI_ID" != "None" ] && [ -n "$AMI_ID" ]; then
     AMI_NAME=$(aws ec2 describe-images --region "$REGION" --image-ids "$AMI_ID" --query 'Images[0].Name' --output text 2>/dev/null)
     echo "Using DLAMI: $AMI_ID ($AMI_NAME)"
-    echo "  Docker + NVIDIA drivers pre-installed — faster bootstrap"
+    echo "  Docker pre-installed — faster bootstrap"
 else
     echo "DLAMI not found, falling back to Ubuntu 22.04..."
     AMI_ID=$(aws ec2 describe-images \
