@@ -1,5 +1,6 @@
 name: Claude PR Review
 
+# Advisory review bot — posts comments but does not block merge
 on:
   # Automatic review on every PR
   pull_request:
