@@ -171,9 +171,6 @@ def load_bulk_cards(json_path: str, format_filter: Optional[str] = None) -> List
 # ENCODING
 # =============================================================================
 
-# Maximum number of numeric parameters to store per card
-MAX_PARAMS = 37
-
 # Parameter keys we track
 PARAM_KEYS = [
     "draw_count", "damage", "token_count", "scry_count", "mill_count",
@@ -191,6 +188,9 @@ PARAM_KEYS = [
     # Vehicle crew param
     "crew_power",
 ]
+
+# Derived from PARAM_KEYS — never hardcode this separately
+MAX_PARAMS = len(PARAM_KEYS)
 
 
 def encode_cards(cards: List[Dict], verbose: bool = True) -> Tuple[np.ndarray, np.ndarray, Dict[str, int]]:
