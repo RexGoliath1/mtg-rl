@@ -1106,12 +1106,12 @@ PATTERNS = [
     (r"each opponent discards", [Mechanic.MASS_DISCARD_OPPONENT, Mechanic.DISCARD]),
     (r"activated abilities .{0,30}can't be activated", [Mechanic.ABILITY_SHUTDOWN, Mechanic.STATIC_ABILITY]),
 
-    # Confidence-booster patterns (consume text, no new enums)
-    (r"whenever one or more", []),
-    (r"protection from (white|blue|black|red|green|colorless|monocolored|multicolored|all|each|everything|instants?|sorceries|creatures?|enchantments?|artifacts?|planeswalkers?)", []),
-    (r"if .{0,20}(?:was|is) kicked", []),
-    (r"whenever? .{0,30}becomes? the target", []),
-    (r"hexproof from\s+(?:white|blue|black|red|green|monocolored|multicolored)", []),
+    # Confidence-booster patterns (consume text AND fire existing enums)
+    (r"whenever one or more", [Mechanic.TRIGGERED_ABILITY]),
+    (r"protection from (white|blue|black|red|green|colorless|monocolored|multicolored|all|each|everything|instants?|sorceries|creatures?|enchantments?|artifacts?|planeswalkers?)", [Mechanic.PROTECTION]),
+    (r"if .{0,20}(?:was|is) kicked", [Mechanic.KICKER, Mechanic.IF_CONDITION]),
+    (r"whenever? .{0,30}becomes? the target", [Mechanic.TRIGGERED_ABILITY]),
+    (r"hexproof from\s+(?:white|blue|black|red|green|monocolored|multicolored)", [Mechanic.HEXPROOF]),
 ]
 
 # Pre-compile all patterns at module load for ~19x speedup
