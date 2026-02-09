@@ -123,11 +123,12 @@ AMI_ID=$(aws ec2 describe-images \
         "Name=name,Values=Deep Learning Base AMI with Single CUDA (Ubuntu 22.04)*" \
         "Name=state,Values=available" \
     --query 'sort_by(Images, &CreationDate)[-1].ImageId' \
-    --output text 2>/dev/null)
+    --output text) || true
 
 if [ "$AMI_ID" != "None" ] && [ -n "$AMI_ID" ]; then
-    AMI_NAME=$(aws ec2 describe-images --region "$REGION" --image-ids "$AMI_ID" --query 'Images[0].Name' --output text 2>/dev/null)
-    echo "Using DLAMI: $AMI_ID ($AMI_NAME)"
+    AMI_NAME=$(aws ec2 describe-images --region "$REGION" --image-ids "$AMI_ID" --query 'Images[0].Name' --output text)
+    echo "Using DLAMI: $AMI_ID"
+    echo "  Name: $AMI_NAME"
     echo "  Docker pre-installed — faster bootstrap"
 else
     echo "DLAMI not found, falling back to Ubuntu 22.04..."
@@ -457,6 +458,7 @@ USER_DATA="${USER_DATA//TIMEOUT_PLACEHOLDER/$TIMEOUT}"
 USER_DATA_B64=$(echo "$USER_DATA" | base64)
 
 # Launch spot instance
+# Volume: 50GB gp3 — DLAMI base is ~35GB, need headroom for Docker images + data
 echo ""
 echo "Launching spot instance..."
 LAUNCH_SPEC=$(cat << EOF
