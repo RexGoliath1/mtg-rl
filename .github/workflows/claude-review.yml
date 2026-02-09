@@ -39,26 +39,22 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
           prompt: |
-            You are reviewing a pull request for the ForgeRL project — a reinforcement
-            learning system for Magic: The Gathering built on Forge (Java MTG engine).
+            Review this PR for the ForgeRL project (RL for Magic: The Gathering).
 
-            Review this PR for:
-            1. Code correctness and potential bugs
-            2. Security issues (no secrets in code, no injection vulnerabilities)
-            3. Consistency with existing patterns in the codebase
-            4. Test coverage — flag if new logic lacks tests
-            5. Merge conflict risk with other open PRs
+            IMPORTANT: Focus ONLY on the PR diff. Do NOT explore the full codebase.
+            Read the changed files, review the diff, and post your review promptly.
+            You have limited turns — prioritize posting the review over deep exploration.
 
-            Key project conventions:
-            - Python package managed by UV with pyproject.toml
-            - VOCAB_SIZE must stay in sync across vocabulary.py, precompute_embeddings.py, game_state_encoder.py
-            - Use python3 not python (macOS compatibility)
-            - Lint: ruff check with E501 ignored
-            - No sys.path hacks — use installed src package
-            - Cloud-first: no local runs > 50 games or > 5 training epochs
+            Check for:
+            1. Bugs or logic errors in the changed code
+            2. Security issues (secrets, injection)
+            3. Missing test coverage for new logic
+            4. VOCAB_SIZE / MAX_PARAMS sync issues (must match across vocabulary.py, precompute_embeddings.py, game_state_encoder.py)
 
-            Be constructive but thorough. Flag blockers as ❌, suggestions as 💡, and approvals as ✅.
+            Conventions: UV + pyproject.toml, python3 not python, ruff with E501 ignored, cloud-first (no local runs > 50 games).
+
+            Use: ❌ blockers, 💡 suggestions, ✅ approvals. Keep review concise.
 
           claude_args: |
             --model claude-sonnet-4-5-20250929
-            --max-turns 25
+            --max-turns 15
