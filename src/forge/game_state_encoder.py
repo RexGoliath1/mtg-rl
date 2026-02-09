@@ -28,6 +28,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
+
+from src.mechanics.precompute_embeddings import MAX_PARAMS
+from src.mechanics.vocabulary import VOCAB_SIZE
 import torch.nn as nn
 
 # Try to import h5py for loading pre-computed embeddings
@@ -49,8 +52,8 @@ class GameStateConfig:
 
     # Card mechanics embedding
     mechanics_h5_path: str = "data/card_mechanics_commander.h5"
-    vocab_size: int = 1403  # From vocabulary.py VOCAB_SIZE
-    max_params: int = 37    # From precompute_embeddings.py
+    vocab_size: int = VOCAB_SIZE  # Imported from src.mechanics.vocabulary
+    max_params: int = MAX_PARAMS  # Imported from src.mechanics.precompute_embeddings
 
     # Zone capacities (max cards per zone to encode)
     max_hand_size: int = 15
