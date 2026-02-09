@@ -1,16 +1,16 @@
-# MTG RL Docker Compose - Production (EC2 with ECR images)
+# MTG RL Docker Compose - Production (EC2 with GHCR images)
 # Used by deploy_data_collection.sh for AWS data collection.
 #
-# ECR_REGISTRY, COLLECTION_GAMES, COLLECTION_WORKERS, etc. are
+# IMAGE_REGISTRY, COLLECTION_GAMES, COLLECTION_WORKERS, etc. are
 # injected as environment variables by the EC2 userdata script.
 #
 # Usage:
-#   ECR_REGISTRY=123456789.dkr.ecr.us-east-1.amazonaws.com \
+#   IMAGE_REGISTRY=ghcr.io/rexgoliath1 \
 #     docker compose -f docker-compose.prod.yml up
 
 services:
   daemon:
-    image: ${ECR_REGISTRY}/mtg-rl-daemon:latest
+    image: ${IMAGE_REGISTRY}/mtg-rl-daemon:latest
     container_name: mtg-daemon
     ports:
       - "17171:17171"
@@ -29,7 +29,7 @@ services:
           memory: 2G
 
   collection:
-    image: ${ECR_REGISTRY}/mtg-rl-collection:latest
+    image: ${IMAGE_REGISTRY}/mtg-rl-collection:latest
     container_name: mtg-collection
     depends_on:
       daemon:

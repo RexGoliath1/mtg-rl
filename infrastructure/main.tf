@@ -4,9 +4,9 @@
 #
 # This configuration creates:
 # - S3 bucket for model checkpoints
-# - ECR repository for Docker images
 # - IAM roles for training instances
 # - (Optional) Spot instance configuration for training
+# Docker images are stored in GHCR (ghcr.io/rexgoliath1/), not ECR.
 #
 # Usage:
 #   terraform init
@@ -374,101 +374,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "checkpoints" {
 }
 
 # =============================================================================
-# ECR Repositories for Docker Images
-# =============================================================================
-
-resource "aws_ecr_repository" "training" {
-  name                 = "${var.project_name}-training"
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-}
-
-resource "aws_ecr_repository" "daemon" {
-  name                 = "${var.project_name}-daemon"
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-}
-
-resource "aws_ecr_repository" "collection" {
-  name                 = "${var.project_name}-collection"
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-}
-
-# Lifecycle policies to limit stored images
-resource "aws_ecr_lifecycle_policy" "training" {
-  repository = aws_ecr_repository.training.name
-
-  policy = jsonencode({
-    rules = [
-      {
-        rulePriority = 1
-        description  = "Keep last 5 images"
-        selection = {
-          tagStatus   = "any"
-          countType   = "imageCountMoreThan"
-          countNumber = 5
-        }
-        action = {
-          type = "expire"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_ecr_lifecycle_policy" "daemon" {
-  repository = aws_ecr_repository.daemon.name
-
-  policy = jsonencode({
-    rules = [
-      {
-        rulePriority = 1
-        description  = "Keep last 5 images"
-        selection = {
-          tagStatus   = "any"
-          countType   = "imageCountMoreThan"
-          countNumber = 5
-        }
-        action = {
-          type = "expire"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_ecr_lifecycle_policy" "collection" {
-  repository = aws_ecr_repository.collection.name
-
-  policy = jsonencode({
-    rules = [
-      {
-        rulePriority = 1
-        description  = "Keep last 5 images"
-        selection = {
-          tagStatus   = "any"
-          countType   = "imageCountMoreThan"
-          countNumber = 5
-        }
-        action = {
-          type = "expire"
-        }
-      }
-    ]
-  })
-}
-
-# =============================================================================
 # IAM Role for Training Instances
 # =============================================================================
 
@@ -508,27 +413,6 @@ resource "aws_iam_role_policy" "training_s3" {
           aws_s3_bucket.checkpoints.arn,
           "${aws_s3_bucket.checkpoints.arn}/*"
         ]
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy" "training_ecr" {
-  name = "${var.project_name}-ecr-access"
-  role = aws_iam_role.training.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage"
-        ]
-        Resource = "*"
       }
     ]
   })
@@ -631,19 +515,19 @@ resource "aws_spot_instance_request" "training" {
 
   user_data = base64encode(
     var.training_mode == "imitation" ? templatefile("${path.module}/imitation_userdata.sh.tpl", {
-      s3_bucket     = aws_s3_bucket.checkpoints.bucket
-      ecr_repo      = aws_ecr_repository.daemon.repository_url
-      num_games     = var.imitation_games
-      workers       = var.imitation_workers
-      auto_shutdown = var.auto_shutdown ? "true" : "false"
+      s3_bucket        = aws_s3_bucket.checkpoints.bucket
+      image_registry   = "ghcr.io/rexgoliath1"
+      num_games        = var.imitation_games
+      workers          = var.imitation_workers
+      auto_shutdown    = var.auto_shutdown ? "true" : "false"
     }) : var.training_mode == "imitation_train" ? templatefile("${path.module}/imitation_train_userdata.sh.tpl", {
-      s3_bucket      = aws_s3_bucket.checkpoints.bucket
-      ecr_repo       = aws_ecr_repository.training.repository_url
-      epochs         = var.imitation_train_epochs
-      batch_size     = var.training_batch_size
-      hidden_dim     = var.imitation_train_hidden_dim
-      learning_rate  = var.imitation_train_learning_rate
-      auto_shutdown  = var.auto_shutdown ? "true" : "false"
+      s3_bucket        = aws_s3_bucket.checkpoints.bucket
+      image_registry   = "ghcr.io/rexgoliath1"
+      epochs           = var.imitation_train_epochs
+      batch_size       = var.training_batch_size
+      hidden_dim       = var.imitation_train_hidden_dim
+      learning_rate    = var.imitation_train_learning_rate
+      auto_shutdown    = var.auto_shutdown ? "true" : "false"
     }) : templatefile("${path.module}/training_userdata.sh.tpl", {
       s3_bucket     = aws_s3_bucket.checkpoints.bucket
       sets          = join(" ", var.training_sets)
@@ -680,19 +564,19 @@ resource "aws_instance" "training" {
 
   user_data = base64encode(
     var.training_mode == "imitation" ? templatefile("${path.module}/imitation_userdata.sh.tpl", {
-      s3_bucket     = aws_s3_bucket.checkpoints.bucket
-      ecr_repo      = aws_ecr_repository.daemon.repository_url
-      num_games     = var.imitation_games
-      workers       = var.imitation_workers
-      auto_shutdown = var.auto_shutdown ? "true" : "false"
+      s3_bucket        = aws_s3_bucket.checkpoints.bucket
+      image_registry   = "ghcr.io/rexgoliath1"
+      num_games        = var.imitation_games
+      workers          = var.imitation_workers
+      auto_shutdown    = var.auto_shutdown ? "true" : "false"
     }) : var.training_mode == "imitation_train" ? templatefile("${path.module}/imitation_train_userdata.sh.tpl", {
-      s3_bucket      = aws_s3_bucket.checkpoints.bucket
-      ecr_repo       = aws_ecr_repository.training.repository_url
-      epochs         = var.imitation_train_epochs
-      batch_size     = var.training_batch_size
-      hidden_dim     = var.imitation_train_hidden_dim
-      learning_rate  = var.imitation_train_learning_rate
-      auto_shutdown  = var.auto_shutdown ? "true" : "false"
+      s3_bucket        = aws_s3_bucket.checkpoints.bucket
+      image_registry   = "ghcr.io/rexgoliath1"
+      epochs           = var.imitation_train_epochs
+      batch_size       = var.training_batch_size
+      hidden_dim       = var.imitation_train_hidden_dim
+      learning_rate    = var.imitation_train_learning_rate
+      auto_shutdown    = var.auto_shutdown ? "true" : "false"
     }) : templatefile("${path.module}/training_userdata.sh.tpl", {
       s3_bucket     = aws_s3_bucket.checkpoints.bucket
       sets          = join(" ", var.training_sets)
@@ -718,21 +602,6 @@ output "s3_bucket_name" {
   value       = aws_s3_bucket.checkpoints.bucket
 }
 
-output "ecr_repository_url" {
-  description = "ECR repository URL for training images"
-  value       = aws_ecr_repository.training.repository_url
-}
-
-output "ecr_daemon_repository_url" {
-  description = "ECR repository URL for Forge daemon images"
-  value       = aws_ecr_repository.daemon.repository_url
-}
-
-output "ecr_collection_repository_url" {
-  description = "ECR repository URL for collection images"
-  value       = aws_ecr_repository.collection.repository_url
-}
-
 output "training_role_arn" {
   description = "IAM role ARN for training instances"
   value       = aws_iam_role.training.arn
@@ -752,10 +621,7 @@ output "deployment_summary" {
     Environment: ${var.environment}
 
     S3 Bucket: ${aws_s3_bucket.checkpoints.bucket}
-    ECR Repositories:
-      Training:   ${aws_ecr_repository.training.repository_url}
-      Daemon:     ${aws_ecr_repository.daemon.repository_url}
-      Collection: ${aws_ecr_repository.collection.repository_url}
+    Docker Images: ghcr.io/rexgoliath1/mtg-rl-{daemon,collection,training}:latest
 
     Training Instance: ${var.enable_training_instance ? "ENABLED" : "DISABLED"}
     Instance Type: ${var.training_instance_type}

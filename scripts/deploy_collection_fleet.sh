@@ -18,7 +18,7 @@ set -e
 #
 # Prerequisites:
 # - AWS CLI configured
-# - ECR repos exist with pushed images
+# - GHCR images exist (CI pushes on main branch)
 # - S3 bucket exists (from terraform)
 # - deploy_data_collection_docker.sh in same directory
 #

@@ -2,7 +2,7 @@
 # =============================================================================
 # MTG RL Imitation Learning - Docker-based Data Collection on AWS
 # =============================================================================
-# Pulls daemon + collection images from ECR and runs via docker compose.
+# Pulls daemon + collection images from GHCR and runs via docker compose.
 # No JDK, Maven, Python deps, or Xvfb needed on the instance.
 # =============================================================================
 set -ex
@@ -15,7 +15,7 @@ echo "============================================================"
 
 # Configuration from Terraform
 S3_BUCKET="${s3_bucket}"
-ECR_REPO="${ecr_repo}"
+IMAGE_REGISTRY="${image_registry}"
 NUM_GAMES="${num_games}"
 WORKERS="${workers}"
 REGION="us-east-1"
@@ -24,7 +24,7 @@ RUN_ID="collection_$${TIMESTAMP}"
 
 echo "Configuration:"
 echo "  S3 Bucket: $S3_BUCKET"
-echo "  ECR Repo: $ECR_REPO"
+echo "  Image Registry: $IMAGE_REGISTRY"
 echo "  Games: $NUM_GAMES"
 echo "  Workers: $WORKERS"
 echo "  Run ID: $RUN_ID"
@@ -60,17 +60,12 @@ if ! command -v aws &> /dev/null; then
     rm -rf awscliv2.zip aws/
 fi
 
-# --- Pull Docker images from ECR ---
+# --- Pull Docker images from GHCR ---
 echo ""
-echo "[3/4] Pulling Docker images from ECR..."
-# ECR_REPO is the full registry URL (e.g. 123456789.dkr.ecr.us-east-1.amazonaws.com/mtg-rl-training)
-# We need the registry base URL for login
-ECR_REGISTRY=$(echo "$ECR_REPO" | cut -d'/' -f1)
-aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
-
-# Pull daemon and collection images
-docker pull $ECR_REGISTRY/mtg-rl-daemon:latest
-docker pull $ECR_REGISTRY/mtg-rl-collection:latest
+echo "[3/4] Pulling Docker images from GHCR..."
+# GHCR images are public — no login needed
+docker pull $IMAGE_REGISTRY/mtg-rl-daemon:latest
+docker pull $IMAGE_REGISTRY/mtg-rl-collection:latest
 echo "Images pulled successfully"
 docker images
 
@@ -92,7 +87,7 @@ mkdir -p /home/ubuntu/collection /home/ubuntu/training_data
 cat > /home/ubuntu/collection/docker-compose.yml << COMPOSE_EOF
 services:
   daemon:
-    image: $ECR_REGISTRY/mtg-rl-daemon:latest
+    image: $IMAGE_REGISTRY/mtg-rl-daemon:latest
     container_name: mtg-daemon
     ports:
       - "17171:17171"
@@ -111,7 +106,7 @@ services:
           memory: 2G
 
   collection:
-    image: $ECR_REGISTRY/mtg-rl-collection:latest
+    image: $IMAGE_REGISTRY/mtg-rl-collection:latest
     container_name: mtg-collection
     depends_on:
       daemon:

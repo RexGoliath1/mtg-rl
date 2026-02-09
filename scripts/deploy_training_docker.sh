@@ -6,7 +6,7 @@ set -e
 # ============================================================================
 # Launches a GPU spot instance that:
 # 1. Installs Docker + NVIDIA container toolkit
-# 2. Pulls mtg-rl-training image from ECR
+# 2. Pulls mtg-rl-training image from GHCR
 # 3. Downloads HDF5 training data from S3
 # 4. Runs train_imitation.py in Docker container
 # 5. Uploads checkpoints + logs to S3
@@ -14,7 +14,7 @@ set -e
 #
 # Prerequisites:
 # - AWS CLI configured
-# - mtg-rl-training:latest pushed to ECR
+# - mtg-rl-training:latest pushed to GHCR (CI pushes on main branch)
 # - HDF5 data in S3 (from data collection run)
 #
 # Usage:
@@ -94,10 +94,9 @@ fi
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo "AWS credentials OK (account: $ACCOUNT_ID)"
 
-# Derive ECR registry URL
-ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
-ECR_REPO="${ECR_REGISTRY}/mtg-rl-training"
-echo "ECR Registry: $ECR_REGISTRY"
+# Image registry: GHCR (public, no auth needed to pull)
+IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/rexgoliath1}"
+echo "Image Registry: $IMAGE_REGISTRY"
 
 # Check S3 bucket exists
 if ! aws s3 ls "s3://${S3_BUCKET}" &>/dev/null; then
@@ -120,18 +119,9 @@ if [ "$H5_COUNT" -eq 0 ]; then
     exit 1
 fi
 
-# Verify ECR training image exists
-echo ""
-echo "Checking ECR image..."
-if ! aws ecr describe-images --region "$REGION" --repository-name "mtg-rl-training" --image-ids imageTag=latest &>/dev/null 2>&1; then
-    echo "ERROR: Image mtg-rl-training:latest not found in ECR"
-    echo "Push the training image first:"
-    echo "  aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_REGISTRY"
-    echo "  docker build -t $ECR_REGISTRY/mtg-rl-training:latest -f infrastructure/docker/Dockerfile.training ."
-    echo "  docker push $ECR_REGISTRY/mtg-rl-training:latest"
-    exit 1
-fi
-echo "  mtg-rl-training:latest OK"
+# Note: GHCR image availability is verified at pull time on the EC2 instance.
+# CI pushes images to GHCR on every merge to main.
+echo "Using GHCR image: $IMAGE_REGISTRY/mtg-rl-training:latest"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RUN_ID="imitation_train_${TIMESTAMP}"
@@ -280,13 +270,11 @@ if ! command -v aws &> /dev/null; then
     rm -rf aws awscliv2.zip
 fi
 
-# --- [3/6] Login to ECR and pull training image ---
+# --- [3/6] Pull training image from GHCR ---
 echo ""
-echo "[3/6] Pulling training image from ECR..."
-aws ecr get-login-password --region ECR_REGION_PLACEHOLDER | \
-    docker login --username AWS --password-stdin ECR_REGISTRY_PLACEHOLDER
-
-docker pull ECR_REPO_PLACEHOLDER:latest
+echo "[3/6] Pulling training image from GHCR..."
+# GHCR images are public — no login needed
+docker pull IMAGE_REGISTRY_PLACEHOLDER/mtg-rl-training:latest
 echo "Image pulled successfully"
 docker images
 
@@ -346,7 +334,7 @@ fi
 WANDB_KEY=""
 WANDB_KEY=$(aws secretsmanager get-secret-value \
     --secret-id mtg-rl/wandb-api-key \
-    --region ECR_REGION_PLACEHOLDER \
+    --region REGION_PLACEHOLDER \
     --query SecretString \
     --output text 2>/dev/null || echo "")
 
@@ -364,7 +352,7 @@ docker run --rm \
     $DOCKER_FLAGS \
     $WANDB_FLAGS \
     -e PYTHONUNBUFFERED=1 \
-    ECR_REPO_PLACEHOLDER:latest \
+    IMAGE_REGISTRY_PLACEHOLDER/mtg-rl-training:latest \
     python /app/scripts/train_imitation.py \
         --data-dir /data \
         --epochs EPOCHS_PLACEHOLDER \
@@ -419,9 +407,8 @@ USERDATA
 
 # Replace placeholders
 USER_DATA="${USER_DATA//S3_BUCKET_PLACEHOLDER/$S3_BUCKET}"
-USER_DATA="${USER_DATA//ECR_REGISTRY_PLACEHOLDER/$ECR_REGISTRY}"
-USER_DATA="${USER_DATA//ECR_REPO_PLACEHOLDER/$ECR_REPO}"
-USER_DATA="${USER_DATA//ECR_REGION_PLACEHOLDER/$REGION}"
+USER_DATA="${USER_DATA//IMAGE_REGISTRY_PLACEHOLDER/$IMAGE_REGISTRY}"
+USER_DATA="${USER_DATA//REGION_PLACEHOLDER/$REGION}"
 USER_DATA="${USER_DATA//RUN_ID_PLACEHOLDER/$RUN_ID}"
 USER_DATA="${USER_DATA//TIMESTAMP_PLACEHOLDER/$TIMESTAMP}"
 USER_DATA="${USER_DATA//EPOCHS_PLACEHOLDER/$EPOCHS}"

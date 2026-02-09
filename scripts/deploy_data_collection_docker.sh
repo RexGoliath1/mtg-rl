@@ -5,14 +5,14 @@ set -e
 # Deploy AI Training Data Collection to AWS Spot Instance (Docker-based)
 # ============================================================================
 # Launches a spot instance that:
-# 1. Installs Docker and pulls daemon + collection images from ECR
+# 1. Installs Docker and pulls daemon + collection images from GHCR
 # 2. Runs docker compose to start Forge daemon + data collection
 # 3. Uploads HDF5 training data + logs to S3
 # 4. Auto-terminates when complete
 #
 # Prerequisites:
 # - AWS CLI configured
-# - ECR repos exist with pushed images (CI pushes on main branch)
+# - GHCR images exist (CI pushes on main branch)
 # - S3 bucket exists (from terraform)
 #
 # Usage:
@@ -87,10 +87,8 @@ fi
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo "AWS credentials OK (account: $ACCOUNT_ID)"
 
-# Image registry: GHCR (public, no auth needed to pull) with ECR fallback
-GHCR_REGISTRY="${GHCR_REGISTRY:-ghcr.io/rexgoliath1}"
-ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
-IMAGE_REGISTRY="${IMAGE_REGISTRY:-$GHCR_REGISTRY}"
+# Image registry: GHCR (public, no auth needed to pull)
+IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/rexgoliath1}"
 echo "Image Registry: $IMAGE_REGISTRY"
 
 # Check S3 bucket exists
@@ -209,7 +207,7 @@ echo "Memory: $(free -h | awk '/Mem:/ {print $2}')"
 
 # --- Early heartbeat: upload log before anything else can fail ---
 # This ensures we always get diagnostic output in S3, even if Docker
-# install or ECR auth fails. Uses pre-installed AWS CLI v1 (ubuntu AMI).
+# install or image pull fails. Uses pre-installed AWS CLI v1 (ubuntu AMI).
 (aws s3 cp /var/log/data-collection.log \
     s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/live_log.txt 2>/dev/null || true) &
 
@@ -260,7 +258,7 @@ fi
 # --- Pull Docker images ---
 echo ""
 echo "[3/4] Pulling Docker images from IMAGE_REGISTRY_PLACEHOLDER..."
-# GHCR images are public — no login needed (unlike ECR which required IAM auth)
+# GHCR images are public — no login needed
 docker pull IMAGE_REGISTRY_PLACEHOLDER/mtg-rl-daemon:latest
 docker pull IMAGE_REGISTRY_PLACEHOLDER/mtg-rl-collection:latest
 

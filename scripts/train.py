@@ -10,7 +10,7 @@ Replaces 9+ shell scripts with one Python command for all training operations:
   status           - Check running instances and S3 data
   connect          - Connect to running instance
   kill             - Terminate all training instances
-  docker-push      - Build and push Docker images to ECR
+  docker-push      - Build and push Docker images to GHCR
   ssh              - SSH into running instance via EC2 Instance Connect
   deploy-training  - Launch EC2 spot instance for GPU training (Terraform)
 
@@ -200,7 +200,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
     print()
 
     # Validate + cost
-    account_id = validate_credentials()
+    validate_credentials()
     print(_ok("AWS credentials"))
 
     cost_est = estimate_costs(collection_config=cfg)
@@ -224,35 +224,17 @@ def cmd_collect(args: argparse.Namespace) -> None:
     from src.deploy.aws import find_ami, get_vpc_info, ensure_security_group
     from src.deploy.config import DeployConfig
 
-    ecr_registry = f"{account_id}.dkr.ecr.{REGION}.amazonaws.com"
+    image_registry = "ghcr.io/rexgoliath1"
     deploy_cfg = DeployConfig(
         region=REGION,
         s3_bucket=S3_BUCKET,
-        ecr_registry=ecr_registry,
+        image_registry=image_registry,
     )
 
     if use_docker:
         # --- Docker-based deployment (recommended) ---
-        print(_info("Using Docker images from ECR"))
-        print(f"  ECR registry: {ecr_registry}")
-
-        # Verify ECR images exist
-        import boto3
-        ecr_client = boto3.client("ecr", region_name=REGION)
-        for repo_name in ["mtg-rl-daemon", "mtg-rl-collection"]:
-            try:
-                ecr_client.describe_images(
-                    repositoryName=repo_name,
-                    imageIds=[{"imageTag": "latest"}],
-                )
-                print(_ok(f"  {repo_name}:latest found in ECR"))
-            except Exception:
-                print(_err(f"  {repo_name}:latest NOT found in ECR"))
-                print("  Push images first by merging to main (CI pushes)")
-                print("  Or push manually:")
-                print(f"    docker build -t {ecr_registry}/{repo_name}:latest ...")
-                print(f"    docker push {ecr_registry}/{repo_name}:latest")
-                sys.exit(1)
+        print(_info("Using Docker images from GHCR"))
+        print(f"  Image registry: {image_registry}")
 
         # Generate Docker-based userdata
         userdata = generate_docker_collection_userdata(
@@ -260,7 +242,7 @@ def cmd_collect(args: argparse.Namespace) -> None:
             collection_config=cfg,
             run_id=run_id,
             timestamp=ts,
-            ecr_registry=ecr_registry,
+            image_registry=image_registry,
         )
     else:
         # --- Legacy tarball-based deployment ---
@@ -646,38 +628,20 @@ def cmd_kill(args: argparse.Namespace) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Subcommand: docker-push  (wraps deploy_docker.sh)
+# Subcommand: docker-push  (GHCR images are now pushed by CI automatically)
 # ---------------------------------------------------------------------------
 def cmd_docker_push(args: argparse.Namespace) -> None:
-    """Build and push Docker images to ECR."""
-    script = PROJECT_DIR / "scripts" / "deploy_docker.sh"
-    if not script.exists():
-        print(_err(f"Script not found: {script}"))
-        sys.exit(1)
-
-    cmd = [str(script)]
-    if args.all:
-        cmd.append("--all")
-    else:
-        if args.build:
-            cmd.append("--build")
-        if args.push:
-            cmd.append("--push")
-        if args.deploy:
-            cmd.append("--deploy")
-    if args.local:
-        cmd.append("--local")
-    if args.games is not None:
-        cmd.extend(["--games", str(args.games)])
-
+    """Build and push Docker images to GHCR."""
     print(_heading("DOCKER BUILD & PUSH"))
-    print(f"  Script:  {script}")
-    print(f"  Args:    {' '.join(cmd[1:]) or '(none -- will show help)'}")
     print()
-
-    env = {**os.environ, "FORCE_LEGACY": "1"}
-    result = subprocess.run(cmd, cwd=str(PROJECT_DIR), env=env)
-    sys.exit(result.returncode)
+    print("  Docker images are now built and pushed to GHCR automatically by CI")
+    print("  on every merge to main. No manual push needed.")
+    print()
+    print("  To build locally for testing:")
+    print("    docker build -t mtg-daemon:latest -f infrastructure/docker/Dockerfile.daemon .")
+    print("    docker build -t mtg-training:latest -f infrastructure/docker/Dockerfile.training .")
+    print()
+    print("  Images are at: ghcr.io/rexgoliath1/mtg-rl-{daemon,collection,training}:latest")
 
 
 # ---------------------------------------------------------------------------
@@ -855,14 +819,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_kill.add_argument("--force", action="store_true", help="Skip confirmation prompt")
     p_kill.set_defaults(func=cmd_kill)
 
-    # --- docker-push (wraps deploy_docker.sh) ---
-    p_docker = sub.add_parser("docker-push", help="Build and push Docker images to ECR")
-    p_docker.add_argument("--build", action="store_true", help="Build Docker images locally")
-    p_docker.add_argument("--push", action="store_true", help="Push images to ECR")
-    p_docker.add_argument("--deploy", action="store_true", help="Deploy to EC2")
-    p_docker.add_argument("--all", action="store_true", help="Build + Push + Deploy")
-    p_docker.add_argument("--local", action="store_true", help="Run locally with docker-compose")
-    p_docker.add_argument("--games", type=int, default=None, help="Number of games for profiling (default: 100)")
+    # --- docker-push (info only — CI handles GHCR pushes automatically) ---
+    p_docker = sub.add_parser("docker-push", help="Show Docker image build/push info (CI handles this)")
     p_docker.set_defaults(func=cmd_docker_push)
 
     # --- ssh (wraps ssh-instance.sh) ---
