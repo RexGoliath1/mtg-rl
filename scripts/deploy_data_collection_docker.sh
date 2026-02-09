@@ -87,9 +87,11 @@ fi
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo "AWS credentials OK (account: $ACCOUNT_ID)"
 
-# Derive ECR registry URL
+# Image registry: GHCR (public, no auth needed to pull) with ECR fallback
+GHCR_REGISTRY="${GHCR_REGISTRY:-ghcr.io/rexgoliath1}"
 ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
-echo "ECR Registry: $ECR_REGISTRY"
+IMAGE_REGISTRY="${IMAGE_REGISTRY:-$GHCR_REGISTRY}"
+echo "Image Registry: $IMAGE_REGISTRY"
 
 # Check S3 bucket exists
 if ! aws s3 ls "s3://${S3_BUCKET}" &>/dev/null; then
@@ -98,21 +100,6 @@ if ! aws s3 ls "s3://${S3_BUCKET}" &>/dev/null; then
     exit 1
 fi
 echo "S3 bucket OK"
-
-# Verify ECR images exist
-echo ""
-echo "Checking ECR images..."
-for REPO in mtg-rl-daemon mtg-rl-collection; do
-    if ! aws ecr describe-images --region "$REGION" --repository-name "$REPO" --image-ids imageTag=latest &>/dev/null 2>&1; then
-        echo "ERROR: Image $REPO:latest not found in ECR"
-        echo "Push images first by merging to main (CI will push) or run manually:"
-        echo "  aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_REGISTRY"
-        echo "  docker build -t $ECR_REGISTRY/$REPO:latest -f infrastructure/docker/Dockerfile.daemon ."
-        echo "  docker push $ECR_REGISTRY/$REPO:latest"
-        exit 1
-    fi
-    echo "  $REPO:latest OK"
-done
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 if [ -n "$CUSTOM_RUN_ID" ]; then
@@ -124,23 +111,41 @@ fi
 # S3 prefix defaults to RUN_ID (fleet script overrides for per-instance subdirs)
 S3_PREFIX="${CUSTOM_S3_PREFIX:-$RUN_ID}"
 
-# Find Ubuntu 22.04 AMI
+# Find AMI: prefer Deep Learning Base AMI with Single CUDA (35GB, has Docker pre-installed)
+# This is lighter than the full GPU DLAMI (75GB) and works on CPU instances (c5)
+# Falls back to plain Ubuntu 22.04 if DLAMI not available
 echo ""
 echo "Finding AMI..."
 AMI_ID=$(aws ec2 describe-images \
     --region "$REGION" \
-    --owners 099720109477 \
+    --owners amazon \
     --filters \
-        "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*" \
+        "Name=name,Values=Deep Learning Base AMI with Single CUDA (Ubuntu 22.04)*" \
         "Name=state,Values=available" \
     --query 'sort_by(Images, &CreationDate)[-1].ImageId' \
-    --output text)
+    --output text 2>/dev/null)
 
-if [ "$AMI_ID" == "None" ] || [ -z "$AMI_ID" ]; then
-    echo "ERROR: Could not find Ubuntu 22.04 AMI"
-    exit 1
+if [ "$AMI_ID" != "None" ] && [ -n "$AMI_ID" ]; then
+    AMI_NAME=$(aws ec2 describe-images --region "$REGION" --image-ids "$AMI_ID" --query 'Images[0].Name' --output text 2>/dev/null)
+    echo "Using DLAMI: $AMI_ID ($AMI_NAME)"
+    echo "  Docker pre-installed — faster bootstrap"
+else
+    echo "DLAMI not found, falling back to Ubuntu 22.04..."
+    AMI_ID=$(aws ec2 describe-images \
+        --region "$REGION" \
+        --owners 099720109477 \
+        --filters \
+            "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*" \
+            "Name=state,Values=available" \
+        --query 'sort_by(Images, &CreationDate)[-1].ImageId' \
+        --output text)
+
+    if [ "$AMI_ID" == "None" ] || [ -z "$AMI_ID" ]; then
+        echo "ERROR: Could not find any suitable AMI"
+        exit 1
+    fi
+    echo "Using AMI: $AMI_ID (Ubuntu 22.04)"
 fi
-echo "Using AMI: $AMI_ID (Ubuntu 22.04)"
 
 # Get default VPC and subnet
 VPC_ID=$(aws ec2 describe-vpcs --region "$REGION" \
@@ -220,12 +225,25 @@ LOG_UPLOADER_PID=$!
 echo "Continuous log uploader started (PID: $LOG_UPLOADER_PID, interval: 60s)"
 
 # --- Install Docker and AWS CLI ---
+# DLAMI has Docker + AWS CLI pre-installed; plain Ubuntu does not
 echo ""
 echo "[1/4] Installing Docker..."
-apt-get update -qq
-apt-get install -y -qq docker.io docker-compose-v2 unzip > /dev/null
-systemctl start docker
-systemctl enable docker
+if command -v docker &> /dev/null; then
+    echo "  Docker already installed (DLAMI) — skipping"
+    systemctl start docker 2>/dev/null || true
+else
+    apt-get update -qq
+    apt-get install -y -qq docker.io docker-compose-v2 unzip > /dev/null
+    systemctl start docker
+    systemctl enable docker
+fi
+
+# Ensure docker-compose v2 plugin is available
+if ! docker compose version &> /dev/null; then
+    echo "  Installing docker-compose plugin..."
+    apt-get update -qq
+    apt-get install -y -qq docker-compose-v2 > /dev/null
+fi
 
 echo ""
 echo "[2/4] Installing AWS CLI..."
@@ -234,16 +252,16 @@ if ! command -v aws &> /dev/null; then
     unzip -q awscliv2.zip
     ./aws/install --update
     rm -rf aws awscliv2.zip
+else
+    echo "  AWS CLI already installed — skipping"
 fi
 
-# --- Login to ECR and pull images ---
+# --- Pull Docker images ---
 echo ""
-echo "[3/4] Pulling Docker images from ECR..."
-aws ecr get-login-password --region ECR_REGION_PLACEHOLDER | \
-    docker login --username AWS --password-stdin ECR_REGISTRY_PLACEHOLDER
-
-docker pull ECR_REGISTRY_PLACEHOLDER/mtg-rl-daemon:latest
-docker pull ECR_REGISTRY_PLACEHOLDER/mtg-rl-collection:latest
+echo "[3/4] Pulling Docker images from IMAGE_REGISTRY_PLACEHOLDER..."
+# GHCR images are public — no login needed (unlike ECR which required IAM auth)
+docker pull IMAGE_REGISTRY_PLACEHOLDER/mtg-rl-daemon:latest
+docker pull IMAGE_REGISTRY_PLACEHOLDER/mtg-rl-collection:latest
 
 echo "Images pulled successfully"
 docker images
@@ -283,7 +301,7 @@ mkdir -p /home/ubuntu/collection /home/ubuntu/daemon-logs
 cat > /home/ubuntu/collection/docker-compose.yml << 'COMPOSE_EOF'
 services:
   daemon:
-    image: ECR_REGISTRY_PLACEHOLDER/mtg-rl-daemon:latest
+    image: IMAGE_REGISTRY_PLACEHOLDER/mtg-rl-daemon:latest
     container_name: mtg-daemon
     ports:
       - "17171:17171"
@@ -304,7 +322,7 @@ services:
           memory: 4G
 
   collection:
-    image: ECR_REGISTRY_PLACEHOLDER/mtg-rl-collection:latest
+    image: IMAGE_REGISTRY_PLACEHOLDER/mtg-rl-collection:latest
     container_name: mtg-collection
     depends_on:
       daemon:
@@ -427,8 +445,7 @@ USERDATA
 
 # Replace placeholders
 USER_DATA="${USER_DATA//BUCKET_PLACEHOLDER/$S3_BUCKET}"
-USER_DATA="${USER_DATA//ECR_REGISTRY_PLACEHOLDER/$ECR_REGISTRY}"
-USER_DATA="${USER_DATA//ECR_REGION_PLACEHOLDER/$REGION}"
+USER_DATA="${USER_DATA//IMAGE_REGISTRY_PLACEHOLDER/$IMAGE_REGISTRY}"
 USER_DATA="${USER_DATA//S3_PREFIX_PLACEHOLDER/$S3_PREFIX}"
 USER_DATA="${USER_DATA//RUN_ID_PLACEHOLDER/$RUN_ID}"
 USER_DATA="${USER_DATA//TIMESTAMP_PLACEHOLDER/$TIMESTAMP}"
@@ -452,7 +469,7 @@ LAUNCH_SPEC=$(cat << EOF
     "UserData": "$USER_DATA_B64",
     "BlockDeviceMappings": [{
         "DeviceName": "/dev/sda1",
-        "Ebs": {"VolumeSize": 30, "VolumeType": "gp3"}
+        "Ebs": {"VolumeSize": 50, "VolumeType": "gp3"}
     }]
 }
 EOF
@@ -507,7 +524,7 @@ if [ -z "$INSTANCE_ID" ]; then
         --subnet-id "$SUBNET_ID" \
         --iam-instance-profile "Name=$INSTANCE_PROFILE" \
         --user-data "$USER_DATA" \
-        --block-device-mappings "[{\"DeviceName\":\"/dev/sda1\",\"Ebs\":{\"VolumeSize\":30,\"VolumeType\":\"gp3\"}}]" \
+        --block-device-mappings "[{\"DeviceName\":\"/dev/sda1\",\"Ebs\":{\"VolumeSize\":50,\"VolumeType\":\"gp3\"}}]" \
         --query 'Instances[0].InstanceId' \
         --output text)
 fi
