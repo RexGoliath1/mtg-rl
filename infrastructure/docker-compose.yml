@@ -21,7 +21,9 @@ services:
       - sim
 
   # Forge daemon - persistent game engine for training/collection
-  # Set FORGE_SHA env var before building, or defaults to :latest base image
+  # Usage:
+  #   FORGE_SHA=$(git ls-tree HEAD forge-repo | awk '{print $3}')
+  #   FORGE_SHA=$FORGE_SHA docker-compose -f infrastructure/docker-compose.yml up daemon
   daemon:
     build:
       context: ..

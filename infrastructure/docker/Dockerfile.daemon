@@ -10,6 +10,7 @@
 #   FORGE_SHA=$(git ls-tree HEAD forge-repo | awk '{print $3}')
 #   docker build --build-arg FORGE_SHA=$FORGE_SHA -f infrastructure/docker/Dockerfile.daemon .
 
+# Default to :latest for local dev; CI always sets FORGE_SHA explicitly
 ARG FORGE_SHA=latest
 FROM ghcr.io/rexgoliath1/forge-daemon-base:${FORGE_SHA}
 
@@ -18,7 +19,7 @@ LABEL description="Forge MTG daemon for reinforcement learning"
 LABEL org.opencontainers.image.source=https://github.com/RexGoliath1/mtg-rl
 
 # Install netcat for healthcheck, procps for jstat/jcmd JVM monitoring
-# (base image only has Xvfb)
+# (base image already has JRE + Xvfb)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd procps \
     && rm -rf /var/lib/apt/lists/*
