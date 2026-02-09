@@ -21,10 +21,13 @@ services:
       - sim
 
   # Forge daemon - persistent game engine for training/collection
+  # Set FORGE_SHA env var before building, or defaults to :latest base image
   daemon:
     build:
       context: ..
       dockerfile: infrastructure/docker/Dockerfile.daemon
+      args:
+        FORGE_SHA: ${FORGE_SHA:-latest}
     container_name: mtg-daemon
     image: mtg-daemon:latest
     ports:
