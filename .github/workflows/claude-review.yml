@@ -40,22 +40,25 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
           prompt: |
-            Review this PR for the ForgeRL project (RL for Magic: The Gathering).
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
 
-            IMPORTANT: Focus ONLY on the PR diff. Do NOT explore the full codebase.
-            Read the changed files, review the diff, and post your review promptly.
-            You have limited turns — prioritize posting the review over deep exploration.
+            Review this pull request for the ForgeRL project (RL for Magic: The Gathering).
 
-            Check for:
-            1. Bugs or logic errors in the changed code
-            2. Security issues (secrets, injection)
-            3. Missing test coverage for new logic
-            4. VOCAB_SIZE / MAX_PARAMS sync issues (must match across vocabulary.py, precompute_embeddings.py, game_state_encoder.py)
+            Workflow:
+            1. Run `gh pr diff ${{ github.event.pull_request.number || github.event.issue.number }}` to read the diff
+            2. Analyze the changes for bugs, security issues, and consistency
+            3. Post your review using `gh pr comment ${{ github.event.pull_request.number || github.event.issue.number }}` with your findings
+            4. Use `mcp__github_inline_comment__create_inline_comment` for line-specific feedback
 
-            Conventions: UV + pyproject.toml, python3 not python, ruff with E501 ignored, cloud-first (no local runs > 50 games).
+            Do NOT explore the broader codebase or run tests. Focus on the diff.
 
-            Use: ❌ blockers, 💡 suggestions, ✅ approvals. Keep review concise.
+            Conventions: UV + pyproject.toml, python3 not python, ruff (E501 ignored).
+
+            Format: ❌ blockers, 💡 suggestions, ✅ approvals. Keep it concise.
+            Only post GitHub comments — don't submit review text as messages.
 
           claude_args: |
             --model claude-sonnet-4-5-20250929
-            --max-turns 15
+            --max-turns 10
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Glob,Grep"
