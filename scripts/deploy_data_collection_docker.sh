@@ -201,6 +201,24 @@ echo "Availability zone: $AZ"
 echo "CPU cores: $(nproc)"
 echo "Memory: $(free -h | awk '/Mem:/ {print $2}')"
 
+# --- Early heartbeat: upload log before anything else can fail ---
+# This ensures we always get diagnostic output in S3, even if Docker
+# install or ECR auth fails. Uses pre-installed AWS CLI v1 (ubuntu AMI).
+(aws s3 cp /var/log/data-collection.log \
+    s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/live_log.txt 2>/dev/null || true) &
+
+# --- Continuous log uploader (every 60s) ---
+# Replaces the 5-min uploader that started too late to catch bootstrap failures.
+(
+    while true; do
+        sleep 60
+        aws s3 cp /var/log/data-collection.log \
+            s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/live_log.txt 2>/dev/null || true
+    done
+) &
+LOG_UPLOADER_PID=$!
+echo "Continuous log uploader started (PID: $LOG_UPLOADER_PID, interval: 60s)"
+
 # --- Install Docker and AWS CLI ---
 echo ""
 echo "[1/4] Installing Docker..."
@@ -229,17 +247,6 @@ docker pull ECR_REGISTRY_PLACEHOLDER/mtg-rl-collection:latest
 
 echo "Images pulled successfully"
 docker images
-
-# --- Start background log uploader ---
-(
-    while true; do
-        sleep 300
-        aws s3 cp /var/log/data-collection.log \
-            s3://BUCKET_PLACEHOLDER/imitation_data/S3_PREFIX_PLACEHOLDER/live_log.txt 2>/dev/null || true
-    done
-) &
-LOG_UPLOADER_PID=$!
-echo "Background log uploader started (PID: $LOG_UPLOADER_PID, interval: 5min)"
 
 # --- Start incremental HDF5 uploader (protects against spot interruption) ---
 (
