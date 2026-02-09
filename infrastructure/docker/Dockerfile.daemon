@@ -78,6 +78,7 @@ FROM eclipse-temurin:17-jre
 
 LABEL maintainer="MTG RL Training"
 LABEL description="Forge MTG daemon for reinforcement learning"
+LABEL org.opencontainers.image.source=https://github.com/RexGoliath1/mtg-rl
 
 # Install netcat for healthcheck, procps for jstat/jcmd JVM monitoring
 RUN apt-get update && apt-get install -y --no-install-recommends netcat-openbsd xvfb procps \
