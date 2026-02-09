@@ -5978,8 +5978,275 @@ class TestFeatureGapPatterns:
             card_type="Creature", card_name="Gatekeeper of Malakir"
         )
         assert result.confidence > 0.4
+        assert Mechanic.KICKER in result.mechanics
+        assert Mechanic.IF_CONDITION in result.mechanics
 
     def test_protection_from_confidence(self):
-        """Protection from color should be consumed."""
+        """Protection from color should be consumed and emit PROTECTION."""
         result = parse_oracle_text("Protection from white", card_type="Creature", card_name="Black Knight")
         assert result.confidence > 0.5
+        assert Mechanic.PROTECTION in result.mechanics
+
+
+# =============================================================================
+# CONFIDENCE-BOOSTER PATTERN TESTS
+# =============================================================================
+
+class TestConfidenceBoosterPatterns:
+    """Tests for the 5 confidence-booster patterns that fire existing enums."""
+
+    # -----------------------------------------------------------------------
+    # 1. "whenever one or more" — triggered ability variant
+    # -----------------------------------------------------------------------
+    def test_whenever_one_or_more_creatures_deal_combat_damage(self):
+        """Toski, Bearer of Secrets — whenever one or more creatures deal combat damage."""
+        result = parse_oracle_text(
+            "Whenever one or more creatures you control deal combat damage to a player, draw a card.",
+            card_type="Creature", card_name="Toski, Bearer of Secrets"
+        )
+        assert Mechanic.TRIGGERED_ABILITY in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+
+    def test_whenever_one_or_more_tokens_created(self):
+        """Mondrak, Glory Dominus — whenever one or more tokens would be created."""
+        result = parse_oracle_text(
+            "If one or more tokens would be created under your control, twice that many of those tokens are created instead.",
+            card_type="Creature", card_name="Mondrak, Glory Dominus"
+        )
+        # "one or more" is present but without "whenever" prefix.
+        # The replacement effect / effect multiplier fires instead.
+        assert Mechanic.EFFECT_MULTIPLIER in result.mechanics
+
+    def test_whenever_one_or_more_counters(self):
+        """Lathiel, the Bounteous Dawn — whenever one or more +1/+1 counters."""
+        result = parse_oracle_text(
+            "Whenever one or more +1/+1 counters are put on a creature you control, draw a card.",
+            card_type="Creature", card_name="Test Card"
+        )
+        assert Mechanic.TRIGGERED_ABILITY in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+        assert Mechanic.PLUS_ONE_COUNTER in result.mechanics
+
+    def test_whenever_one_or_more_nontoken(self):
+        """Welcoming Vampire — whenever one or more other creatures enter."""
+        result = parse_oracle_text(
+            "Whenever one or more other creatures with power 2 or less enter the battlefield under your control, draw a card. This ability triggers only once each turn.",
+            card_type="Creature", card_name="Welcoming Vampire"
+        )
+        assert Mechanic.TRIGGERED_ABILITY in result.mechanics
+        assert Mechanic.DRAW in result.mechanics
+        assert Mechanic.ONCE_PER_TURN in result.mechanics
+
+    # -----------------------------------------------------------------------
+    # 2. "protection from [color]" — protection with color specification
+    # -----------------------------------------------------------------------
+    def test_protection_from_white(self):
+        """Black Knight — protection from white."""
+        result = parse_oracle_text(
+            "First strike\nProtection from white",
+            card_type="Creature", card_name="Black Knight"
+        )
+        assert Mechanic.PROTECTION in result.mechanics
+        assert Mechanic.FIRST_STRIKE in result.mechanics
+
+    def test_protection_from_black(self):
+        """White Knight — protection from black."""
+        result = parse_oracle_text(
+            "First strike\nProtection from black",
+            card_type="Creature", card_name="White Knight"
+        )
+        assert Mechanic.PROTECTION in result.mechanics
+
+    def test_protection_from_red_and_blue(self):
+        """Animar — protection from white and from black."""
+        result = parse_oracle_text(
+            "Protection from white and from black",
+            card_type="Creature", card_name="Animar, Soul of Elements"
+        )
+        assert Mechanic.PROTECTION in result.mechanics
+
+    def test_protection_from_multicolored(self):
+        """Ethersworn Canonist-like — protection from multicolored."""
+        result = parse_oracle_text(
+            "Protection from multicolored",
+            card_type="Creature", card_name="Mistform Ultimus"
+        )
+        assert Mechanic.PROTECTION in result.mechanics
+
+    def test_protection_from_everything(self):
+        """Progenitus — protection from everything."""
+        result = parse_oracle_text(
+            "Protection from everything",
+            card_type="Creature", card_name="Progenitus"
+        )
+        assert Mechanic.PROTECTION in result.mechanics
+
+    def test_protection_from_creatures(self):
+        """Guardian of the Guildpact — protection from creatures."""
+        result = parse_oracle_text(
+            "Protection from creatures",
+            card_type="Creature", card_name="Guardian of the Guildpact"
+        )
+        assert Mechanic.PROTECTION in result.mechanics
+
+    def test_protection_from_instants(self):
+        """Stormbreath Dragon — protection from instants (hypothetical)."""
+        result = parse_oracle_text(
+            "Protection from instants",
+            card_type="Creature", card_name="Test Card"
+        )
+        assert Mechanic.PROTECTION in result.mechanics
+
+    def test_protection_confidence_boost(self):
+        """Protection from color text should yield high confidence."""
+        result = parse_oracle_text(
+            "Protection from blue\nFlying",
+            card_type="Creature", card_name="Test Card"
+        )
+        assert result.confidence >= 0.7
+        assert Mechanic.PROTECTION in result.mechanics
+        assert Mechanic.FLYING in result.mechanics
+
+    # -----------------------------------------------------------------------
+    # 3. "if was kicked" / "if it was kicked" — kicker conditional
+    # -----------------------------------------------------------------------
+    def test_if_it_was_kicked_basic(self):
+        """Gatekeeper of Malakir — if it was kicked."""
+        result = parse_oracle_text(
+            "Kicker {2}{B}\nWhen this creature enters the battlefield, if it was kicked, target player sacrifices a creature.",
+            card_type="Creature", card_name="Gatekeeper of Malakir"
+        )
+        assert Mechanic.KICKER in result.mechanics
+        assert Mechanic.IF_CONDITION in result.mechanics
+        assert Mechanic.ETB_TRIGGER in result.mechanics
+
+    def test_if_was_kicked_no_pronoun(self):
+        """Rite of Replication — if this spell was kicked."""
+        result = parse_oracle_text(
+            "Kicker {5}\nCreate a token that's a copy of target creature. If this spell was kicked, create five of those tokens instead.",
+            card_type="Sorcery", card_name="Rite of Replication"
+        )
+        assert Mechanic.KICKER in result.mechanics
+        assert Mechanic.IF_CONDITION in result.mechanics
+        assert Mechanic.CREATE_TOKEN_COPY in result.mechanics
+
+    def test_if_it_was_kicked_wolfir_silverheart(self):
+        """Verazol — if it was kicked, copy it."""
+        result = parse_oracle_text(
+            "Kicker {X}\nThis creature enters the battlefield with X +1/+1 counters. Whenever you cast a kicked spell, you may copy it.",
+            card_type="Creature", card_name="Verazol, the Split Current"
+        )
+        assert Mechanic.KICKER in result.mechanics
+        assert Mechanic.ENTERS_WITH_COUNTERS in result.mechanics
+
+    def test_kicked_with_effect(self):
+        """Mold Shambler — destroy artifact or enchantment if kicked."""
+        result = parse_oracle_text(
+            "Kicker {1}{G}\nWhen this creature enters the battlefield, if it was kicked, destroy target noncreature permanent.",
+            card_type="Creature", card_name="Mold Shambler"
+        )
+        assert Mechanic.KICKER in result.mechanics
+        assert Mechanic.IF_CONDITION in result.mechanics
+        assert Mechanic.DESTROY in result.mechanics
+
+    def test_if_is_kicked(self):
+        """Test 'if it is kicked' variant phrasing."""
+        result = parse_oracle_text(
+            "Kicker {3}\nThis spell deals 3 damage to target creature. If it is kicked, it deals 3 damage to that creature's controller.",
+            card_type="Instant", card_name="Test Card"
+        )
+        assert Mechanic.KICKER in result.mechanics
+        assert Mechanic.IF_CONDITION in result.mechanics
+        assert Mechanic.DEAL_DAMAGE in result.mechanics
+
+    # -----------------------------------------------------------------------
+    # 4. "becomes the target" — targeting trigger
+    # -----------------------------------------------------------------------
+    def test_becomes_the_target_of_spell(self):
+        """Siren Stormtamer — whenever this creature becomes the target."""
+        result = parse_oracle_text(
+            "Flying\nWhenever you or a permanent you control becomes the target of a spell or ability an opponent controls, you may sacrifice this creature. If you do, counter that spell or ability.",
+            card_type="Creature", card_name="Siren Stormtamer"
+        )
+        assert Mechanic.TRIGGERED_ABILITY in result.mechanics
+        assert Mechanic.FLYING in result.mechanics
+        assert Mechanic.COUNTER_SPELL in result.mechanics
+
+    def test_whenever_becomes_target(self):
+        """Swiftfoot Boots-like — whenever equipped creature becomes the target."""
+        result = parse_oracle_text(
+            "Whenever equipped creature becomes the target of a spell or ability, it gains hexproof until end of turn.",
+            card_type="Artifact", card_name="Test Equipment"
+        )
+        assert Mechanic.TRIGGERED_ABILITY in result.mechanics
+
+    def test_whenever_creature_becomes_target(self):
+        """Kira, Great Glass-Spinner — whenever a creature you control becomes the target."""
+        result = parse_oracle_text(
+            "Flying\nWhenever a creature you control becomes the target of a spell or ability for the first time each turn, counter that spell or ability.",
+            card_type="Creature", card_name="Kira, Great Glass-Spinner"
+        )
+        assert Mechanic.TRIGGERED_ABILITY in result.mechanics
+        assert Mechanic.FLYING in result.mechanics
+
+    def test_when_becomes_target_sacrifice(self):
+        """Narcomoeba-like — when this becomes the target, sacrifice it."""
+        result = parse_oracle_text(
+            "When this creature becomes the target of a spell, sacrifice a creature.",
+            card_type="Creature", card_name="Test Card"
+        )
+        assert Mechanic.TRIGGERED_ABILITY in result.mechanics
+        assert Mechanic.SACRIFICE in result.mechanics
+
+    # -----------------------------------------------------------------------
+    # 5. "hexproof from [color]" — partial hexproof
+    # -----------------------------------------------------------------------
+    def test_hexproof_from_black(self):
+        """Shalai, Voice of Plenty — hexproof from black (hypothetical)."""
+        result = parse_oracle_text(
+            "Hexproof from black",
+            card_type="Creature", card_name="Test Card"
+        )
+        assert Mechanic.HEXPROOF in result.mechanics
+
+    def test_hexproof_from_red(self):
+        """Test hexproof from red."""
+        result = parse_oracle_text(
+            "Hexproof from red",
+            card_type="Creature", card_name="Test Card"
+        )
+        assert Mechanic.HEXPROOF in result.mechanics
+
+    def test_hexproof_from_blue_and_black(self):
+        """Geist of Saint Traft — hexproof from multiple colors."""
+        result = parse_oracle_text(
+            "Hexproof from blue and from black",
+            card_type="Creature", card_name="Test Card"
+        )
+        assert Mechanic.HEXPROOF in result.mechanics
+
+    def test_hexproof_from_white(self):
+        """Knight of Malice — hexproof from white."""
+        result = parse_oracle_text(
+            "First strike\nHexproof from white",
+            card_type="Creature", card_name="Knight of Malice"
+        )
+        assert Mechanic.HEXPROOF in result.mechanics
+        assert Mechanic.FIRST_STRIKE in result.mechanics
+
+    def test_hexproof_from_multicolored(self):
+        """Simic Ascendancy-like — hexproof from multicolored."""
+        result = parse_oracle_text(
+            "Hexproof from multicolored",
+            card_type="Creature", card_name="Test Card"
+        )
+        assert Mechanic.HEXPROOF in result.mechanics
+
+    def test_hexproof_from_green_confidence(self):
+        """Hexproof from color should have high confidence."""
+        result = parse_oracle_text(
+            "Hexproof from green",
+            card_type="Creature", card_name="Test Card"
+        )
+        assert result.confidence >= 0.5
+        assert Mechanic.HEXPROOF in result.mechanics
