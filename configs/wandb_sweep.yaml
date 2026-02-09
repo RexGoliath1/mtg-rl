@@ -1,0 +1,74 @@
+# W&B Sweep config for imitation learning hyperparameter search
+#
+# Usage:
+#   # Create the sweep (returns a sweep ID):
+#   wandb sweep configs/wandb_sweep.yaml
+#
+#   # Launch an agent (runs on this machine):
+#   wandb agent sgoncia-self/forgerl/<SWEEP_ID>
+#
+#   # Launch multiple agents on different machines for parallelism:
+#   wandb agent sgoncia-self/forgerl/<SWEEP_ID>
+#
+# Dashboard: https://wandb.ai/sgoncia-self/forgerl/sweeps
+
+program: scripts/train_imitation.py
+method: bayes
+
+metric:
+  name: val/accuracy
+  goal: maximize
+
+early_terminate:
+  type: hyperband
+  min_iter: 5
+  eta: 3          # Keep top 1/3 at each rung
+  max_iter: 50
+
+parameters:
+  lr:
+    distribution: log_uniform_values
+    min: 1e-4
+    max: 1e-3
+
+  batch_size:
+    values: [64, 128, 256]
+
+  weight_decay:
+    distribution: log_uniform_values
+    min: 1e-6
+    max: 1e-3
+
+  warmup_steps:
+    values: [0, 100, 500]
+
+  epochs:
+    values: [20, 50]
+
+  scheduler:
+    values: ["cosine", "linear", "none"]
+
+  dropout:
+    values: [0.0, 0.1]
+
+  # Fixed params (not swept)
+  encoder_version:
+    value: "v2"
+  max_actions:
+    value: 203
+  data_dir:
+    value: "training_data/imitation_aws"
+  mechanics_h5:
+    value: "data/card_mechanics_commander.h5"
+  wandb_project:
+    value: "forgerl"
+  wandb_entity:
+    value: "sgoncia-self"
+
+command:
+  - ${env}
+  - uv
+  - run
+  - python3
+  - ${program}
+  - ${args}

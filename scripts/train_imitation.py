@@ -268,16 +268,16 @@ def collate_v2(batch):
 class ImitationPolicyV2(nn.Module):
     """Full ForgeGameStateEncoder + action head for imitation learning."""
 
-    def __init__(self, max_actions: int = 64, mechanics_h5_path: str = "data/card_mechanics_commander.h5"):
+    def __init__(self, max_actions: int = 64, mechanics_h5_path: str = "data/card_mechanics_commander.h5", dropout: float = 0.1):
         super().__init__()
         from src.forge.game_state_encoder import ForgeGameStateEncoder, GameStateConfig
 
-        config = GameStateConfig(mechanics_h5_path=mechanics_h5_path)
+        config = GameStateConfig(mechanics_h5_path=mechanics_h5_path, dropout=dropout)
         self.encoder = ForgeGameStateEncoder(config)
         self.action_head = nn.Sequential(
             nn.Linear(config.output_dim, 384),
             nn.GELU(),
-            nn.Dropout(0.1),
+            nn.Dropout(dropout),
             nn.Linear(384, max_actions),
         )
         self.max_actions = max_actions
@@ -493,6 +493,11 @@ def main():
                         help="Encoder version: v1 (17-dim MLP), v2 (full encoder), auto (detect from HDF5)")
     parser.add_argument("--mechanics-h5", default="data/card_mechanics_commander.h5",
                         help="Path to mechanics HDF5 (v2 only)")
+    parser.add_argument("--weight-decay", type=float, default=0.01, help="AdamW weight decay")
+    parser.add_argument("--warmup-steps", type=int, default=0, help="Linear warmup steps")
+    parser.add_argument("--scheduler", choices=["cosine", "linear", "none"], default="cosine",
+                        help="LR scheduler type")
+    parser.add_argument("--dropout", type=float, default=0.1, help="Dropout rate")
     args = parser.parse_args()
 
     # Auto-detect encoder version
@@ -555,6 +560,7 @@ def main():
         model = ImitationPolicyV2(
             max_actions=args.max_actions,
             mechanics_h5_path=args.mechanics_h5,
+            dropout=args.dropout,
         ).to(device)
         train_fn = train_epoch_v2
         eval_fn = evaluate_v2
@@ -592,8 +598,21 @@ def main():
     # TensorBoard
     tb_writer = SummaryWriter(log_dir=args.log_dir)
 
-    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=args.weight_decay)
+
+    # Scheduler
+    if args.scheduler == "cosine":
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+    elif args.scheduler == "linear":
+        scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.01, total_iters=args.epochs)
+    else:
+        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda _: 1.0)  # no-op
+
+    # Warmup wrapper
+    if args.warmup_steps > 0:
+        warmup = optim.lr_scheduler.LinearLR(optimizer, start_factor=0.01, total_iters=args.warmup_steps)
+        scheduler = optim.lr_scheduler.SequentialLR(optimizer, [warmup, scheduler], milestones=[args.warmup_steps])
+
     criterion = nn.CrossEntropyLoss()
 
     # Training loop
