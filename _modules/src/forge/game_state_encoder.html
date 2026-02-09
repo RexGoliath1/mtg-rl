@@ -268,6 +268,9 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.mechanics.precompute_embeddings</span><span class="w"> </span><span class="kn">import</span> <span class="n">MAX_PARAMS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.mechanics.vocabulary</span><span class="w"> </span><span class="kn">import</span> <span class="n">VOCAB_SIZE</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
 
 <span class="c1"># Try to import h5py for loading pre-computed embeddings</span>
@@ -291,8 +294,8 @@
 
     <span class="c1"># Card mechanics embedding</span>
     <span class="n">mechanics_h5_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;data/card_mechanics_commander.h5&quot;</span>
-    <span class="n">vocab_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1403</span>  <span class="c1"># From vocabulary.py VOCAB_SIZE</span>
-    <span class="n">max_params</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">37</span>    <span class="c1"># From precompute_embeddings.py</span>
+    <span class="n">vocab_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">VOCAB_SIZE</span>  <span class="c1"># Imported from src.mechanics.vocabulary</span>
+    <span class="n">max_params</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">MAX_PARAMS</span>  <span class="c1"># Imported from src.mechanics.precompute_embeddings</span>
 
     <span class="c1"># Zone capacities (max cards per zone to encode)</span>
     <span class="n">max_hand_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span>

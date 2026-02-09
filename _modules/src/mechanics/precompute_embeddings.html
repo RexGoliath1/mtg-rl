@@ -423,9 +423,6 @@
 <span class="c1"># ENCODING</span>
 <span class="c1"># =============================================================================</span>
 
-<span class="c1"># Maximum number of numeric parameters to store per card</span>
-<span class="n">MAX_PARAMS</span> <span class="o">=</span> <span class="mi">37</span>
-
 <span class="c1"># Parameter keys we track</span>
 <span class="n">PARAM_KEYS</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;draw_count&quot;</span><span class="p">,</span> <span class="s2">&quot;damage&quot;</span><span class="p">,</span> <span class="s2">&quot;token_count&quot;</span><span class="p">,</span> <span class="s2">&quot;scry_count&quot;</span><span class="p">,</span> <span class="s2">&quot;mill_count&quot;</span><span class="p">,</span>
@@ -443,6 +440,9 @@
     <span class="c1"># Vehicle crew param</span>
     <span class="s2">&quot;crew_power&quot;</span><span class="p">,</span>
 <span class="p">]</span>
+
+<span class="c1"># Derived from PARAM_KEYS — never hardcode this separately</span>
+<span class="n">MAX_PARAMS</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">PARAM_KEYS</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="encode_cards">
