@@ -12,11 +12,16 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
 
+      - name: Install CPU-only PyTorch + training deps
+        run: |
+          uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+          uv pip install safetensors>=0.4.0 tensorboard>=2.14.0 gymnasium>=0.29.0 tqdm>=4.65.0 pyyaml>=6.0 wandb>=0.15.0 matplotlib>=3.7.0
+
       - name: Lint
         run: uv run python3 -m ruff check .
 
       - name: Test
-        run: uv run python3 -m pytest tests/test_parser.py -v
+        run: uv run python3 -m pytest tests/ -v
 
   docs:
     runs-on: ubuntu-latest
