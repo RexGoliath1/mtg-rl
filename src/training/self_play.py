@@ -55,6 +55,10 @@ from src.forge.policy_value_heads import (
     create_action_mask, decode_action
 )
 from src.forge.mcts import MCTS, MCTSConfig, SimulatedForgeClient, ForgeClientInterface
+from src.forge.hierarchical_network import HierarchicalAlphaZeroNetwork
+from src.forge.ctde import CTDEValueHeads, compute_ctde_loss
+from src.forge.autoregressive_head import AutoRegressiveActionHead
+from src.forge.action_mapper import ActionMapper
 from src.utils.wandb_integration import WandbTracker, WANDB_AVAILABLE
 
 
@@ -100,6 +104,12 @@ class SelfPlayConfig:
     use_tensorboard: bool = False
     tb_log_dir: str = "runs/selfplay"
     use_wandb: bool = False
+
+    # HRL features (all disabled by default for backward compatibility)
+    use_hierarchy: bool = False        # Use HierarchicalAlphaZeroNetwork (GRU + planner)
+    use_ctde: bool = False             # Use CTDE dual value heads (oracle + observable)
+    use_autoregressive: bool = False   # Use auto-regressive action head (type→card→target)
+    ctde_oracle_weight: float = 0.5    # Weight for oracle value loss
 
     # Device
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
@@ -341,12 +351,25 @@ class Learner:
         self,
         network: nn.Module,
         config: SelfPlayConfig,
+        ctde_heads: Optional[CTDEValueHeads] = None,
+        ar_head: Optional[AutoRegressiveActionHead] = None,
+        action_mapper: Optional[ActionMapper] = None,
     ):
         self.network = network
         self.config = config
+        self.ctde_heads = ctde_heads
+        self.ar_head = ar_head
+        self.action_mapper = action_mapper
+
+        # Collect all trainable parameters
+        all_params = list(network.parameters())
+        if ctde_heads is not None:
+            all_params += list(ctde_heads.parameters())
+        if ar_head is not None:
+            all_params += list(ar_head.parameters())
 
         self.optimizer = optim.AdamW(
-            network.parameters(),
+            all_params,
             lr=config.learning_rate,
             weight_decay=config.weight_decay,
         )
@@ -373,6 +396,7 @@ class Learner:
         states: torch.Tensor,
         target_policies: torch.Tensor,
         target_values: torch.Tensor,
+        epoch: int = 0,
     ) -> Dict[str, float]:
         """
         Train on a single batch with AMP and gradient clipping.
@@ -381,6 +405,10 @@ class Learner:
             Dict with loss values
         """
         self.network.train()
+        if self.ctde_heads is not None:
+            self.ctde_heads.train()
+        if self.ar_head is not None:
+            self.ar_head.train()
 
         states = states.to(self.config.device, non_blocking=True)
         target_policies = target_policies.to(self.config.device, non_blocking=True)
@@ -399,19 +427,47 @@ class Learner:
                 self.config.value_loss_weight * value_loss
             )
 
+            # CTDE: Add oracle value loss
+            metrics = {}
+            if self.ctde_heads is not None:
+                # Use zero oracle features for now (real oracle features need
+                # full game state with hidden info, which we don't have in
+                # the current replay buffer format)
+                oracle_features = torch.zeros(
+                    states.shape[0], self.ctde_heads.config.oracle_extra_dim,
+                    device=states.device,
+                )
+                obs_val, oracle_val = self.ctde_heads(states, oracle_features, epoch=epoch)
+                ctde_loss, ctde_metrics = compute_ctde_loss(
+                    obs_val, oracle_val, target_values,
+                    oracle_weight=self.config.ctde_oracle_weight,
+                )
+                total_loss = total_loss + ctde_loss
+                metrics.update(ctde_metrics)
+
         # Scaled backward pass for AMP
         self.optimizer.zero_grad()
         self._scaler.scale(total_loss).backward()
         self._scaler.unscale_(self.optimizer)
-        torch.nn.utils.clip_grad_norm_(self.network.parameters(), 1.0)
+
+        # Clip gradients for all parameter groups
+        all_params = list(self.network.parameters())
+        if self.ctde_heads is not None:
+            all_params += list(self.ctde_heads.parameters())
+        if self.ar_head is not None:
+            all_params += list(self.ar_head.parameters())
+        torch.nn.utils.clip_grad_norm_(all_params, 1.0)
+
         self._scaler.step(self.optimizer)
         self._scaler.update()
 
-        return {
+        result = {
             "policy_loss": policy_loss.item(),
             "value_loss": value_loss.item(),
             "total_loss": total_loss.item(),
         }
+        result.update(metrics)
+        return result
 
     def train_epoch(self, replay_buffer: ReplayBuffer) -> Dict[str, float]:
         """
@@ -440,13 +496,13 @@ class Learner:
             persistent_workers=use_cuda,
         )
 
-        epoch_losses = {"policy_loss": 0, "value_loss": 0, "total_loss": 0}
+        epoch_losses: Dict[str, float] = {}
         num_batches = 0
 
         for states, policies, values in dataloader:
             losses = self.train_on_batch(states, policies, values)
             for k, v in losses.items():
-                epoch_losses[k] += v
+                epoch_losses[k] = epoch_losses.get(k, 0) + v
             num_batches += 1
 
         # Average
@@ -571,9 +627,35 @@ class SelfPlayTrainer:
     def __init__(self, config: Optional[SelfPlayConfig] = None):
         self.config = config or SelfPlayConfig()
 
-        # Create network
-        self.network = AlphaZeroNetwork(num_players=self.config.num_players)
+        # Create network (hierarchical or flat)
+        if self.config.use_hierarchy:
+            self.network = HierarchicalAlphaZeroNetwork(
+                num_players=self.config.num_players,
+            )
+            logger.info("Using HierarchicalAlphaZeroNetwork (GRU + planner)")
+        else:
+            self.network = AlphaZeroNetwork(num_players=self.config.num_players)
+
+        # Optional CTDE dual value heads (replaces standard value head)
+        self.ctde_heads: Optional[CTDEValueHeads] = None
+        if self.config.use_ctde:
+            self.ctde_heads = CTDEValueHeads(num_players=self.config.num_players)
+            logger.info("CTDE dual value heads enabled (oracle weight=%.2f)",
+                        self.config.ctde_oracle_weight)
+
+        # Optional auto-regressive action head
+        self.ar_head: Optional[AutoRegressiveActionHead] = None
+        self.action_mapper: Optional[ActionMapper] = None
+        if self.config.use_autoregressive:
+            self.ar_head = AutoRegressiveActionHead()
+            self.action_mapper = ActionMapper()
+            logger.info("Auto-regressive action head enabled")
+
         self.network.to(self.config.device)
+        if self.ctde_heads is not None:
+            self.ctde_heads.to(self.config.device)
+        if self.ar_head is not None:
+            self.ar_head.to(self.config.device)
 
         # Create replay buffer
         self.replay_buffer = ReplayBuffer(self.config.replay_buffer_size)
@@ -584,7 +666,12 @@ class SelfPlayTrainer:
             encoder=self.network.encoder,
             config=self.config,
         )
-        self.learner = Learner(self.network, self.config)
+        self.learner = Learner(
+            self.network, self.config,
+            ctde_heads=self.ctde_heads,
+            ar_head=self.ar_head,
+            action_mapper=self.action_mapper,
+        )
 
         # Stats
         self.iteration = 0
@@ -718,7 +805,18 @@ class SelfPlayTrainer:
         logger.info("PyTorch %s | CUDA: %s", torch.__version__,
                      torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A")
         logger.info("Device: %s", self.config.device)
-        logger.info("Network parameters: %d", sum(p.numel() for p in self.network.parameters()))
+        net_params = sum(p.numel() for p in self.network.parameters())
+        logger.info("Network parameters: %d", net_params)
+        if self.ctde_heads is not None:
+            ctde_params = sum(p.numel() for p in self.ctde_heads.parameters())
+            logger.info("CTDE parameters: %d", ctde_params)
+        if self.ar_head is not None:
+            ar_params = sum(p.numel() for p in self.ar_head.parameters())
+            logger.info("Auto-regressive head parameters: %d", ar_params)
+        if self.config.use_hierarchy:
+            logger.info("HRL features: hierarchy=%s, ctde=%s, autoregressive=%s",
+                        self.config.use_hierarchy, self.config.use_ctde,
+                        self.config.use_autoregressive)
         logger.info("Config: games_per_iter=%d, mcts_sims=%d, batch=%d, lr=%s, buffer=%d",
                      self.config.games_per_iteration, self.config.mcts_simulations,
                      self.config.batch_size, self.config.learning_rate,
@@ -757,19 +855,24 @@ class SelfPlayTrainer:
         self.close()
 
     def _save_checkpoint(self):
-        """Save training checkpoint."""
+        """Save training checkpoint (includes HRL modules if enabled)."""
         os.makedirs(self.config.checkpoint_dir, exist_ok=True)
         path = os.path.join(
             self.config.checkpoint_dir,
             f"checkpoint_iter{self.iteration}.pt"
         )
-        torch.save({
+        checkpoint = {
             "iteration": self.iteration,
             "total_games": self.total_games,
             "total_samples": self.total_samples,
             "network_state": self.network.state_dict(),
             "config": self.config,
-        }, path)
+        }
+        if self.ctde_heads is not None:
+            checkpoint["ctde_state"] = self.ctde_heads.state_dict()
+        if self.ar_head is not None:
+            checkpoint["ar_head_state"] = self.ar_head.state_dict()
+        torch.save(checkpoint, path)
         logger.info("Saved checkpoint: %s (iter=%d, games=%d, samples=%d)",
                      path, self.iteration, self.total_games, self.total_samples)
 

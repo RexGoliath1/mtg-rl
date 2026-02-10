@@ -90,9 +90,11 @@ class EloTracker:
         # Initialize if needed
         if model_a not in self.ratings:
             self.ratings[model_a] = self.initial_rating
+        if model_a not in self.games_played:
             self.games_played[model_a] = 0
         if model_b not in self.ratings:
             self.ratings[model_b] = self.initial_rating
+        if model_b not in self.games_played:
             self.games_played[model_b] = 0
 
         rating_a = self.ratings[model_a]
@@ -291,19 +293,21 @@ class ModelPool:
         # Keep: most recent, highest elo, evenly spaced by games
         keep_indices = set()
 
-        # Always keep most recent 10
-        for i in range(min(10, len(self.checkpoints))):
+        # Keep most recent (half of max_pool_size)
+        recent_keep = max(1, self.max_pool_size // 2)
+        for i in range(min(recent_keep, len(self.checkpoints))):
             keep_indices.add(len(self.checkpoints) - 1 - i)
 
-        # Keep top 10 by Elo
+        # Keep top by Elo (remaining budget)
+        elo_keep = max(1, self.max_pool_size - len(keep_indices))
         elo_sorted = sorted(range(len(self.checkpoints)),
                           key=lambda i: self.checkpoints[i].elo_rating,
                           reverse=True)
-        for i in elo_sorted[:10]:
+        for i in elo_sorted[:elo_keep]:
             keep_indices.add(i)
 
-        # Keep evenly spaced by games trained
-        if len(self.checkpoints) > 20:
+        # Keep evenly spaced by games trained (only for larger pools)
+        if len(self.checkpoints) > self.max_pool_size * 2:
             games_sorted = sorted(range(len(self.checkpoints)),
                                 key=lambda i: self.checkpoints[i].games_trained)
             step = len(games_sorted) // (self.max_pool_size - len(keep_indices))
