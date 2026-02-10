@@ -59,7 +59,7 @@ CARD_DTYPE = np.dtype([
     ('controller', '<u1'),    # uint8: player index who controls this (0-3)
 ])
 
-# 12 bytes per player
+# 15 bytes per player
 PLAYER_DTYPE = np.dtype([
     ('life', '<i2'),          # int16: life total (-32768 to 32767)
     ('poison', '<u1'),        # uint8: poison counters (0-255)
@@ -72,14 +72,17 @@ PLAYER_DTYPE = np.dtype([
     ('library_size', '<u1'),  # uint8: cards remaining in library (0-255)
     ('hand_size', '<u1'),     # uint8: cards in hand (0-255)
     ('lands_played', '<u1'),  # uint8: lands played this turn
+    ('energy', '<u1'),        # uint8: energy counters (Kaladesh block)
+    ('storm_count', '<u1'),   # uint8: storm count this turn
+    ('status_flags', '<u1'),  # uint8: bit 0=monarch, bit 1=city's blessing, bit 2=initiative
 ])
 
 # Maximum counts
-MAX_CARDS = 50     # Max cards tracked per decision
+MAX_CARDS = 150    # Max cards tracked per decision (Commander: 100 card decks + tokens)
 MAX_PLAYERS = 4    # Max players (Commander support)
-MAX_ACTIONS = 200  # Max legal actions per decision
+MAX_ACTIONS = 203  # Max legal actions per decision (matches ActionConfig.total_actions)
 
-# 1060 bytes per decision
+# 2278 bytes per decision
 DECISION_DTYPE = np.dtype([
     ('version', '<u2'),              # uint16: format version (3 = binary)
     ('num_cards', '<u1'),            # uint8: actual card count in this record
@@ -97,8 +100,8 @@ DECISION_DTYPE = np.dtype([
 
 # Verify sizes
 assert CARD_DTYPE.itemsize == 12, f"CARD_DTYPE is {CARD_DTYPE.itemsize} bytes, expected 12"
-assert PLAYER_DTYPE.itemsize == 12, f"PLAYER_DTYPE is {PLAYER_DTYPE.itemsize} bytes, expected 12"
-assert DECISION_DTYPE.itemsize == 1060, f"DECISION_DTYPE is {DECISION_DTYPE.itemsize} bytes, expected 1060"
+assert PLAYER_DTYPE.itemsize == 15, f"PLAYER_DTYPE is {PLAYER_DTYPE.itemsize} bytes, expected 15"
+assert DECISION_DTYPE.itemsize == 2278, f"DECISION_DTYPE is {DECISION_DTYPE.itemsize} bytes, expected 2278"
 
 # Format version for binary records
 BINARY_FORMAT_VERSION = 3

@@ -2,9 +2,10 @@
 """
 Train imitation learning model on collected Forge AI data.
 
-Supports two encoder versions:
+Supports three encoder versions:
 - v1: 17-dim state vectors (legacy MLP policy, fast)
 - v2: Full ForgeGameStateEncoder (768-dim, 32M params, uses game_state_json from HDF5)
+- v3: Binary format (1060-byte DECISION_DTYPE records, no JSON parsing)
 
 Auto-detects from HDF5 encoding_version attribute, or use --encoder-version flag.
 """
@@ -304,6 +305,97 @@ class ImitationPolicyV2(nn.Module):
 
 
 # =============================================================================
+# V3: Binary Format (zero-copy structured arrays)
+# =============================================================================
+
+class ImitationDatasetV3(Dataset):
+    """Dataset for v3 binary HDF5 (1060-byte DECISION_DTYPE compound records).
+
+    Reads binary structured arrays and converts to the same tensor format
+    as ImitationDatasetV2 via ForgeGameStateEncoder.encode_from_binary().
+    No JSON parsing, no string allocation — much faster than v2.
+    """
+
+    def __init__(self, data_dir: str, max_actions: int = 64,
+                 mechanics_h5_path: str = "data/card_mechanics_commander.h5",
+                 card_id_lookup_path: str = "data/card_id_lookup.json"):
+        from src.forge.game_state_encoder import ForgeGameStateEncoder, GameStateConfig
+        from src.forge.binary_state import read_binary_hdf5, CardIdLookup
+
+        self.max_actions = max_actions
+
+        # Create encoder (CPU, for tensor preparation only)
+        config = GameStateConfig(mechanics_h5_path=mechanics_h5_path)
+        self._encoder = ForgeGameStateEncoder(config)
+        self._encoder.eval()
+
+        # Load card ID lookup (optional — without it, mechanics embeddings are zeros)
+        self._card_id_lookup = None
+        if os.path.exists(card_id_lookup_path):
+            self._card_id_lookup = CardIdLookup.load(card_id_lookup_path)
+            print(f"Loaded card ID lookup: {len(self._card_id_lookup)} cards")
+
+        # Load all HDF5 files and use the largest v3 one
+        data_path = Path(data_dir)
+        h5_files = sorted(data_path.rglob("*.h5"))
+        if not h5_files:
+            raise ValueError(f"No HDF5 files found in {data_dir}")
+
+        # Find v3 files
+        v3_files = []
+        for f in h5_files:
+            try:
+                with h5py.File(f, 'r') as hf:
+                    if hf.attrs.get('encoding_version', 0) == 3:
+                        v3_files.append(f)
+            except Exception:
+                continue
+
+        if not v3_files:
+            raise ValueError(f"No v3 binary HDF5 files found in {data_dir}")
+
+        largest = max(v3_files, key=lambda f: f.stat().st_size)
+        print(f"Loading v3 binary data from: {largest}")
+
+        self.decisions = read_binary_hdf5(str(largest))
+        print(f"Loaded {len(self.decisions):,} binary decision records")
+
+        # Filter: chosen_action must be >= 0 and fit in action space
+        valid_mask = (
+            (self.decisions['chosen_action'] >= 0) &
+            (self.decisions['chosen_action'] < self.max_actions) &
+            (self.decisions['num_actions'] > 0)
+        )
+        self.decisions = self.decisions[valid_mask]
+        print(f"After filtering: {len(self.decisions):,} valid decisions")
+
+    def __len__(self):
+        return len(self.decisions)
+
+    def __getitem__(self, idx):
+        record = self.decisions[idx]
+
+        # Get tensor dict from binary record (no grad needed)
+        with torch.no_grad():
+            tensor_dict = self._encoder._prepare_tensors_from_binary(
+                record, self._card_id_lookup
+            )
+
+        choice = int(record['chosen_action'])
+        num_actions = min(int(record['num_actions']), self.max_actions)
+
+        action_mask = torch.zeros(self.max_actions)
+        action_mask[:num_actions] = 1.0
+
+        return {
+            'tensor_dict': tensor_dict,
+            'choice': torch.tensor(choice, dtype=torch.long),
+            'action_mask': action_mask,
+            'num_actions': num_actions,
+        }
+
+
+# =============================================================================
 # TRAINING FUNCTIONS
 # =============================================================================
 
@@ -457,19 +549,28 @@ def evaluate_v2(model, dataloader, criterion, device):
 # =============================================================================
 
 def detect_encoder_version(data_dir: str) -> str:
-    """Auto-detect encoder version from HDF5 file."""
+    """Auto-detect encoder version from HDF5 file.
+
+    Checks all HDF5 files and prefers the highest version found:
+    v3 (binary compound) > v2 (JSON) > v1 (flat states).
+    """
     data_path = Path(data_dir)
     h5_files = sorted(data_path.rglob("*.h5"))
     if not h5_files:
         return "v1"
 
-    largest = max(h5_files, key=lambda f: f.stat().st_size)
-    with h5py.File(largest, 'r') as f:
-        version = f.attrs.get('encoding_version', 1)
-        has_json = 'game_state_json' in f
-    if version >= 2 and has_json:
-        return "v2"
-    return "v1"
+    best_version = "v1"
+    for h5_file in h5_files:
+        try:
+            with h5py.File(h5_file, 'r') as f:
+                version = f.attrs.get('encoding_version', 1)
+                if version >= 3 and 'decisions' in f:
+                    return "v3"  # Binary compound — best format
+                if version >= 2 and 'game_state_json' in f:
+                    best_version = "v2"
+        except Exception:
+            continue
+    return best_version
 
 
 # =============================================================================
@@ -489,10 +590,12 @@ def main():
     parser.add_argument("--wandb-project", default="forgerl", help="W&B project name")
     parser.add_argument("--wandb-entity", default="sgoncia-self", help="W&B entity")
     parser.add_argument("--log-dir", default="logs/imitation", help="TensorBoard log dir")
-    parser.add_argument("--encoder-version", choices=["v1", "v2", "auto"], default="auto",
-                        help="Encoder version: v1 (17-dim MLP), v2 (full encoder), auto (detect from HDF5)")
+    parser.add_argument("--encoder-version", choices=["v1", "v2", "v3", "auto"], default="auto",
+                        help="Encoder version: v1 (17-dim MLP), v2 (JSON encoder), v3 (binary), auto (detect)")
     parser.add_argument("--mechanics-h5", default="data/card_mechanics_commander.h5",
-                        help="Path to mechanics HDF5 (v2 only)")
+                        help="Path to mechanics HDF5 (v2/v3)")
+    parser.add_argument("--card-id-lookup", default="data/card_id_lookup.json",
+                        help="Path to card ID lookup JSON (v3 only)")
     parser.add_argument("--weight-decay", type=float, default=0.01, help="AdamW weight decay")
     parser.add_argument("--warmup-steps", type=int, default=0, help="Linear warmup steps")
     parser.add_argument("--scheduler", choices=["cosine", "linear", "none"], default="cosine",
@@ -521,7 +624,14 @@ def main():
 
     # Load data
     print(f"\nLoading data from {args.data_dir}...")
-    if encoder_version == "v2":
+    if encoder_version == "v3":
+        dataset = ImitationDatasetV3(
+            args.data_dir, max_actions=args.max_actions,
+            mechanics_h5_path=args.mechanics_h5,
+            card_id_lookup_path=args.card_id_lookup,
+        )
+        collate_fn = collate_v2  # Same tensor format as v2
+    elif encoder_version == "v2":
         dataset = ImitationDatasetV2(args.data_dir, max_actions=args.max_actions, mechanics_h5_path=args.mechanics_h5)
         collate_fn = collate_v2
     else:
@@ -540,11 +650,11 @@ def main():
 
     print(f"Train: {len(train_dataset):,} | Val: {len(val_dataset):,}")
 
-    # V2 uses smaller batch size by default (large model, more memory)
+    # V2/V3 uses smaller batch size by default (large model, more memory)
     batch_size = args.batch_size
-    if encoder_version == "v2" and args.batch_size == 256:
+    if encoder_version in ("v2", "v3") and args.batch_size == 256:
         batch_size = 32
-        print(f"V2 encoder: reducing batch size to {batch_size}")
+        print(f"{encoder_version.upper()} encoder: reducing batch size to {batch_size}")
 
     train_loader = DataLoader(
         train_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
@@ -556,7 +666,7 @@ def main():
     )
 
     # Model
-    if encoder_version == "v2":
+    if encoder_version in ("v2", "v3"):
         model = ImitationPolicyV2(
             max_actions=args.max_actions,
             mechanics_h5_path=args.mechanics_h5,
@@ -576,9 +686,9 @@ def main():
     n_params = sum(p.numel() for p in model.parameters())
     print(f"\nModel parameters: {n_params:,}")
 
-    # LR default: lower for v2 (larger model)
+    # LR default: lower for v2/v3 (larger model)
     lr = args.lr
-    if encoder_version == "v2" and args.lr == 1e-3:
+    if encoder_version in ("v2", "v3") and args.lr == 1e-3:
         lr = 3e-4
         print(f"V2 encoder: using lr={lr}")
 

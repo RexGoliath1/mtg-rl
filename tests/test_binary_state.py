@@ -39,20 +39,20 @@ class TestDtypeSizes:
         assert CARD_DTYPE.itemsize == 12
 
     def test_player_dtype_size(self):
-        assert PLAYER_DTYPE.itemsize == 12
+        assert PLAYER_DTYPE.itemsize == 15
 
     def test_decision_dtype_size(self):
-        assert DECISION_DTYPE.itemsize == 1060
+        assert DECISION_DTYPE.itemsize == 2278
 
     def test_decision_breakdown(self):
         """Verify the decision size adds up from components."""
         header = 2 + 1 + 1 + 2 + 1 + 1  # version, num_cards, num_players, turn, phase, active_player = 8
-        players = MAX_PLAYERS * PLAYER_DTYPE.itemsize  # 4 * 12 = 48
-        cards = MAX_CARDS * CARD_DTYPE.itemsize  # 50 * 12 = 600
+        players = MAX_PLAYERS * PLAYER_DTYPE.itemsize  # 4 * 15 = 60
+        cards = MAX_CARDS * CARD_DTYPE.itemsize  # 150 * 12 = 1800
         actions_header = 1 + 1 + 2  # num_actions, decision_type, chosen_action = 4
-        actions = MAX_ACTIONS * 2  # 200 * 2 = 400
+        actions = MAX_ACTIONS * 2  # 203 * 2 = 406
         expected = header + players + cards + actions_header + actions
-        assert expected == 1060
+        assert expected == 2278
         assert DECISION_DTYPE.itemsize == expected
 
 
@@ -95,10 +95,17 @@ class TestDtypeFieldAccess:
         player['library_size'] = 45
         player['hand_size'] = 7
         player['lands_played'] = 1
+        player['energy'] = 4
+        player['storm_count'] = 2
+        player['status_flags'] = 0b101  # monarch + initiative
 
         assert player['life'] == 20
         assert player['mana_w'] == 3
         assert player['library_size'] == 45
+        assert player['energy'] == 4
+        assert player['storm_count'] == 2
+        assert player['status_flags'] & 0b001  # monarch
+        assert player['status_flags'] & 0b100  # initiative
 
     def test_player_negative_life(self):
         """Life can go negative (e.g., Phyrexian mana, damage)."""
@@ -342,6 +349,9 @@ class TestHDF5IO:
         dec[0]['players'][0]['library_size'] = 33
         dec[0]['players'][0]['hand_size'] = 7
         dec[0]['players'][0]['lands_played'] = 1
+        dec[0]['players'][0]['energy'] = 6
+        dec[0]['players'][0]['storm_count'] = 3
+        dec[0]['players'][0]['status_flags'] = 0b011  # monarch + city's blessing
         dec[0]['cards'][0]['card_id'] = 12345
         dec[0]['cards'][0]['zone'] = 2
         dec[0]['cards'][0]['type_flags'] = TYPE_CREATURE | TYPE_LAND
@@ -373,6 +383,9 @@ class TestHDF5IO:
             assert r['players'][0]['life'] == -5
             assert r['players'][0]['poison'] == 7
             assert r['players'][0]['mana_c'] == 5
+            assert r['players'][0]['energy'] == 6
+            assert r['players'][0]['storm_count'] == 3
+            assert r['players'][0]['status_flags'] == 0b011
             assert r['cards'][0]['card_id'] == 12345
             assert r['cards'][0]['type_flags'] == (TYPE_CREATURE | TYPE_LAND)
             assert r['cards'][0]['power'] == -1
@@ -403,8 +416,8 @@ class TestHDF5IO:
 
             # Compressed should be smaller (lots of zeros in sparse records)
             assert compressed_size < uncompressed_size
-            # Raw: 1000 * 1060 = 1.06 MB, compressed should be much less
-            assert compressed_size < 500_000  # less than 500 KB
+            # Raw: 1000 * 2278 = 2.28 MB, compressed should be much less
+            assert compressed_size < 1_000_000  # less than 1 MB
         finally:
             os.unlink(compressed_path)
             os.unlink(uncompressed_path)
@@ -554,7 +567,7 @@ class TestMemoryEfficiency:
     """Verify the binary format meets memory targets."""
 
     def test_1000_games_memory_estimate(self):
-        """1000 games * ~400 decisions/game * 1060 bytes should be manageable."""
+        """1000 games * ~400 decisions/game * 2278 bytes should be manageable."""
         decisions_per_game = 400
         num_games = 1000
         total_decisions = decisions_per_game * num_games  # 400,000
@@ -562,15 +575,15 @@ class TestMemoryEfficiency:
         raw_bytes = total_decisions * DECISION_DTYPE.itemsize
         raw_mb = raw_bytes / (1024 * 1024)
 
-        # 400K * 1060 = ~404 MB raw, vs 3.54 GB with JSON
-        assert raw_mb < 500, f"Raw size {raw_mb:.1f} MB exceeds 500 MB target"
+        # 400K * 2278 = ~868 MB raw, vs 3.54 GB with JSON
+        assert raw_mb < 1000, f"Raw size {raw_mb:.1f} MB exceeds 1000 MB target"
 
-        # With gzip compression (>50% for sparse data), should be well under 250 MB
+        # With gzip compression (>50% for sparse data), should be well under 500 MB
         # This is just a sanity check on the math
 
     def test_per_decision_comparison(self):
-        """Binary: 1060 bytes vs JSON: ~14,500 bytes = 93% reduction."""
+        """Binary: 2278 bytes vs JSON: ~14,500 bytes = 84% reduction."""
         json_avg = 14500
         binary = DECISION_DTYPE.itemsize
         reduction = 1 - (binary / json_avg)
-        assert reduction > 0.90, f"Reduction {reduction:.1%} < 90% target"
+        assert reduction > 0.80, f"Reduction {reduction:.1%} < 80% target"
