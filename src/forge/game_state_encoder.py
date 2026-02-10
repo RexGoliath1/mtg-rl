@@ -33,6 +33,14 @@ from src.mechanics.precompute_embeddings import MAX_PARAMS
 from src.mechanics.vocabulary import VOCAB_SIZE
 import torch.nn as nn
 
+from src.forge.binary_state import (
+    MAX_CARDS as BINARY_MAX_CARDS,
+    TYPE_CREATURE, TYPE_LAND, TYPE_ARTIFACT, TYPE_ENCHANTMENT,
+    TYPE_PLANESWALKER, TYPE_INSTANT, TYPE_SORCERY,
+    STATE_TAPPED, STATE_SUMMONING_SICK, STATE_ATTACKING, STATE_BLOCKING,
+    CardIdLookup,
+)
+
 # Try to import h5py for loading pre-computed embeddings
 try:
     import h5py
@@ -420,6 +428,120 @@ def encode_card_state(
     state = np.concatenate(state_features)
 
     # Combine mechanics + params + state
+    return np.concatenate([mechanics, params, state])
+
+
+def encode_card_from_binary(
+    card_record: np.void,
+    mechanics_cache: 'MechanicsCache',
+    card_id_lookup: Optional[CardIdLookup],
+    active_player: int,
+    config: 'GameStateConfig',
+) -> np.ndarray:
+    """
+    Encode a single card from a binary CARD_DTYPE record.
+
+    Produces the same feature vector as encode_card_state() but reads from
+    the binary structured array instead of CardState objects.
+
+    Args:
+        card_record: np.void with CARD_DTYPE fields
+        mechanics_cache: for card name → mechanics embedding
+        card_id_lookup: for card_id → card name mapping (None = zero embeddings)
+        active_player: index of active player (for controller_is_self)
+        config: encoder config
+
+    Returns:
+        numpy array of shape [vocab_size + max_params + 42]
+    """
+    card_id = int(card_record['card_id'])
+
+    # Mechanics lookup: card_id → name → mechanics embedding
+    if card_id_lookup is not None and card_id > 0:
+        card_name = card_id_lookup.get_name(card_id)
+        if card_name:
+            mechanics, params = mechanics_cache.get_embedding(card_name)
+        else:
+            mechanics = np.zeros(config.vocab_size, dtype=np.float32)
+            params = np.zeros(config.max_params, dtype=np.float32)
+    else:
+        mechanics = np.zeros(config.vocab_size, dtype=np.float32)
+        params = np.zeros(config.max_params, dtype=np.float32)
+
+    # State features (42 dims, same layout as encode_card_state)
+    state_features = []
+
+    # Zone (one-hot, 8 dims)
+    zone_enc = np.zeros(8, dtype=np.float32)
+    zone_val = min(int(card_record['zone']), 7)
+    zone_enc[zone_val] = 1.0
+    state_features.append(zone_enc)
+
+    # Boolean states (7 dims)
+    sf = int(card_record['state_flags'])
+    controller = int(card_record['controller'])
+    bools = np.array([
+        float(bool(sf & STATE_TAPPED)),
+        float(bool(sf & STATE_ATTACKING)),
+        float(bool(sf & STATE_BLOCKING)),
+        0.0,  # is_blocked: not tracked in binary format
+        float(bool(sf & STATE_SUMMONING_SICK)),
+        float(controller == active_player),  # controller_is_self
+        0.0,  # cast_this_turn: not tracked in binary format
+    ], dtype=np.float32)
+    state_features.append(bools)
+
+    # Counters (10 dims) — binary only has total count, put in first slot
+    counter_enc = np.zeros(10, dtype=np.float32)
+    total_counters = int(card_record['counters'])
+    if total_counters > 0:
+        counter_enc[0] = min(total_counters, 20) / 20.0  # p1p1 slot as proxy
+    state_features.append(counter_enc)
+
+    # Combat info (4 dims)
+    combat = np.array([
+        min(int(card_record['damage']), 20) / 20.0,
+        0.0,  # blocked_by count: not tracked in binary
+        float(int(card_record['attach_to']) > 0),
+        0.0,  # attached count: not tracked in binary
+    ], dtype=np.float32)
+    state_features.append(combat)
+
+    # Modifiers (2 dims) — not tracked separately in binary (P/T already modified)
+    modifiers = np.zeros(2, dtype=np.float32)
+    state_features.append(modifiers)
+
+    # Temporal (1 dim) — not tracked in binary
+    temporal = np.zeros(1, dtype=np.float32)
+    state_features.append(temporal)
+
+    # Card type flags (7 dims)
+    tf = int(card_record['type_flags'])
+    type_flags = np.array([
+        float(bool(tf & TYPE_CREATURE)),
+        float(bool(tf & TYPE_LAND)),
+        float(bool(tf & TYPE_ARTIFACT)),
+        float(bool(tf & TYPE_ENCHANTMENT)),
+        float(bool(tf & TYPE_PLANESWALKER)),
+        float(bool(tf & TYPE_INSTANT)),
+        float(bool(tf & TYPE_SORCERY)),
+    ], dtype=np.float32)
+    state_features.append(type_flags)
+
+    # Power/toughness (2 dims, normalized)
+    pt = np.array([
+        np.clip(int(card_record['power']), -1, 20) / 20.0,
+        np.clip(int(card_record['toughness']), -1, 20) / 20.0,
+    ], dtype=np.float32)
+    state_features.append(pt)
+
+    # CMC (1 dim, normalized)
+    cmc = np.array([
+        np.clip(int(card_record['cmc']), 0, 16) / 16.0,
+    ], dtype=np.float32)
+    state_features.append(cmc)
+
+    state = np.concatenate(state_features)
     return np.concatenate([mechanics, params, state])
 
 
@@ -1057,6 +1179,202 @@ class ForgeGameStateEncoder(nn.Module):
 
         # Run through network
         return self.forward(**tensors)
+
+    def encode_from_binary(
+        self,
+        record: np.void,
+        card_id_lookup: Optional[CardIdLookup] = None,
+    ) -> torch.Tensor:
+        """
+        Encode a binary DECISION_DTYPE record into a state embedding.
+
+        This is the binary equivalent of encode_json(). Uses direct field reads
+        from the structured array instead of JSON parsing.
+
+        Args:
+            record: np.void with DECISION_DTYPE fields
+            card_id_lookup: for card_id → card name mapping (None = zero embeddings)
+
+        Returns:
+            state_embedding: [1, output_dim] tensor
+        """
+        tensors = self._prepare_tensors_from_binary(record, card_id_lookup)
+        return self.forward(**tensors)
+
+    def _prepare_tensors_from_binary(
+        self,
+        record: np.void,
+        card_id_lookup: Optional[CardIdLookup] = None,
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Convert a binary DECISION_DTYPE record to tensors for the network.
+
+        Maps binary fields to the same tensor format as _prepare_tensors().
+        """
+        active_player = int(record['active_player'])
+        num_cards = int(record['num_cards'])
+        num_players = int(record['num_players'])
+
+        # Zone mapping: binary zone enum → encoder zone name
+        zone_map = {
+            0: "hand",       # Zone.HAND
+            2: "battlefield", # Zone.BATTLEFIELD
+            3: "graveyard",  # Zone.GRAVEYARD
+            4: "exile",      # Zone.EXILE
+        }
+        zone_max = {
+            "hand": self.config.max_hand_size,
+            "battlefield": self.config.max_battlefield,
+            "graveyard": self.config.max_graveyard,
+            "exile": self.config.max_exile,
+        }
+
+        # Collect cards by zone
+        zone_card_lists: Dict[str, List[np.void]] = {
+            name: [] for name in zone_max
+        }
+        stack_cards: List[np.void] = []
+
+        for i in range(min(num_cards, BINARY_MAX_CARDS)):
+            card = record['cards'][i]
+            if int(card['card_id']) == 0:
+                continue
+            zone_val = int(card['zone'])
+            zone_name = zone_map.get(zone_val)
+            if zone_name is not None:
+                zone_card_lists[zone_name].append(card)
+            elif zone_val == 5:  # Stack
+                stack_cards.append(card)
+
+        # Encode cards by zone
+        feature_dim = self.config.vocab_size + self.config.max_params + 42
+        zone_cards = {}
+        zone_masks = {}
+
+        for zone_name, max_cards in zone_max.items():
+            card_features = np.zeros((max_cards, feature_dim), dtype=np.float32)
+            mask = np.zeros(max_cards, dtype=np.float32)
+
+            for i, card_rec in enumerate(zone_card_lists[zone_name][:max_cards]):
+                card_features[i] = encode_card_from_binary(
+                    card_rec, self.mechanics_cache, card_id_lookup,
+                    active_player, self.config,
+                )
+                mask[i] = 1.0
+
+            zone_cards[zone_name] = torch.tensor(card_features).unsqueeze(0)
+            zone_masks[zone_name] = torch.tensor(mask).unsqueeze(0)
+
+        # Encode stack
+        stack_features = np.zeros(
+            (self.config.max_stack, feature_dim), dtype=np.float32
+        )
+        stack_mask = np.zeros(self.config.max_stack, dtype=np.float32)
+
+        for i, card_rec in enumerate(stack_cards[:self.config.max_stack]):
+            stack_features[i] = encode_card_from_binary(
+                card_rec, self.mechanics_cache, card_id_lookup,
+                active_player, self.config,
+            )
+            stack_mask[i] = 1.0
+
+        stack_features = torch.tensor(stack_features).unsqueeze(0)
+        stack_mask = torch.tensor(stack_mask).unsqueeze(0)
+
+        # Global state from binary record
+        life_totals = np.zeros((1, self.config.max_players), dtype=np.float32)
+        mana_pools = np.zeros(
+            (1, self.config.max_players, self.config.mana_colors),
+            dtype=np.float32
+        )
+
+        for i in range(min(num_players, self.config.max_players)):
+            p = record['players'][i]
+            life_totals[0, i] = float(p['life'])
+            mana_pools[0, i, 0] = min(float(p['mana_w']), self.config.max_mana)
+            mana_pools[0, i, 1] = min(float(p['mana_u']), self.config.max_mana)
+            mana_pools[0, i, 2] = min(float(p['mana_b']), self.config.max_mana)
+            mana_pools[0, i, 3] = min(float(p['mana_r']), self.config.max_mana)
+            mana_pools[0, i, 4] = min(float(p['mana_g']), self.config.max_mana)
+            mana_pools[0, i, 5] = min(float(p['mana_c']), self.config.max_mana)
+
+        mana_pools = mana_pools / self.config.max_mana
+
+        # Turn/phase
+        turn_number = np.array([[float(record['turn'])]], dtype=np.float32)
+        phase_val = min(int(record['phase']), 13)
+        phase = np.zeros((1, 14), dtype=np.float32)
+        phase[0, phase_val] = 1.0
+
+        # Active/priority player (binary doesn't track priority separately)
+        active_oh = np.zeros((1, self.config.max_players), dtype=np.float32)
+        active_oh[0, active_player % self.config.max_players] = 1.0
+        priority_oh = active_oh.copy()  # Same as active for binary format
+
+        # Extra global features (simplified from binary — less info available)
+        extra = np.zeros((1, GlobalEncoder.EXTRA_FEATURES_DIM), dtype=np.float32)
+
+        for pidx in range(min(num_players, self.config.max_players)):
+            p = record['players'][pidx]
+            offset = pidx * 9
+            extra[0, offset + 0] = min(float(p['poison']), 10) / 10.0
+            extra[0, offset + 1] = min(float(p['library_size']), 60) / 60.0
+            extra[0, offset + 2] = min(float(p['hand_size']), 15) / 15.0
+            extra[0, offset + 3] = min(float(p['lands_played']), 3) / 3.0
+            extra[0, offset + 4] = 1.0 / 3.0  # max_lands default = 1
+
+            # Count creatures/power/untapped lands from cards
+            creature_count = 0
+            total_power = 0
+            untapped_lands = 0
+            for ci in range(min(num_cards, BINARY_MAX_CARDS)):
+                c = record['cards'][ci]
+                if int(c['card_id']) == 0:
+                    continue
+                if int(c['controller']) != pidx:
+                    continue
+                if int(c['zone']) != 2:  # battlefield
+                    continue
+                tf = int(c['type_flags'])
+                sf = int(c['state_flags'])
+                if tf & TYPE_CREATURE:
+                    creature_count += 1
+                    total_power += max(int(c['power']), 0)
+                if (tf & TYPE_LAND) and not (sf & STATE_TAPPED):
+                    untapped_lands += 1
+
+            extra[0, offset + 6] = min(creature_count, 20) / 20.0
+            extra[0, offset + 7] = min(total_power, 40) / 40.0
+            extra[0, offset + 8] = min(untapped_lands, 10) / 10.0
+
+        # Relative features (6 dims)
+        if num_players >= 2:
+            p0, p1 = record['players'][0], record['players'][1]
+            life0, life1 = float(p0['life']), float(p1['life'])
+            extra[0, 36] = np.clip((life0 - life1) / 40.0, -1.0, 1.0)
+            extra[0, 37] = np.clip(
+                (float(p0['hand_size']) - float(p1['hand_size'])) / 7.0,
+                -1.0, 1.0,
+            )
+            extra[0, 40] = min(float(p0['poison']), 10) / 10.0
+
+        # Game flow
+        extra[0, 43] = float(4 <= phase_val <= 9)  # is_combat
+        extra[0, 44] = float(phase_val in (3, 10))  # is_main
+
+        return {
+            "zone_cards": zone_cards,
+            "zone_masks": zone_masks,
+            "stack_features": stack_features,
+            "stack_mask": stack_mask,
+            "life_totals": torch.tensor(life_totals),
+            "mana_pools": torch.tensor(mana_pools),
+            "turn_number": torch.tensor(turn_number),
+            "phase": torch.tensor(phase),
+            "active_player": torch.tensor(active_oh),
+            "priority_player": torch.tensor(priority_oh),
+            "extra_features": torch.tensor(extra),
+        }
 
     def _prepare_tensors(
         self,
