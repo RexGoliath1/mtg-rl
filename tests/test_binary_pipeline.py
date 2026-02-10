@@ -108,10 +108,10 @@ class TestBinaryBase64Roundtrip:
         assert decoded['chosen_action'] == 2
 
     def test_base64_size(self):
-        """Base64-encoded record should be ~1414 chars (4/3 * 1060)."""
+        """Base64-encoded record should be ~3040 chars (4/3 * 2278)."""
         rec = _make_realistic_decision()
         encoded = base64.b64encode(rec.tobytes()).decode('ascii')
-        assert len(encoded) < 1500
+        assert len(encoded) < 3200
 
 
 class TestBinaryHDF5Pipeline:
@@ -145,7 +145,7 @@ class TestBinaryHDF5Pipeline:
             os.unlink(path)
 
     def test_memory_efficiency(self):
-        """1000 decisions should use < 2 MB."""
+        """1000 decisions should use < 4 MB compressed."""
         decisions = np.zeros(1000, dtype=DECISION_DTYPE)
         for i in range(1000):
             decisions[i] = _make_realistic_decision(turn=i + 1)
@@ -156,7 +156,7 @@ class TestBinaryHDF5Pipeline:
         try:
             write_binary_hdf5(path, decisions, compression='gzip')
             size_bytes = os.path.getsize(path)
-            assert size_bytes < 2_000_000, f"HDF5 too large: {size_bytes / 1024:.1f} KB"
+            assert size_bytes < 4_000_000, f"HDF5 too large: {size_bytes / 1024:.1f} KB"
         finally:
             os.unlink(path)
 

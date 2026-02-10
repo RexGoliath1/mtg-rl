@@ -1322,6 +1322,7 @@ class ForgeGameStateEncoder(nn.Module):
             extra[0, offset + 2] = min(float(p['hand_size']), 15) / 15.0
             extra[0, offset + 3] = min(float(p['lands_played']), 3) / 3.0
             extra[0, offset + 4] = 1.0 / 3.0  # max_lands default = 1
+            extra[0, offset + 5] = min(float(p['energy']), 20) / 20.0
 
             # Count creatures/power/untapped lands from cards
             creature_count = 0
