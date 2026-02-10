@@ -496,13 +496,13 @@ class Learner:
             persistent_workers=use_cuda,
         )
 
-        epoch_losses = {"policy_loss": 0, "value_loss": 0, "total_loss": 0}
+        epoch_losses: Dict[str, float] = {}
         num_batches = 0
 
         for states, policies, values in dataloader:
             losses = self.train_on_batch(states, policies, values)
             for k, v in losses.items():
-                epoch_losses[k] += v
+                epoch_losses[k] = epoch_losses.get(k, 0) + v
             num_batches += 1
 
         # Average
