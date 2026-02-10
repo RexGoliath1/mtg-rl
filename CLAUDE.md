@@ -162,6 +162,26 @@ docker build --build-arg FORGE_SHA=$FORGE_SHA -f infrastructure/docker/Dockerfil
 3. **Forge as Simulator**: Official MTG rules engine for game tree exploration
 4. **No Meta Features**: Self-play learns optimal play, not human imitation
 5. **HDF5 Storage**: Pre-computed card encodings (~1.3MB for all Commander cards)
+6. **Binary State Format (v3)**: Fixed-width 2278-byte records for data collection (84% smaller than JSON)
+
+### Binary Data Format
+
+The binary format (`src/forge/binary_state.py`) defines fixed-width numpy structured dtypes:
+
+| Dtype | Size | Fields |
+|-------|------|--------|
+| CARD_DTYPE | 12 bytes | card_id(u16), zone(u8), type_flags(u8), power(i8), toughness(i8), cmc(u8), state_flags(u8), damage(u8), counters(u8), attach_to(u8), controller(u8) |
+| PLAYER_DTYPE | 15 bytes | life(i16), poison(u8), mana(6×u8), library_size(u8), hand_size(u8), lands_played(u8), energy(u8), storm_count(u8), status_flags(u8) |
+| DECISION_DTYPE | 2278 bytes | header(8) + 4 players(60) + 150 cards(1800) + actions header(4) + 203 actions(406) |
+
+**Wire protocol**: `DECISION_BIN:<base64(2278 bytes)>` per decision over existing TCP text protocol.
+**Card ID mapping**: `CardIdLookup` maps card names → uint16 IDs (sorted, stable, 0=unknown).
+**Encoding**: `ForgeGameStateEncoder.encode_from_binary()` maps binary records to same 768-dim tensors as JSON path.
+
+```bash
+# Generate card ID lookup from Scryfall data
+uv run python3 -c "from src.forge.binary_state import CardIdLookup; l = CardIdLookup.from_scryfall('data/scryfall_bulk_cards.json'); l.save('data/card_id_lookup.json')"
+```
 
 ### MTG Rules Reference
 
@@ -285,7 +305,7 @@ mtg/
 │   ├── deploy_data_collection.sh
 │   └── ...
 │
-├── tests/                    # Test suite (494 parser + 116 HRL/binary + encoder/pipeline tests)
+├── tests/                    # Test suite (494 parser + 116 HRL/binary + 15 HRL integration + encoder/pipeline tests)
 ├── research/                 # Experimental files
 ├── infrastructure/           # Terraform, Docker, deployment configs
 │   ├── docker/              # Dockerfiles (sim, daemon, collection, training)
@@ -403,9 +423,10 @@ When context is compressed mid-session:
 - [x] HRL Phase 2a: CTDE dual value heads with oracle dropout
 - [x] HRL Phase 2b: Auto-regressive action head (AlphaStar-style)
 - [x] HRL Phase 2c: Opponent belief model for MCTS
-- [x] Binary state contract (Python side, 1060 bytes/decision)
+- [x] Binary state contract (Python side, 2278 bytes/decision with Commander expansion)
+- [x] Binary pipeline: encode_from_binary, collector parsing, BinaryDataset v3
+- [x] Wire HRL modules into training pipeline (behind config flags)
 - [ ] Binary state writer (Java/Forge side) — needed for binary data pipeline
-- [ ] Wire HRL modules into training pipeline
 - [ ] First training run on collected data (verify flat model trains)
 
 ---
