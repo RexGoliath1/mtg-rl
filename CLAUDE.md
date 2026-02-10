@@ -291,6 +291,43 @@ mtg/
 
 ---
 
+## Autonomous Session Protocol
+
+### Permissions (Non-Negotiable)
+- **CAN**: Write code, create branches, push branches, create PRs, create issues, deploy to AWS
+- **CANNOT**: Merge PRs (user must review and approve all merges)
+- **CANNOT**: Delete branches that have open PRs
+- **CANNOT**: Force push to any branch
+
+### Working Around Unmerged PRs
+When you need functionality from a PR that hasn't been merged yet:
+1. Create your new feature branch from the unmerged PR's branch (not from main)
+2. Or cherry-pick the needed commits into your working branch
+3. Document the dependency chain in your PR description
+4. The user will merge in order when they review
+
+### CI Monitoring
+- **Check PR CI status every hour** during autonomous sessions
+- If a check fails: diagnose, fix on the branch, push the fix
+- If the fix requires changes to a different PR's branch: create a new PR instead
+- Use `gh pr checks N --repo RexGoliath1/mtg-rl` to check status
+
+### Daily Plan File
+- The day's task plan lives in `~/.claude/projects/.../memory/daily_plan.md`
+- This file survives context compaction and is the source of truth for the session
+- Mark tasks as completed as you go
+- Add new tasks discovered during work
+
+### Context Compaction Recovery
+When context is compressed mid-session:
+1. Read `CLAUDE.md` (always loaded)
+2. Read `memory/MEMORY.md` (always loaded, first 200 lines)
+3. Read `memory/daily_plan.md` for today's task list and progress
+4. Check `git status` and `git log` for what's been done
+5. Resume from where you left off
+
+---
+
 ## Development Priorities
 
 **IMPORTANT**: Prefer training-side edits over Forge edits when possible.
@@ -325,6 +362,8 @@ mtg/
 
 When starting a new Claude session:
 
-1. **Read this file** and `ClaudeConversation.txt`
-2. **Check git status**: `git status && git log --oneline -5`
-3. **Run tests**: `uv run python3 -m pytest tests/test_parser.py -v`
+1. **Read this file** (always loaded automatically)
+2. **Read `memory/daily_plan.md`** if it exists — contains today's task list and progress
+3. **Check git status**: `git status && git log --oneline -10`
+4. **Check open PRs**: `gh pr list --repo RexGoliath1/mtg-rl`
+5. **Run tests**: `uv run python3 -m pytest tests/ -v`
