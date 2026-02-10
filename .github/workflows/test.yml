@@ -12,11 +12,14 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
 
+      - name: Install CPU-only PyTorch
+        run: uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+
       - name: Lint
         run: uv run python3 -m ruff check .
 
       - name: Test
-        run: uv run python3 -m pytest tests/test_parser.py -v
+        run: uv run python3 -m pytest tests/ -v
 
   docs:
     runs-on: ubuntu-latest
