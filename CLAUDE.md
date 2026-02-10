@@ -352,6 +352,16 @@ When you need functionality from a PR that hasn't been merged yet:
 - Mark tasks as completed as you go
 - Add new tasks discovered during work
 
+### Daily Plan Lifecycle (Critical — Check FIRST on Boot)
+Before executing any plan, check the date at the top of `daily_plan.md`:
+- **FUTURE** (plan date > today): Do NOT execute. Ask the user if they want to start early or just chat.
+- **CURRENT** (plan date = today): Execute normally. Morning = planning window, then work.
+- **STALE** (plan date < today): Do NOT execute old tasks. Instead:
+  1. Run `git log --since="<plan_date>"` and `gh pr list` to see what was actually completed
+  2. Cross-reference plan tasks against commits/PRs
+  3. Report findings to the user: "N of M tasks appear complete. These remain: ..."
+  4. Offer to delete the stale plan and replan for today
+
 ### Context Compaction Recovery
 When context is compressed mid-session:
 1. Read `CLAUDE.md` (always loaded)
