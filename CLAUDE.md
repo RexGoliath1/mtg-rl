@@ -10,6 +10,33 @@
 
 ## Development Rules
 
+### Git Workflow (Non-Negotiable)
+
+**CRITICAL**: NEVER commit directly to main. All changes go through PRs.
+
+1. **Create a GitHub Issue first** — every PR references `Closes #N`
+2. **Create a feature branch** — `feat/description`, `fix/description`, `refactor/description`
+3. **Commit on the branch** — commit early and often
+4. **Push + open PR** — `gh pr create` with summary and test plan
+5. **CI must pass** — `lint-and-test`, `docker-build`, `docker-smoke-test`
+6. **User reviews and merges** — Claude codes, user approves
+
+```bash
+# Correct workflow:
+gh issue create --title "Add feature X" --body "Description"
+git checkout -b feat/feature-x
+# ... make changes, commit ...
+git push -u origin feat/feature-x
+gh pr create --title "feat: Add feature X" --body "Closes #N ..."
+
+# WRONG - never do this:
+git commit -m "feat: something" && git push origin main  # NO!
+```
+
+**Branch protection**: `enforce_admins=true` — even repo owner cannot bypass CI.
+**Merge via CLI**: `gh pr merge N --repo RexGoliath1/mtg-rl --merge` when UI is stale.
+**Self-review on PR creation**: Review the diff as part of PR creation (free, no API cost).
+
 ### Cloud-First for Long-Running Jobs
 
 **CRITICAL**: Do NOT run jobs with >50 iterations locally. Deploy to AWS instead.
@@ -61,15 +88,22 @@ uv run python3 scripts/training_pipeline.py --mode bc --sets FDN --epochs 5
 
 | File | Purpose | Params |
 |------|---------|--------|
-| `src/mechanics/vocabulary.py` | Mechanics primitives (VOCAB_SIZE=1387) | - |
+| `src/mechanics/vocabulary.py` | Mechanics primitives (VOCAB_SIZE=1403) | - |
 | `src/mechanics/card_parser.py` | Oracle text -> mechanics | - |
 | `src/mechanics/precompute_embeddings.py` | Pre-compute HDF5 embeddings | - |
-| `src/forge/game_state_encoder.py` | Forge JSON -> tensor | 5.8M |
-| `src/forge/policy_value_heads.py` | AlphaZero policy/value | 0.4M |
+| `src/forge/game_state_encoder.py` | Forge JSON -> 768-dim tensor | 33.1M |
+| `src/forge/policy_value_heads.py` | AlphaZero flat policy (203 actions) + value | 0.7M |
+| `src/forge/strategic_core.py` | GRU for turn-level game trajectory | ~500K |
+| `src/forge/turn_planner.py` | MLP for phase-level tactical planning | ~400K |
+| `src/forge/hierarchical_network.py` | HierarchicalAlphaZeroNetwork wrapper | ~900K |
+| `src/forge/ctde.py` | CTDE dual value heads (oracle + observable) | ~1.1M |
+| `src/forge/autoregressive_head.py` | AlphaStar-style structured action head | ~600K |
+| `src/forge/action_mapper.py` | Flat 203 <-> structured action mapping | - |
+| `src/forge/opponent_model.py` | Belief model for MCTS determinization | ~2.2M |
+| `src/forge/binary_state.py` | Fixed-width 1060-byte binary format | - |
 | `src/forge/mcts.py` | Monte Carlo Tree Search | - |
 | `src/training/self_play.py` | Self-play training loop | - |
 | `src/models/shared_card_encoder.py` | Simple card encoder (for draft) | 1.2M |
-| `src/models/entity_encoder.py` | Full game state encoder (legacy) | 9.2M |
 | `src/models/draft_policy.py` | Draft-specific policy network | 2.8M |
 | `scripts/training_pipeline.py` | Unified BC + RL training | - |
 
@@ -251,7 +285,7 @@ mtg/
 │   ├── deploy_data_collection.sh
 │   └── ...
 │
-├── tests/                    # Test suite (464 parser tests + encoder/pipeline/self-play tests)
+├── tests/                    # Test suite (494 parser + 116 HRL/binary + encoder/pipeline tests)
 ├── research/                 # Experimental files
 ├── infrastructure/           # Terraform, Docker, deployment configs
 │   ├── docker/              # Dockerfiles (sim, daemon, collection, training)
@@ -354,7 +388,15 @@ When context is compressed mid-session:
 - [x] Self-play training loop
 - [x] Parallel self-play training
 - [x] Forge client TCP integration
-- [x] Imitation learning data collection (1000 games, 400K decisions)
+- [x] Imitation learning data collection (1000 games, 410K decisions, 3.1 GiB v2 HDF5)
+- [x] HRL Phase 1: Strategic Core GRU + Turn Planner
+- [x] HRL Phase 2a: CTDE dual value heads with oracle dropout
+- [x] HRL Phase 2b: Auto-regressive action head (AlphaStar-style)
+- [x] HRL Phase 2c: Opponent belief model for MCTS
+- [x] Binary state contract (Python side, 1060 bytes/decision)
+- [ ] Binary state writer (Java/Forge side) — needed for binary data pipeline
+- [ ] Wire HRL modules into training pipeline
+- [ ] First training run on collected data (verify flat model trains)
 
 ---
 
@@ -366,4 +408,5 @@ When starting a new Claude session:
 2. **Read `memory/daily_plan.md`** if it exists — contains today's task list and progress
 3. **Check git status**: `git status && git log --oneline -10`
 4. **Check open PRs**: `gh pr list --repo RexGoliath1/mtg-rl`
-5. **Run tests**: `uv run python3 -m pytest tests/ -v`
+5. **Check GitHub issues**: `gh issue list --repo RexGoliath1/mtg-rl`
+6. **Run tests**: `uv run python3 -m pytest tests/ -v`
