@@ -446,3 +446,4 @@ When starting a new Claude session:
 4. **Check open PRs**: `gh pr list --repo RexGoliath1/mtg-rl`
 5. **Check GitHub issues**: `gh issue list --repo RexGoliath1/mtg-rl`
 6. **Run tests**: `uv run python3 -m pytest tests/ -v`
+7. **Morning review**: If there are open PRs from a previous session, quiz the user before starting new work. Ask 2-3 questions per PR about design decisions, tradeoffs, or gotchas. This helps the user review the code and helps you verify your own understanding.
