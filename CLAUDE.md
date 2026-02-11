@@ -16,10 +16,21 @@
 
 1. **Create a GitHub Issue first** — every PR references `Closes #N`
 2. **Create a feature branch** — `feat/description`, `fix/description`, `refactor/description`
-3. **Commit on the branch** — commit early and often
+3. **Commit on the branch** — commit after EVERY discrete unit of work (see below)
 4. **Push + open PR** — `gh pr create` with summary and test plan
 5. **CI must pass** — `lint-and-test`, `docker-build`, `docker-smoke-test`
 6. **User reviews and merges** — Claude codes, user approves
+
+### Commit Discipline (Non-Negotiable)
+
+**Commit after every discrete unit of work.** Do not accumulate changes and batch-commit.
+
+- After adding/modifying a file: commit
+- After adding/updating tests: commit
+- After fixing a bug: commit
+- Before switching to a different task: commit
+- Commits should be spaced across the session, not clustered at the end
+- If `git log` shows all commits within a few minutes, that's a violation
 
 ```bash
 # Correct workflow:
@@ -36,6 +47,14 @@ git commit -m "feat: something" && git push origin main  # NO!
 **Branch protection**: `enforce_admins=true` — even repo owner cannot bypass CI.
 **Merge via CLI**: `gh pr merge N --repo RexGoliath1/mtg-rl --merge` when UI is stale.
 **Self-review on PR creation**: Review the diff as part of PR creation (free, no API cost).
+
+### Code Quality Rules
+
+**No magic numbers**: All numeric values in tests and production code must reference named constants from their source of truth module. Never hardcode values like `203`, `150`, or `2278` — import `MAX_ACTIONS`, `MAX_CARDS`, `DECISION_DTYPE` from the defining module.
+
+**Comments**: Only comment where there's confusion in logic. No comments on obvious code, no docstrings on trivial functions. DO comment: non-obvious algorithms, workarounds, "why" not "what", regex patterns.
+
+**Shell scripts**: Keep under 50 lines. If you need loops, error handling, or argument parsing, write Python instead. Shell scripts are fine for simple glue and one-liner wrappers.
 
 ### Cloud-First for Long-Running Jobs
 
@@ -352,6 +371,13 @@ When you need functionality from a PR that hasn't been merged yet:
 - Mark tasks as completed as you go
 - Add new tasks discovered during work
 
+### Progress Log Integrity (Non-Negotiable)
+- Progress log timestamps in daily_plan.md **must reflect when work actually happened**
+- The user verifies timestamps against `git log --format="%h %ai %s"` during evening debrief
+- Do NOT write estimated or projected timestamps — only record the actual time when a task completes
+- Do NOT backfill timestamps from memory after batch-committing
+- If you lose track of time (e.g., after context compaction), write "~HH:MM (approx)" or omit the time
+
 ### Daily Plan Lifecycle (Critical — Check FIRST on Boot)
 Before executing any plan, check the date at the top of `daily_plan.md`:
 - **FUTURE** (plan date > today): Do NOT execute. Ask the user if they want to start early or just chat.
@@ -420,3 +446,4 @@ When starting a new Claude session:
 4. **Check open PRs**: `gh pr list --repo RexGoliath1/mtg-rl`
 5. **Check GitHub issues**: `gh issue list --repo RexGoliath1/mtg-rl`
 6. **Run tests**: `uv run python3 -m pytest tests/ -v`
+7. **Morning review**: If there are open PRs from a previous session, quiz the user before starting new work. Ask 2-3 questions per PR about design decisions, tradeoffs, or gotchas. This helps the user review the code and helps you verify your own understanding.
