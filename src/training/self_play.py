@@ -223,6 +223,55 @@ class SelfPlayActor:
         """Encode game state to tensor."""
         return self.encoder.encode_json(game_state)
 
+    @staticmethod
+    def _shaped_reward(prev_gs: Dict[str, Any], cur_gs: Dict[str, Any], player_idx: int) -> float:
+        """Compute incremental shaped reward between two consecutive game states.
+
+        Uses two signals (matching existing RewardShaper weights):
+          - Life differential change: (our_life_delta - opp_life_delta) * 0.01
+          - Power advantage change:   power_delta * 0.005
+
+        Works with both SimulatedForgeClient format (players as list with 'id')
+        and real Forge daemon format (players as list with 'name', 'life',
+        'battlefield' cards that have 'power' and 'is_creature').
+        Returns 0.0 if the state dict is missing expected keys.
+        """
+        def _get_player(gs, idx):
+            players = gs.get("players", [])
+            if not players:
+                return None
+            # Real Forge format has 'name'; simulated has 'id'
+            # Fall back to positional index if needed
+            if 0 <= idx < len(players):
+                return players[idx]
+            return None
+
+        def _life(p):
+            if p is None:
+                return 20
+            return p.get("life", 20)
+
+        def _power(p):
+            if p is None:
+                return 0
+            bf = p.get("battlefield", [])
+            return sum(
+                c.get("power", 0) for c in bf
+                if isinstance(c, dict) and c.get("is_creature", False)
+            )
+
+        opp_idx = 1 - player_idx  # Works for 2-player games
+
+        our_life_delta = _life(_get_player(cur_gs, player_idx)) - _life(_get_player(prev_gs, player_idx))
+        opp_life_delta = _life(_get_player(cur_gs, opp_idx)) - _life(_get_player(prev_gs, opp_idx))
+        life_reward = (our_life_delta - opp_life_delta) * 0.01
+
+        our_power_delta = _power(_get_player(cur_gs, player_idx)) - _power(_get_player(prev_gs, player_idx))
+        opp_power_delta = _power(_get_player(cur_gs, opp_idx)) - _power(_get_player(prev_gs, opp_idx))
+        power_reward = (our_power_delta - opp_power_delta) * 0.005
+
+        return life_reward + power_reward
+
     def play_game(
         self,
         forge_client: Optional[ForgeClientInterface] = None
@@ -240,7 +289,8 @@ class SelfPlayActor:
         # Reset MCTS tree
         self.mcts.reset()
 
-        # Game trajectory: (state_tensor, mcts_policy, player_to_move)
+        # Game trajectory: (state_tensor, mcts_policy, player_to_move, raw_game_state)
+        # raw_game_state stored so we can compute shaped rewards post-game.
         trajectory = []
         game_start = time.time()
 
@@ -269,11 +319,12 @@ class SelfPlayActor:
             padded_policy = np.zeros(self.action_config.total_actions, dtype=np.float32)
             padded_policy[:len(mcts_policy)] = mcts_policy
 
-            # Store in trajectory
+            # Store in trajectory (include raw game state for shaped rewards)
             trajectory.append((
                 state_tensor.detach().cpu().numpy().flatten(),
                 padded_policy,
                 current_player,
+                game_state,
             ))
 
             # Select action
@@ -295,19 +346,26 @@ class SelfPlayActor:
 
         # Game over - assign values
         game_duration = time.time() - game_start
+        final_gs = forge_client.get_game_state()
         logger.debug("Game finished: %d moves in %.1fs, winner=%s",
-                      move_count, game_duration, forge_client.get_game_state().get("winner"))
+                      move_count, game_duration, final_gs.get("winner"))
         samples = []
-        winner_player = forge_client.get_game_state().get("winner")
+        winner_player = final_gs.get("winner")
 
-        for state, policy, player in trajectory:
-            # Value from this player's perspective
+        for i, (state, policy, player, raw_gs) in enumerate(trajectory):
+            # Base terminal value from this player's perspective
             if winner_player is None:
                 value = 0.0  # Draw
             elif winner_player == player:
                 value = 1.0  # Win
             else:
                 value = -1.0  # Loss
+
+            # Shaped reward: life differential + power advantage delta
+            # Use next step's game state (or terminal state for last step)
+            next_gs = trajectory[i + 1][3] if i + 1 < len(trajectory) else final_gs
+            shaped = self._shaped_reward(raw_gs, next_gs, int(player))
+            value = float(np.clip(value + shaped, -1.5, 1.5))
 
             samples.append(TrainingSample(
                 state=state,
