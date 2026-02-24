@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
-Collect AI Training Data (v2 format)
+Collect AI Training Data (v2/v3 format)
 
 Run games in observation mode (-o) where the Forge AI makes all
 decisions autonomously. The collector observes and records each
 decision point (game state, available actions, AI's choice) for
 imitation learning.
 
-Storage: HDF5 with raw game_state_json for re-encoding via
-ForgeGameStateEncoder at training time (768-dim mechanics embeddings).
+Supports two wire formats (auto-detected per line):
+- v2 (JSON): DECISION:{json} lines → HDF5 with game_state_json
+- v3 (binary): DECISION_BIN:<base64> lines → HDF5 compound dataset (1060 bytes/decision)
+
+The v3 binary format uses 93% less memory than v2 JSON and writes
+directly to structured numpy arrays with no string allocation.
 
 For imitation learning bootstrapping:
 - Focus on card selection and turn flow
@@ -16,6 +20,7 @@ For imitation learning bootstrapping:
 - Target 50,000+ games for robust training
 """
 
+import base64
 import json
 import logging
 import os
@@ -30,10 +35,15 @@ from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import itertools
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from src.forge.binary_state import (
+    DECISION_DTYPE,
+    BinaryDecisionBuffer,
+)
 
 # ---------------------------------------------------------------------------
 # Logging setup
@@ -124,9 +134,13 @@ def collect_training_game(
     wfile = sock.makefile("w", buffering=1)
 
     decisions = []
+    binary_decisions = []  # Binary DECISION_DTYPE records (v3 format)
     game_result = None
     max_turn = 0
     cards_seen = set()
+
+    # Map binary decision_type enum → string for filtering
+    _BINARY_DTYPE_MAP = {0: "choose_action", 1: "declare_attackers", 2: "declare_blockers"}
 
     try:
         # Start game in observation mode (-o) where Forge AI makes all
@@ -174,6 +188,20 @@ def collect_training_game(
                 except json.JSONDecodeError:
                     logger.warning("Failed to parse DECISION JSON line")
 
+            elif line.startswith("DECISION_BIN:"):
+                try:
+                    payload = line[13:]
+                    raw = base64.b64decode(payload)
+                    record = np.frombuffer(raw, dtype=DECISION_DTYPE)[0].copy()
+                    max_turn = max(max_turn, int(record['turn']))
+
+                    dtype_str = _BINARY_DTYPE_MAP.get(int(record['decision_type']), "")
+                    if dtype_str in TRAINING_DECISION_TYPES:
+                        binary_decisions.append(record)
+
+                except Exception:
+                    logger.warning("Failed to parse DECISION_BIN line")
+
             elif line.startswith("GAME_RESULT:"):
                 game_result = line[12:].strip()
                 break
@@ -198,12 +226,13 @@ def collect_training_game(
 
     return {
         "decisions": decisions,
+        "binary_decisions": binary_decisions,
         "result": game_result,
         "deck1": deck1,
         "deck2": deck2,
         "seed": seed,
         "max_turn": max_turn,
-        "cards_seen": cards_seen
+        "cards_seen": cards_seen,
     }
 
 
@@ -616,6 +645,10 @@ def collect_training_batch(
     hdf5_file = output_path / f"training_data_{timestamp}_final.h5"
     writer = IncrementalHDF5Writer(hdf5_file)
 
+    # Binary writer (v3) — initialized lazily when first binary decision arrives
+    binary_buffer: Optional[BinaryDecisionBuffer] = None
+    binary_decision_count = [0]
+
     def run_single_game(game_id):
         """Run a single game and return results."""
         deck1, deck2 = deck_pairs[game_id - 1]
@@ -631,7 +664,7 @@ def collect_training_batch(
 
     def process_result(game_id, result):
         """Process a game result thread-safely."""
-        num_decisions = len(result["decisions"])
+        num_decisions = len(result["decisions"]) + len(result.get("binary_decisions", []))
         game_result = result["result"]
         max_turn = result["max_turn"]
         deck1, deck2 = deck_pairs[game_id - 1]
@@ -665,6 +698,20 @@ def collect_training_batch(
                 dtype = d.get("decision_type", "unknown")
                 stats.decision_counts[dtype] += 1
                 decision_buffer.append(d)
+
+            # Handle binary decisions (v3 format)
+            bin_decs = result.get("binary_decisions", [])
+            if bin_decs:
+                nonlocal binary_buffer
+                if binary_buffer is None:
+                    binary_dir = output_path / f"binary_{timestamp}"
+                    binary_dir.mkdir(parents=True, exist_ok=True)
+                    binary_buffer = BinaryDecisionBuffer(
+                        str(binary_dir), save_interval=5000
+                    )
+                for rec in bin_decs:
+                    binary_buffer.add(rec)
+                    binary_decision_count[0] += 1
 
             stats.total_decisions += num_decisions
             stats.total_turns += max_turn
@@ -747,16 +794,25 @@ def collect_training_batch(
     finally:
         writer.close()
 
+        # Finalize binary buffer if used
+        if binary_buffer is not None:
+            binary_final = binary_buffer.finalize()
+            logger.info("Binary HDF5 (v3) finalized: %s (%d decisions)",
+                        binary_final, binary_decision_count[0])
+
     logger.info("=" * 60)
     logger.info("COLLECTION COMPLETE")
     logger.info("=" * 60)
     logger.info("HDF5 data saved to %s", hdf5_file)
-    logger.info("  Decisions: %d rows", writer.total_rows)
+    logger.info("  JSON decisions (v2): %d rows", writer.total_rows)
+    if binary_decision_count[0] > 0:
+        logger.info("  Binary decisions (v3): %d rows", binary_decision_count[0])
     if hdf5_file.exists():
         size_mb = hdf5_file.stat().st_size / (1024 * 1024)
         logger.info("  Compressed size: %.2f MB", size_mb)
     else:
-        logger.warning("No data collected (0 decisions). File not created.")
+        if binary_decision_count[0] == 0:
+            logger.warning("No data collected (0 decisions). File not created.")
 
     # Generate report
     report_path = generate_report(stats, output_path, timestamp)

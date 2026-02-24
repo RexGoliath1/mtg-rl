@@ -59,7 +59,7 @@ CARD_DTYPE = np.dtype([
     ('controller', '<u1'),    # uint8: player index who controls this (0-3)
 ])
 
-# 12 bytes per player
+# 15 bytes per player
 PLAYER_DTYPE = np.dtype([
     ('life', '<i2'),          # int16: life total (-32768 to 32767)
     ('poison', '<u1'),        # uint8: poison counters (0-255)
@@ -72,14 +72,17 @@ PLAYER_DTYPE = np.dtype([
     ('library_size', '<u1'),  # uint8: cards remaining in library (0-255)
     ('hand_size', '<u1'),     # uint8: cards in hand (0-255)
     ('lands_played', '<u1'),  # uint8: lands played this turn
+    ('energy', '<u1'),        # uint8: energy counters (Kaladesh block)
+    ('storm_count', '<u1'),   # uint8: storm count this turn
+    ('status_flags', '<u1'),  # uint8: bit 0=monarch, bit 1=city's blessing, bit 2=initiative
 ])
 
 # Maximum counts
-MAX_CARDS = 50     # Max cards tracked per decision
+MAX_CARDS = 150    # Max cards tracked per decision (Commander: 100 card decks + tokens)
 MAX_PLAYERS = 4    # Max players (Commander support)
-MAX_ACTIONS = 200  # Max legal actions per decision
+MAX_ACTIONS = 203  # Max legal actions per decision (matches ActionConfig.total_actions)
 
-# 1060 bytes per decision
+# 2278 bytes per decision
 DECISION_DTYPE = np.dtype([
     ('version', '<u2'),              # uint16: format version (3 = binary)
     ('num_cards', '<u1'),            # uint8: actual card count in this record
@@ -97,8 +100,8 @@ DECISION_DTYPE = np.dtype([
 
 # Verify sizes
 assert CARD_DTYPE.itemsize == 12, f"CARD_DTYPE is {CARD_DTYPE.itemsize} bytes, expected 12"
-assert PLAYER_DTYPE.itemsize == 12, f"PLAYER_DTYPE is {PLAYER_DTYPE.itemsize} bytes, expected 12"
-assert DECISION_DTYPE.itemsize == 1060, f"DECISION_DTYPE is {DECISION_DTYPE.itemsize} bytes, expected 1060"
+assert PLAYER_DTYPE.itemsize == 15, f"PLAYER_DTYPE is {PLAYER_DTYPE.itemsize} bytes, expected 15"
+assert DECISION_DTYPE.itemsize == 2278, f"DECISION_DTYPE is {DECISION_DTYPE.itemsize} bytes, expected 2278"
 
 # Format version for binary records
 BINARY_FORMAT_VERSION = 3
@@ -294,6 +297,7 @@ def write_binary_hdf5(
     chunk_size: int = 1000,
     compression: str = 'gzip',
     compression_opts: int = 4,
+    flat_actions: Optional[np.ndarray] = None,
 ) -> None:
     """
     Write binary decision records to HDF5.
@@ -305,6 +309,11 @@ def write_binary_hdf5(
         chunk_size: HDF5 chunk size for compression
         compression: Compression algorithm ('gzip', 'lzf', None)
         compression_opts: Compression level (1-9 for gzip)
+        flat_actions: Optional int16 array (same length as decisions) containing
+            the flat 0-202 policy space index for each decision.  -1 means
+            not mappable (e.g. declare_attackers, or Java hasn't yet populated
+            actions[] with flat indices).  Mirrors the flat_choices column in
+            the v2 JSON path.
     """
     if not HAS_H5PY:
         raise ImportError("h5py required for write_binary_hdf5")
@@ -330,6 +339,20 @@ def write_binary_hdf5(
                 compression=compression,
                 compression_opts=compression_opts if compression == 'gzip' else None,
             )
+
+        # Parallel flat_actions dataset (same semantics as flat_choices in v2)
+        if flat_actions is not None and len(flat_actions) == len(decisions):
+            fa = np.asarray(flat_actions, dtype=np.int16)
+            if len(fa) == 0:
+                f.create_dataset('flat_actions', data=fa)
+            else:
+                f.create_dataset(
+                    'flat_actions',
+                    data=fa,
+                    chunks=(min(chunk_size, len(fa)),),
+                    compression=compression,
+                    compression_opts=compression_opts if compression == 'gzip' else None,
+                )
 
         # Metadata
         f.attrs['format_version'] = BINARY_FORMAT_VERSION
@@ -381,6 +404,7 @@ class BinaryDecisionBuffer:
         self._output_dir = output_dir
         self._save_interval = save_interval
         self._buffer = []
+        self._flat_actions_buffer: list = []
         self._total_written = 0
         self._checkpoint_count = 0
 
@@ -388,9 +412,22 @@ class BinaryDecisionBuffer:
         """Add a single decision record to the buffer.
 
         Makes a deep copy since numpy void scalars share memory with their
-        parent array.
+        parent array.  Also computes the flat 0-202 policy index from
+        actions[chosen_action] and stores it alongside the record.
         """
         self._buffer.append(np.array([record], dtype=DECISION_DTYPE)[0].copy())
+
+        # Compute flat action: actions[chosen_action] holds the flat 0-202
+        # policy index written by Java.  Store -1 when not mappable.
+        chosen = int(record['chosen_action'])
+        num_act = int(record['num_actions'])
+        if 0 <= chosen < num_act:
+            candidate = int(record['actions'][chosen])
+            flat_action = candidate if 0 <= candidate <= 202 else -1
+        else:
+            flat_action = -1
+        self._flat_actions_buffer.append(flat_action)
+
         if len(self._buffer) >= self._save_interval:
             self.flush_checkpoint()
 
@@ -400,6 +437,7 @@ class BinaryDecisionBuffer:
             return None
 
         decisions = np.array(self._buffer, dtype=DECISION_DTYPE)
+        flat_actions = np.array(self._flat_actions_buffer, dtype=np.int16)
         self._checkpoint_count += 1
         path = os.path.join(
             self._output_dir,
@@ -409,9 +447,10 @@ class BinaryDecisionBuffer:
             'checkpoint_number': self._checkpoint_count,
             'decisions_in_file': len(decisions),
             'total_decisions_so_far': self._total_written + len(decisions),
-        })
+        }, flat_actions=flat_actions)
         self._total_written += len(decisions)
         self._buffer.clear()
+        self._flat_actions_buffer.clear()
         return path
 
     def finalize(self) -> str:
@@ -426,6 +465,7 @@ class BinaryDecisionBuffer:
         # Merge all checkpoint files
         final_path = os.path.join(self._output_dir, "final.h5")
         all_decisions = []
+        all_flat_actions = []
 
         for i in range(1, self._checkpoint_count + 1):
             cp_path = os.path.join(
@@ -434,13 +474,18 @@ class BinaryDecisionBuffer:
             )
             if os.path.exists(cp_path):
                 all_decisions.append(read_binary_hdf5(cp_path))
+                if HAS_H5PY:
+                    with h5py.File(cp_path, 'r') as _f:
+                        if 'flat_actions' in _f:
+                            all_flat_actions.append(_f['flat_actions'][:])
 
         if all_decisions:
             merged = np.concatenate(all_decisions)
+            merged_flat = np.concatenate(all_flat_actions) if all_flat_actions else None
             write_binary_hdf5(final_path, merged, metadata={
                 'total_decisions': len(merged),
                 'num_checkpoints_merged': len(all_decisions),
-            })
+            }, flat_actions=merged_flat)
 
         return final_path
 

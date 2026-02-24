@@ -39,20 +39,20 @@ class TestDtypeSizes:
         assert CARD_DTYPE.itemsize == 12
 
     def test_player_dtype_size(self):
-        assert PLAYER_DTYPE.itemsize == 12
+        assert PLAYER_DTYPE.itemsize == 15
 
     def test_decision_dtype_size(self):
-        assert DECISION_DTYPE.itemsize == 1060
+        assert DECISION_DTYPE.itemsize == 2278
 
     def test_decision_breakdown(self):
         """Verify the decision size adds up from components."""
         header = 2 + 1 + 1 + 2 + 1 + 1  # version, num_cards, num_players, turn, phase, active_player = 8
-        players = MAX_PLAYERS * PLAYER_DTYPE.itemsize  # 4 * 12 = 48
-        cards = MAX_CARDS * CARD_DTYPE.itemsize  # 50 * 12 = 600
+        players = MAX_PLAYERS * PLAYER_DTYPE.itemsize  # 4 * 15 = 60
+        cards = MAX_CARDS * CARD_DTYPE.itemsize  # 150 * 12 = 1800
         actions_header = 1 + 1 + 2  # num_actions, decision_type, chosen_action = 4
-        actions = MAX_ACTIONS * 2  # 200 * 2 = 400
+        actions = MAX_ACTIONS * 2  # 203 * 2 = 406
         expected = header + players + cards + actions_header + actions
-        assert expected == 1060
+        assert expected == 2278
         assert DECISION_DTYPE.itemsize == expected
 
 
@@ -95,10 +95,17 @@ class TestDtypeFieldAccess:
         player['library_size'] = 45
         player['hand_size'] = 7
         player['lands_played'] = 1
+        player['energy'] = 4
+        player['storm_count'] = 2
+        player['status_flags'] = 0b101  # monarch + initiative
 
         assert player['life'] == 20
         assert player['mana_w'] == 3
         assert player['library_size'] == 45
+        assert player['energy'] == 4
+        assert player['storm_count'] == 2
+        assert player['status_flags'] & 0b001  # monarch
+        assert player['status_flags'] & 0b100  # initiative
 
     def test_player_negative_life(self):
         """Life can go negative (e.g., Phyrexian mana, damage)."""
@@ -342,6 +349,9 @@ class TestHDF5IO:
         dec[0]['players'][0]['library_size'] = 33
         dec[0]['players'][0]['hand_size'] = 7
         dec[0]['players'][0]['lands_played'] = 1
+        dec[0]['players'][0]['energy'] = 6
+        dec[0]['players'][0]['storm_count'] = 3
+        dec[0]['players'][0]['status_flags'] = 0b011  # monarch + city's blessing
         dec[0]['cards'][0]['card_id'] = 12345
         dec[0]['cards'][0]['zone'] = 2
         dec[0]['cards'][0]['type_flags'] = TYPE_CREATURE | TYPE_LAND
@@ -373,6 +383,9 @@ class TestHDF5IO:
             assert r['players'][0]['life'] == -5
             assert r['players'][0]['poison'] == 7
             assert r['players'][0]['mana_c'] == 5
+            assert r['players'][0]['energy'] == 6
+            assert r['players'][0]['storm_count'] == 3
+            assert r['players'][0]['status_flags'] == 0b011
             assert r['cards'][0]['card_id'] == 12345
             assert r['cards'][0]['type_flags'] == (TYPE_CREATURE | TYPE_LAND)
             assert r['cards'][0]['power'] == -1
@@ -403,8 +416,8 @@ class TestHDF5IO:
 
             # Compressed should be smaller (lots of zeros in sparse records)
             assert compressed_size < uncompressed_size
-            # Raw: 1000 * 1060 = 1.06 MB, compressed should be much less
-            assert compressed_size < 500_000  # less than 500 KB
+            # Raw: 1000 * 2278 = 2.28 MB, compressed should be much less
+            assert compressed_size < 1_000_000  # less than 1 MB
         finally:
             os.unlink(compressed_path)
             os.unlink(uncompressed_path)
@@ -544,6 +557,98 @@ class TestBinaryDecisionBuffer:
             # No decisions -> no file content but path returned
             assert final_path.endswith("final.h5")
 
+    def test_flat_action_computed_from_actions_array(self):
+        """flat_action = actions[chosen_action] (flat 0-202 policy index)."""
+        import h5py
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            buf = BinaryDecisionBuffer(tmpdir, save_interval=100)
+
+            # Record: 3 legal actions with flat indices [0, 3, 18], chose index 1 → flat=3
+            rec = np.zeros(1, dtype=DECISION_DTYPE)[0]
+            rec['version'] = BINARY_FORMAT_VERSION
+            rec['num_actions'] = 3
+            rec['chosen_action'] = 1
+            rec['actions'][0] = 0    # pass
+            rec['actions'][1] = 3    # cast spell (hand slot 0)
+            rec['actions'][2] = 18   # activate (bf slot 0)
+            buf.add(rec)
+
+            # Record: pass only (actions[0]=0, chose 0 → flat=0)
+            rec2 = np.zeros(1, dtype=DECISION_DTYPE)[0]
+            rec2['version'] = BINARY_FORMAT_VERSION
+            rec2['num_actions'] = 1
+            rec2['chosen_action'] = 0
+            rec2['actions'][0] = 0
+            buf.add(rec2)
+
+            # Record: chosen_action out of bounds → flat=-1
+            rec3 = np.zeros(1, dtype=DECISION_DTYPE)[0]
+            rec3['version'] = BINARY_FORMAT_VERSION
+            rec3['num_actions'] = 2
+            rec3['chosen_action'] = 5  # > num_actions
+            rec3['actions'][0] = 0
+            rec3['actions'][1] = 3
+            buf.add(rec3)
+
+            final_path = buf.finalize()
+            assert os.path.exists(final_path)
+
+            with h5py.File(final_path, 'r') as f:
+                assert 'flat_actions' in f, "flat_actions dataset missing"
+                fa = f['flat_actions'][:]
+
+            assert len(fa) == 3
+            assert fa[0] == 3,  f"Expected 3 (cast slot 0), got {fa[0]}"
+            assert fa[1] == 0,  f"Expected 0 (pass), got {fa[1]}"
+            assert fa[2] == -1, f"Expected -1 (out of bounds), got {fa[2]}"
+
+    def test_flat_action_range_check(self):
+        """Values > 202 in actions[] are stored as -1 (Java not yet updated)."""
+        import h5py
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            buf = BinaryDecisionBuffer(tmpdir, save_interval=100)
+
+            rec = np.zeros(1, dtype=DECISION_DTYPE)[0]
+            rec['version'] = BINARY_FORMAT_VERSION
+            rec['num_actions'] = 2
+            rec['chosen_action'] = 0
+            rec['actions'][0] = 999  # out-of-range flat index (Java hasn't set it yet)
+            rec['actions'][1] = 3
+            buf.add(rec)
+
+            final_path = buf.finalize()
+            with h5py.File(final_path, 'r') as f:
+                fa = f['flat_actions'][:]
+
+            assert fa[0] == -1, f"Expected -1 for out-of-range, got {fa[0]}"
+
+    def test_flat_actions_in_checkpoint(self):
+        """flat_actions dataset appears in checkpoint files too."""
+        import h5py
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            buf = BinaryDecisionBuffer(tmpdir, save_interval=3)
+
+            for j in range(6):
+                rec = np.zeros(1, dtype=DECISION_DTYPE)[0]
+                rec['version'] = BINARY_FORMAT_VERSION
+                rec['num_actions'] = 2
+                rec['chosen_action'] = j % 2
+                rec['actions'][0] = 0
+                rec['actions'][1] = 3
+                buf.add(rec)
+
+            # Two checkpoints should have been flushed automatically
+            assert buf._checkpoint_count == 2
+
+            cp1 = os.path.join(tmpdir, "checkpoint_0001.h5")
+            assert os.path.exists(cp1)
+            with h5py.File(cp1, 'r') as f:
+                assert 'flat_actions' in f
+                assert len(f['flat_actions']) == 3
+
 
 # =============================================================================
 # MEMORY EFFICIENCY TEST
@@ -554,7 +659,7 @@ class TestMemoryEfficiency:
     """Verify the binary format meets memory targets."""
 
     def test_1000_games_memory_estimate(self):
-        """1000 games * ~400 decisions/game * 1060 bytes should be manageable."""
+        """1000 games * ~400 decisions/game * 2278 bytes should be manageable."""
         decisions_per_game = 400
         num_games = 1000
         total_decisions = decisions_per_game * num_games  # 400,000
@@ -562,15 +667,15 @@ class TestMemoryEfficiency:
         raw_bytes = total_decisions * DECISION_DTYPE.itemsize
         raw_mb = raw_bytes / (1024 * 1024)
 
-        # 400K * 1060 = ~404 MB raw, vs 3.54 GB with JSON
-        assert raw_mb < 500, f"Raw size {raw_mb:.1f} MB exceeds 500 MB target"
+        # 400K * 2278 = ~868 MB raw, vs 3.54 GB with JSON
+        assert raw_mb < 1000, f"Raw size {raw_mb:.1f} MB exceeds 1000 MB target"
 
-        # With gzip compression (>50% for sparse data), should be well under 250 MB
+        # With gzip compression (>50% for sparse data), should be well under 500 MB
         # This is just a sanity check on the math
 
     def test_per_decision_comparison(self):
-        """Binary: 1060 bytes vs JSON: ~14,500 bytes = 93% reduction."""
+        """Binary: 2278 bytes vs JSON: ~14,500 bytes = 84% reduction."""
         json_avg = 14500
         binary = DECISION_DTYPE.itemsize
         reduction = 1 - (binary / json_avg)
-        assert reduction > 0.90, f"Reduction {reduction:.1%} < 90% target"
+        assert reduction > 0.80, f"Reduction {reduction:.1%} < 80% target"
