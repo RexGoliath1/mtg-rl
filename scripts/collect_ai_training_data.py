@@ -35,6 +35,19 @@ import itertools
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# ActionMapper for computing flat 0-202 action indices from ai_choice dicts.
+# Import is optional — if the src package is unavailable (e.g. bare Docker
+# image without the Python wheel), collection still works and flat_choice_idx
+# will be stored as -1 for all rows.
+try:
+    from src.forge.action_mapper import ActionMapper
+    from src.forge.autoregressive_head import ACTION_CAST_SPELL, ACTION_ACTIVATE
+    _mapper = ActionMapper()
+except Exception:  # ImportError or any init failure
+    _mapper = None
+    ACTION_CAST_SPELL = 1
+    ACTION_ACTIVATE = 2
+
 # ---------------------------------------------------------------------------
 # Logging setup
 # ---------------------------------------------------------------------------
@@ -207,12 +220,62 @@ def collect_training_game(
     }
 
 
+def _compute_flat_choice_idx(dtype: str, ai_choice, game_state: dict) -> int:
+    """Map ai_choice to flat 0-202 action space index.
+
+    Returns -1 when the mapping is not possible (e.g. declare_attackers,
+    missing card info, or ActionMapper unavailable).
+    """
+    if _mapper is None:
+        return -1
+
+    # Attacker/blocker decisions encode count, not a card index — skip.
+    if dtype in ("declare_attackers", "declare_blockers"):
+        return -1
+
+    if not isinstance(ai_choice, dict):
+        return -1
+
+    # Pass action
+    if ai_choice.get("action") == "pass":
+        return 0
+
+    card_name = ai_choice.get("card", "")
+    if not card_name:
+        return 0  # Treat unknown non-pass as pass
+
+    players = game_state.get("players", [])
+    if not players:
+        return -1
+
+    # Search the active player's hand (cast spell)
+    active = game_state.get("active_player", "")
+    for player in players:
+        if player.get("name", "") != active:
+            continue
+        for i, card in enumerate(player.get("hand", [])):
+            name = card.get("name", "") if isinstance(card, dict) else str(card)
+            if name == card_name:
+                return _mapper.structured_to_flat(ACTION_CAST_SPELL, card_idx=i)
+
+    # Search battlefield (activate ability)
+    for player in players:
+        for i, card in enumerate(player.get("battlefield", [])):
+            name = card.get("name", "") if isinstance(card, dict) else str(card)
+            if name == card_name:
+                return _mapper.structured_to_flat(ACTION_ACTIVATE, card_idx=i)
+
+    return -1
+
+
 def _extract_decision_fields(decision: dict) -> tuple:
     """Extract HDF5 fields from a raw decision dict.
 
-    Returns (turn, choice_idx, num_actions, decision_type_str, game_state_json).
-    The choice_idx is the index of ai_choice in the actions list as reported
-    by Forge (ai_choice_index field), or -1 for pass / unresolved.
+    Returns (turn, choice_idx, flat_choice_idx, num_actions, decision_type_str,
+    game_state_json).
+    - choice_idx: Forge action list position (legacy, kept for compatibility)
+    - flat_choice_idx: flat 0-202 policy space index for AlphaZeroNetwork
+      training; -1 when not mappable
     """
     dtype = decision.get("decision_type", "unknown")
     turn = decision.get("turn", 0)
@@ -234,7 +297,9 @@ def _extract_decision_fields(decision: dict) -> tuple:
     game_state = decision.get("game_state", {})
     game_state_json = json.dumps(game_state, separators=(",", ":"))
 
-    return turn, choice_idx, num_actions, dtype, game_state_json
+    flat_choice_idx = _compute_flat_choice_idx(dtype, ai_choice, game_state)
+
+    return turn, choice_idx, flat_choice_idx, num_actions, dtype, game_state_json
 
 
 def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
@@ -249,6 +314,7 @@ def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
 
     turns = []
     choices = []
+    flat_choices = []
     num_actions_list = []
     decision_types = []
     game_state_jsons = []
@@ -256,15 +322,17 @@ def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
     type_map = {"choose_action": 0, "declare_attackers": 1, "declare_blockers": 2, "unknown": 3}
 
     for d in decisions:
-        turn, choice_idx, num_actions, dtype, gs_json = _extract_decision_fields(d)
+        turn, choice_idx, flat_choice_idx, num_actions, dtype, gs_json = _extract_decision_fields(d)
         turns.append(turn)
         choices.append(choice_idx)
+        flat_choices.append(flat_choice_idx)
         num_actions_list.append(num_actions)
         decision_types.append(type_map.get(dtype, 3))
         game_state_jsons.append(gs_json)
 
     turns = np.array(turns, dtype=np.int32)
     choices = np.array(choices, dtype=np.int32)
+    flat_choices_arr = np.array(flat_choices, dtype=np.int32)
     num_actions = np.array(num_actions_list, dtype=np.int32)
     dtypes = np.array(decision_types, dtype=np.int8)
 
@@ -272,6 +340,7 @@ def save_to_hdf5(decisions: list, output_path: Path, metadata: dict):
     with h5py.File(output_path, "w") as f:
         f.create_dataset("turns", data=turns, compression="gzip")
         f.create_dataset("choices", data=choices, compression="gzip")
+        f.create_dataset("flat_choices", data=flat_choices_arr, compression="gzip")
         f.create_dataset("num_actions", data=num_actions, compression="gzip")
         f.create_dataset("decision_types", data=dtypes, compression="gzip")
 
@@ -332,6 +401,10 @@ class IncrementalHDF5Writer:
             "choices", shape=(0,), maxshape=(None,),
             dtype="i4", chunks=(1000,), compression="gzip",
         )
+        self._ds_flat_choices = self._file.create_dataset(
+            "flat_choices", shape=(0,), maxshape=(None,),
+            dtype="i4", chunks=(1000,), compression="gzip",
+        )
         self._ds_num_actions = self._file.create_dataset(
             "num_actions", shape=(0,), maxshape=(None,),
             dtype="i4", chunks=(1000,), compression="gzip",
@@ -356,14 +429,16 @@ class IncrementalHDF5Writer:
 
         turns = []
         choices = []
+        flat_choices = []
         num_actions_list = []
         decision_types = []
         game_state_jsons = []
 
         for d in decisions:
-            turn, choice_idx, num_actions, dtype, gs_json = _extract_decision_fields(d)
+            turn, choice_idx, flat_choice_idx, num_actions, dtype, gs_json = _extract_decision_fields(d)
             turns.append(turn)
             choices.append(choice_idx)
+            flat_choices.append(flat_choice_idx)
             num_actions_list.append(num_actions)
             decision_types.append(self.TYPE_MAP.get(dtype, 3))
             game_state_jsons.append(gs_json)
@@ -377,6 +452,9 @@ class IncrementalHDF5Writer:
 
         self._ds_choices.resize((new,))
         self._ds_choices[old:new] = np.array(choices, dtype=np.int32)
+
+        self._ds_flat_choices.resize((new,))
+        self._ds_flat_choices[old:new] = np.array(flat_choices, dtype=np.int32)
 
         self._ds_num_actions.resize((new,))
         self._ds_num_actions[old:new] = np.array(num_actions_list, dtype=np.int32)
