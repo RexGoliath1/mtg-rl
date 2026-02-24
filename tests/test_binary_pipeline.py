@@ -28,7 +28,12 @@ from src.forge.binary_state import (
 
 
 def _make_realistic_decision(turn=5, num_cards=8, num_actions=5, chosen=2):
-    """Create a realistic binary decision record for testing."""
+    """Create a realistic binary decision record for testing.
+
+    actions[j] is set to realistic flat policy indices:
+      0 = pass, 3 = cast hand[0], 4 = cast hand[1], 18 = activate bf[0], 19 = activate bf[1]
+    chosen selects which of these actions was taken.
+    """
     rec = np.zeros(1, dtype=DECISION_DTYPE)[0]
     rec['version'] = BINARY_FORMAT_VERSION
     rec['num_cards'] = num_cards
@@ -82,12 +87,14 @@ def _make_realistic_decision(turn=5, num_cards=8, num_actions=5, chosen=2):
         rec['cards'][i]['state_flags'] = STATE_TAPPED if i == 6 else 0
         rec['cards'][i]['controller'] = 0
 
-    # Actions and choice
+    # Actions: use realistic flat policy indices (not sequential)
+    # Flat layout: 0=pass, 3-17=cast spell, 18-67=activate ability
+    _flat_indices = [0, 3, 4, 18, 19]  # pass, cast[0], cast[1], activate[0], activate[1]
     rec['num_actions'] = num_actions
     rec['decision_type'] = 0  # choose_action
     rec['chosen_action'] = chosen
     for j in range(num_actions):
-        rec['actions'][j] = j
+        rec['actions'][j] = _flat_indices[j] if j < len(_flat_indices) else j
 
     return rec
 
@@ -302,5 +309,83 @@ class TestBinaryCollectorParsing:
             assert out_last.shape == (1, 768)
             assert not torch.isnan(out_first).any()
             assert not torch.isnan(out_last).any()
+        finally:
+            os.unlink(path)
+
+
+class TestFlatActionsPipeline:
+    """Test flat_actions parallel dataset through the full binary pipeline."""
+
+    def test_buffer_writes_flat_actions(self):
+        """BinaryDecisionBuffer computes flat_actions and writes them to HDF5."""
+        import h5py
+        from src.forge.binary_state import BinaryDecisionBuffer
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            buf = BinaryDecisionBuffer(tmpdir, save_interval=100)
+
+            # chosen=2 → actions[2]=4 (cast hand[1]) → flat_action=4
+            rec = _make_realistic_decision(turn=1, num_actions=5, chosen=2)
+            buf.add(rec)
+
+            # chosen=0 → actions[0]=0 (pass) → flat_action=0
+            rec_pass = _make_realistic_decision(turn=2, num_actions=5, chosen=0)
+            buf.add(rec_pass)
+
+            final_path = buf.finalize()
+
+            with h5py.File(final_path, 'r') as f:
+                assert 'flat_actions' in f, "flat_actions missing from binary HDF5"
+                fa = f['flat_actions'][:]
+
+            assert len(fa) == 2
+            # chosen=2 → actions[2]=4 (cast hand[1] = cast_start+1 = 3+1)
+            assert fa[0] == 4,  f"Expected 4 (cast hand[1]), got {fa[0]}"
+            assert fa[1] == 0,  f"Expected 0 (pass), got {fa[1]}"
+
+    def test_flat_actions_valid_range(self):
+        """All computed flat_actions should be -1 or in [0, 202]."""
+        import h5py
+        from src.forge.binary_state import BinaryDecisionBuffer
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            buf = BinaryDecisionBuffer(tmpdir, save_interval=100)
+
+            for i in range(20):
+                rec = _make_realistic_decision(
+                    turn=i + 1, num_actions=5, chosen=i % 5,
+                )
+                buf.add(rec)
+
+            final_path = buf.finalize()
+
+            with h5py.File(final_path, 'r') as f:
+                fa = f['flat_actions'][:]
+
+            valid = fa[fa >= 0]
+            assert (valid <= 202).all(), f"Out-of-range values: {valid[valid > 202]}"
+
+    def test_flat_actions_write_read_with_decisions(self):
+        """write_binary_hdf5 with flat_actions stores a readable parallel dataset."""
+        import h5py
+        from src.forge.binary_state import write_binary_hdf5
+
+        decisions = np.array([_make_realistic_decision(turn=i) for i in range(10)],
+                             dtype=DECISION_DTYPE)
+        flat = np.array([0, 3, 4, 18, -1, 0, 3, 4, 18, -1], dtype=np.int16)
+
+        with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as tmp:
+            path = tmp.name
+
+        try:
+            write_binary_hdf5(path, decisions, flat_actions=flat)
+
+            with h5py.File(path, 'r') as f:
+                assert 'decisions' in f
+                assert 'flat_actions' in f
+                stored_fa = f['flat_actions'][:]
+
+            assert stored_fa.dtype == np.int16
+            np.testing.assert_array_equal(stored_fa, flat)
         finally:
             os.unlink(path)

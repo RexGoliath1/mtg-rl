@@ -557,6 +557,98 @@ class TestBinaryDecisionBuffer:
             # No decisions -> no file content but path returned
             assert final_path.endswith("final.h5")
 
+    def test_flat_action_computed_from_actions_array(self):
+        """flat_action = actions[chosen_action] (flat 0-202 policy index)."""
+        import h5py
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            buf = BinaryDecisionBuffer(tmpdir, save_interval=100)
+
+            # Record: 3 legal actions with flat indices [0, 3, 18], chose index 1 → flat=3
+            rec = np.zeros(1, dtype=DECISION_DTYPE)[0]
+            rec['version'] = BINARY_FORMAT_VERSION
+            rec['num_actions'] = 3
+            rec['chosen_action'] = 1
+            rec['actions'][0] = 0    # pass
+            rec['actions'][1] = 3    # cast spell (hand slot 0)
+            rec['actions'][2] = 18   # activate (bf slot 0)
+            buf.add(rec)
+
+            # Record: pass only (actions[0]=0, chose 0 → flat=0)
+            rec2 = np.zeros(1, dtype=DECISION_DTYPE)[0]
+            rec2['version'] = BINARY_FORMAT_VERSION
+            rec2['num_actions'] = 1
+            rec2['chosen_action'] = 0
+            rec2['actions'][0] = 0
+            buf.add(rec2)
+
+            # Record: chosen_action out of bounds → flat=-1
+            rec3 = np.zeros(1, dtype=DECISION_DTYPE)[0]
+            rec3['version'] = BINARY_FORMAT_VERSION
+            rec3['num_actions'] = 2
+            rec3['chosen_action'] = 5  # > num_actions
+            rec3['actions'][0] = 0
+            rec3['actions'][1] = 3
+            buf.add(rec3)
+
+            final_path = buf.finalize()
+            assert os.path.exists(final_path)
+
+            with h5py.File(final_path, 'r') as f:
+                assert 'flat_actions' in f, "flat_actions dataset missing"
+                fa = f['flat_actions'][:]
+
+            assert len(fa) == 3
+            assert fa[0] == 3,  f"Expected 3 (cast slot 0), got {fa[0]}"
+            assert fa[1] == 0,  f"Expected 0 (pass), got {fa[1]}"
+            assert fa[2] == -1, f"Expected -1 (out of bounds), got {fa[2]}"
+
+    def test_flat_action_range_check(self):
+        """Values > 202 in actions[] are stored as -1 (Java not yet updated)."""
+        import h5py
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            buf = BinaryDecisionBuffer(tmpdir, save_interval=100)
+
+            rec = np.zeros(1, dtype=DECISION_DTYPE)[0]
+            rec['version'] = BINARY_FORMAT_VERSION
+            rec['num_actions'] = 2
+            rec['chosen_action'] = 0
+            rec['actions'][0] = 999  # out-of-range flat index (Java hasn't set it yet)
+            rec['actions'][1] = 3
+            buf.add(rec)
+
+            final_path = buf.finalize()
+            with h5py.File(final_path, 'r') as f:
+                fa = f['flat_actions'][:]
+
+            assert fa[0] == -1, f"Expected -1 for out-of-range, got {fa[0]}"
+
+    def test_flat_actions_in_checkpoint(self):
+        """flat_actions dataset appears in checkpoint files too."""
+        import h5py
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            buf = BinaryDecisionBuffer(tmpdir, save_interval=3)
+
+            for j in range(6):
+                rec = np.zeros(1, dtype=DECISION_DTYPE)[0]
+                rec['version'] = BINARY_FORMAT_VERSION
+                rec['num_actions'] = 2
+                rec['chosen_action'] = j % 2
+                rec['actions'][0] = 0
+                rec['actions'][1] = 3
+                buf.add(rec)
+
+            # Two checkpoints should have been flushed automatically
+            assert buf._checkpoint_count == 2
+
+            cp1 = os.path.join(tmpdir, "checkpoint_0001.h5")
+            assert os.path.exists(cp1)
+            with h5py.File(cp1, 'r') as f:
+                assert 'flat_actions' in f
+                assert len(f['flat_actions']) == 3
+
 
 # =============================================================================
 # MEMORY EFFICIENCY TEST
